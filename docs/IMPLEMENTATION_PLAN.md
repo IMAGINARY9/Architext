@@ -1,85 +1,106 @@
-# Architext: Implementation Plan & Roadmap
+# Architext: Implementation Plan & Roadmap (2.0)
 
 ## Project Overview
-**Architext** is a local RAG (Retrieval-Augmented Generation) tool designed to index codebase architectures and answer high-level questions (e.g., "How does the auth flow work?", "Where are the API endpoints defined?").
+**Architext** is a universal architectural search engine designed to index any codebase (local or remote) and answer high-level questions. It acts as a specialized "Cortex" for software architecture, useful for both human developers and AI Orchestrators.
 
-**Core Philosophy:** Start simple with loose text chunking, then evolve into a sophisticated "Code Knowledge Graph" using AST parsing.
+**Core Philosophy:** 
+1.  **Universality:** Works with any language, any repo structure, anywhere (Local/GitHub/GitLab).
+2.  **Headless & Composable:** Designed primarily as a CLI tool and an API/MCP Server for other agents, not a visual dashboard.
+3.  **Model Agnostic:** Bring your own LLM (OpenAI, Gemini, Claude, Local Oobabooga/Ollama).
 
-## Tech Stack (MVP)
+## Tech Stack (Revised)
 *   **Language:** Python 3.10+
-*   **Orchestrator:** LlamaIndex
-*   **LLM:** Local Oobabooga API (OpenAI-compatible)
-*   **Embeddings:** `sentence-transformers/all-mpnet-base-v2` (Local HuggingFace)
-*   **Vector Database:** ChromaDB (Persisted locally)
-*   **Interface:** CLI (Phase 1) -> Streamlit (Phase 2)
+*   **Core Logic:** LlamaIndex / LangChain (orchestration)
+*   **LLM Interface:** `LiteLLM` (Unified interface for OpenAI, Vertex, Bedrock, & Local)
+*   **Ingestion:** `GitPython` (Remote cloning), Native File I/O
+*   **Vector Database:** ChromaDB (Local/Server mode), extensible to Pinecone/Qdrant
+*   **Interface:** CLI (`click`/`typer`) & API (`FastAPI`)
+*   **Config:** `pydantic-settings` (.env management)
 
 ---
 
-## Phase 1: The MVP (Proof of Concept)
-**Goal:** Prove we can index a local folder and ask questions about it using a local LLM.
+## Phase 1: The Pivot (Foundation)
+**Goal:** Transition from the rigid local MVP to a flexible, configuration-driven tool.
 
-### 1.1 Environment Setup
-*   [x] Verify Oobabooga API is running at `http://127.0.0.1:5000/v1`.
-*   [x] Install dependencies: `llama-index`, `chromadb`, `sentence-transformers`, `llama-index-llms-openai-like`.
+### 1.1 Configuration System
+*   [ ] Replace hardcoded Oobabooga/Path settings with `src/config.py` using Pydantic.
+*   [ ] Support `.env` loading for sensitivity (e.g., `OPENAI_API_KEY`, `GITHUB_TOKEN`).
+*   [ ] Allow switching "Providers" via config:
+    *   `LLM_PROVIDER`: `openai` | `gemini` | `local` | `anthropic`
+    *   `EMBEDDING_PROVIDER`: `huggingface` (local) | `openai`
 
-### 1.2 Core Indexing Logic (`src/indexer.py`)
-*   [x] Implement `load_documents(path)`: Recursively read files (.py, .md, .js, etc.).
-*   [x] Implement `create_index(documents)`: 
-    *   Use `HuggingFaceEmbedding` for vectorization.
-    *   Store in `ChromaDB` (saved to `./storage`).
-*   [x] Implement `query_index(query)`: Retrieve top-k chunks and generate response.
+### 1.2 Universal Ingestion (`src/ingestor.py`)
+*   [ ] Integrate `GitPython`.
+*   [ ] Logic: Detect if input is path or URL.
+    *   **Path:** Index in place.
+    *   **URL:** Clone to temporary cache (`~/.architext/cache/<repo_hash>`) or persistent storage.
+*   [ ] Handle authentication for private repos via SSH Agent or PAT (Personal Access Token).
 
-### 1.3 CLI Interface (`src/cli.py`)
-*   [x] Command: `python -m src.cli index <path_to_repo>`
-*   [x] Command: `python -m src.cli query "Where is the login logic?"`
+### 1.3 Flexible LLM Backend & Tuning (`src/llm.py`)
+*   [ ] Abstract LLM calls using `LiteLLM`.
+*   [ ] **Inference Tuning**: Expose parameters (`temperature`, `max_tokens`) via config.
+*   [ ] **Prompt Customization**: Support user-defined System Prompts via the config file (crucial for optimizing across different models like DeepSeek vs. GPT-4).
+*   [ ] **RAG Optimization**: Make retrieval parameters (`chunk_size`, `top_k`) configurable.
+*   [ ] Verify connectivity with Cloud (GPT-4o, Gemini) and Local (Oobabooga/Ollama) providers.
 
-### 1.4 Connection Verification
-*   [x] Script: `scripts/test_connection.py` to ensure LlamaIndex can talk to Oobabooga.
-
-### 1.5 Testing & Validation (Reliability & Security)
-*   [x] **Infrastructure**: Installed `pytest` and `pytest-mock`.
-*   [x] **Unit Tests**:
-    *   Verify `load_documents` respects `.gitignore` and ignores `.git/`, `.env`, and private keys (Security).
-    *   Test `initialize_settings` performs graceful fallback if model is missing.
-*   [x] **Integration Tests**:
-    *   [x] Mock LLM/Embedding calls to test `initialize_settings` and embedding setup without heavy model loading.
-    *   [x] Verify full `indexer` -> `CLI` pipeline via mocked LLM and embeddings, and ensure CLI exit codes on errors.
-
-**Recommended next testing steps (short-term):**
-- Add integration tests that run `python -m src.cli index` and `python -m src.cli query` with LLM & embedding calls mocked; assert exit codes and output.
-- Add a CI workflow (GitHub Actions) that runs `pytest` and fails on regressions.
-- Add code coverage reporting and set a reasonable coverage gate (e.g., 70%).
+### 1.4 Core Refactor
+*   [ ] Decouple `indexer.py` from CLI print statements. Make it a library.
+*   [ ] Implement "Lazy Loading" / Streaming for documents to handle larger repos without OOM errors.
 
 ---
 
-## Phase 2: The Polished Tool (Alpha)
-**Goal:** Make it usable for daily development with a better UI and smarter context.
+## Phase 2: API & Agent Integration
+**Goal:** Expose Architext as a service that other agents can query.
 
-### 2.1 "Smart" Indexing
-*   [ ] Switch from simple chunking to **AST-based chunking** (using `CodeSplitter`).
-*   [ ] Preserve context: Ensure every chunk knows its filename and class name.
+### 2.1 The "Headless" Server (`src/server.py`)
+*   [ ] Implement a `FastAPI` service.
+*   [ ] Endpoints:
+    *   `POST /index`: Trigger indexing of a repo URL or Trigger re-index.
+    *   `POST /query`: Semantic search against a specific index.
+    *   `GET /status`: Indexing progress.
 
-### 2.2 User Interface
-*   [ ] Build a Streamlit app (`src/app.py`):
-    *   Sidebar: Select repository to index.
-    *   Main: Chat interface with "Source" dropdowns to show which files were used.
+### 2.2 Structured Outputs
+*   [ ] Implement **Dual-Mode Response**:
+    *   **Human Mode**: Natural language summary with citations.
+    *   **Agent Mode (JSON)**: Strict schema for machine parsing.
+    *   *Schema Example:* `{ "answer": "...", "confidence": 0.9, "sources": [{"file": "auth.ts", "lines": [10, 20]}] }`
 
-### 2.3 Incremental Updates
-*   [ ] Track file modification times. Only re-index changed files to save time.
+### 2.3 CLI Enhancements
+*   [ ] Add `architext serve` to start the API.
+*   [ ] Add `--format json` flag to `query` command.
+
+### 2.4 Quality & Retrieval Optimization
+*   [ ] **Re-ranking (Cross-Encoders)**: Implement a second-stage retrieval step to re-rank the top-k results before passing them to the LLM. This significantly reduces noise and increases accuracy.
+*   [ ] **Hybrid Search**: (Optional) Combine keyword search with semantic search for better finding of specific class/function names.
 
 ---
 
-## Phase 3: Production / Advanced
-**Goal:** Turn it into a powerful architectural analysis tool.
+## Phase 3: Scale & Intelligence
+**Goal:** Handle massive enterprise monorepos and enhance retrieval accuracy.
 
-### 3.1 Graph capabilities
-*   [ ] Integrate `llama-index` Graph integrations to map function calls.
+### 3.1 Advanced Storage Strategy
+*   [ ] **Remote Vector Store Support**: Add adapters for:
+    *   Pinecone / Qdrant (Cloud scaling).
+    *   Remote Chroma (Team sharing).
+*   [ ] **Persistent Indexes**: Allow naming/saving indexes (e.g., `architext index --name "backend-v1" ./src`).
 
-### 3.2 IDE Integration
-*   [ ] Create a VS Code extension that queries the local Architext server.
+### 3.2 Advanced Retrieval & High-Fidelity Indexing
+*   [ ] **AST-Based Chunking**: Integrate `CodeSplitter` to respect function/class boundaries (Python, JS, Java) instead of arbitrary line breaks.
+*   [ ] **Context Injection**: Decorate every node with metadata (filename, class path) to preserve context in isolated chunks.
+*   [ ] **Code Knowledge Graph**: Integrate Graph stores to map function calls and dependencies, enabling complex "impact analysis" queries.
 
-## Developer Setup
-1.  **Clone Repo**: `git clone ...`
-2.  **Env**: `python -m venv .venv` & `source .venv/bin/activate`
-3.  **Install**: `pip install -r requirements.txt`
-4.  **Run**: Ensure Oobabooga is running with `--api`.
+### 3.3 Agent Ecosystem
+*   [ ] **MCP (Model Context Protocol) Server**: Wrap the API as an endpoint compatible with Claude Desktop / generic MCP clients.
+
+---
+
+## Performance & Optimization Guidelines
+*   **Prompt Tuning**: Different models (e.g., DeepSeek Coder vs. GPT-4) require unique instruction styles. Always test the system prompt in `config.py` when switching models.
+*   **Retrieval Knobs**: For large repositories, increase `chunk_size` to 1024 and use a Re-ranker to maintain precision.
+*   **Local Quantization**: When running local LLMs, prefer **GGUF (Q4_K_M or Q5_K_M)** formats via Ollama or Oobabooga to balance inference speed with architectural reasoning capabilities.
+*   **Embedding Models**: Use `mpnet-base-v2` for local precision or `text-embedding-3-small` for cloud-based cost efficiency.
+
+## Quality Assurance & Best Practices
+*   [ ] **Integration Tests**: Mock `LiteLLM` responses to test pipeline without real API costs.
+*   [ ] **Security Scans**: Ensure `.git` history and `.env` files are strictly ignored during indexing.
+*   [ ] **CI/CD**: GitHub Actions to run tests and linters (Ruff/Black).
