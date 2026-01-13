@@ -40,5 +40,31 @@
     python -m src.cli query "Explain the database schema"
     ```
 
+## Configuration
+
+Architext is driven by environment variables (loaded from `.env` by default) via Pydantic settings. Key knobs:
+
+* `LLM_PROVIDER` (`local`|`openai`|`gemini`|`anthropic`), `LLM_MODEL`, `OPENAI_API_BASE`, `OPENAI_API_KEY`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`
+* `EMBEDDING_PROVIDER` (`huggingface`|`openai`), `EMBEDDING_MODEL_NAME`, `EMBEDDING_CACHE_DIR`
+* `STORAGE_PATH` (default `./storage`), `CHUNK_SIZE`, `TOP_K`
+
+Example `.env`:
+
+```bash
+LLM_PROVIDER=local
+LLM_MODEL=local-model
+OPENAI_API_BASE=http://127.0.0.1:5000/v1
+OPENAI_API_KEY=local
+EMBEDDING_PROVIDER=huggingface
+EMBEDDING_MODEL_NAME=sentence-transformers/all-mpnet-base-v2
+STORAGE_PATH=./storage
+```
+
+CLI can point to another env file:
+
+```bash
+python -m src.cli --env-file ./dev.env index ./repo
+```
+
 ## Development
 See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the roadmap and architecture details.

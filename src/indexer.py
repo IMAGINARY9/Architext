@@ -1,38 +1,73 @@
 import os
+from typing import Optional
+
 import chromadb
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
 
-def initialize_settings():
-    """Configure global LlamaIndex settings for local LLM and Embeddings."""
-    # LLM Setup (Oobabooga)
-    api_base = os.getenv("OPENAI_API_BASE", "http://127.0.0.1:5000/v1")
-    api_key = os.getenv("OPENAI_API_KEY", "local")
-    
-    print(f"Connecting to LLM at {api_base}...")
-    llm = OpenAILike(
-        model="local-model",
-        api_base=api_base,
-        api_key=api_key,
-        temperature=0.1,
-        is_chat_model=True
-    )
-    
-    # Embedding Setup (Local HuggingFace)
-    print("Loading embedding model (sentence-transformers/all-mpnet-base-v2)...")
-    # Use a local cache directory to avoid path length issues and permission errors
-    cache_folder = os.path.join(os.getcwd(), "models_cache")
-    os.makedirs(cache_folder, exist_ok=True)
-    
-    embed_model = HuggingFaceEmbedding(
-        model_name="sentence-transformers/all-mpnet-base-v2",
-        cache_folder=cache_folder
-    )
+from src.config import ArchitextSettings, load_settings
 
-    Settings.llm = llm
-    Settings.embed_model = embed_model
+
+def _build_llm(cfg: ArchitextSettings):
+    """Create the configured LLM client.
+
+    Currently supports local/OpenAI-compatible endpoints via OpenAILike.
+    """
+
+    provider = cfg.llm_provider.lower()
+    if provider in {"local", "openai"}:
+        llm_kwargs = {
+            "model": cfg.llm_model,
+            "api_base": cfg.openai_api_base,
+            "api_key": cfg.openai_api_key,
+            "temperature": cfg.llm_temperature,
+            "is_chat_model": True,
+        }
+        if cfg.llm_max_tokens is not None:
+            llm_kwargs["max_tokens"] = cfg.llm_max_tokens
+        return OpenAILike(**llm_kwargs)
+
+    raise ValueError(f"Unsupported LLM provider: {cfg.llm_provider}")
+
+
+def _build_embedding(cfg: ArchitextSettings):
+    """Create the configured embedding model."""
+
+    provider = cfg.embedding_provider.lower()
+    if provider == "huggingface":
+        cache_folder = os.path.abspath(cfg.embedding_cache_dir)
+        os.makedirs(cache_folder, exist_ok=True)
+
+        return HuggingFaceEmbedding(
+            model_name=cfg.embedding_model_name,
+            cache_folder=cache_folder,
+        )
+
+    if provider == "openai":
+        if not cfg.openai_api_key or cfg.openai_api_key == "local":
+            raise ValueError("OPENAI_API_KEY is required for OpenAI embeddings")
+
+        return OpenAIEmbedding(
+            model=cfg.embedding_model_name,
+            api_key=cfg.openai_api_key,
+            api_base=cfg.openai_api_base,
+        )
+
+    raise ValueError(f"Unsupported embedding provider: {cfg.embedding_provider}")
+
+
+def initialize_settings(settings: Optional[ArchitextSettings] = None) -> ArchitextSettings:
+    """Configure global LlamaIndex settings for LLM and embeddings using config."""
+
+    cfg = settings or load_settings()
+
+    Settings.llm = _build_llm(cfg)
+    Settings.embed_model = _build_embedding(cfg)
+
+    return cfg
 
 def load_documents(path: str):
     """Recursively read files from the directory, ignoring hidden files and common git folders."""

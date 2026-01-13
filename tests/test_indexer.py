@@ -1,6 +1,8 @@
-import pytest
-from src.indexer import load_documents, initialize_settings
 import os
+import pytest
+
+from src.config import ArchitextSettings
+from src.indexer import initialize_settings, load_documents
 
 def test_load_documents_security(temp_repo_path):
     """Ensure load_documents ignores hidden files and .git directories."""
@@ -14,38 +16,48 @@ def test_load_documents_security(temp_repo_path):
     assert len(documents) == 1
 
 def test_initialize_settings_graceful_fallback(mocker):
-    """Test that settings initialization handles model checks securely."""
-    # Mock OS environ
-    mocker.patch.dict(os.environ, {"OPENAI_API_BASE": "http://fake:5000/v1"})
-    
-    # Mock requests.get to raise connection error (simulating Oobabooga down)
-    mock_get = mocker.patch("requests.get", side_effect=Exception("Connection refused"))
-    
-    # Mock OpenAILike and HuggingFaceEmbedding
-    # We must ensure the return value of OpenAILike() is an instance of LLM for LlamaIndex validation
-    from llama_index.core.llms import LLM
-    mock_llm_cls = mocker.patch("src.indexer.OpenAILike")
-    mock_llm_instance = mocker.Mock(spec=LLM)
-    mock_llm_cls.return_value = mock_llm_instance
-    
-    # Also mock embeddings
-    mock_embed = mocker.patch("src.indexer.HuggingFaceEmbedding")
+    """Ensure we wire LLM and embedding via config without hitting real services."""
 
-    # Mock Settings to prevent real assignment logic triggering validation if we can't easily satisfy it, 
-    # OR rely on the spec=LLM above. 
-    # Let's try relying on spec=LLM first, but since Settings.llm does introspection, it might need more.
-    # Actually, failure happened at verify_llm: assert isinstance(llm, LLM)
-    # mocker.Mock(spec=LLM) should pass isinstance check if using spec properly? 
-    # Wait, 'spec' in Mock usually works for 'isinstance' if setup right, but sometimes strict type checks fail.
-    # Alternative: patch Settings directly in the test to verify assignment happened without validation logic.
-    
+    cfg = ArchitextSettings()
+    mock_llm = mocker.Mock()
+    mock_embed = mocker.Mock()
+
+    mock_build_llm = mocker.patch("src.indexer._build_llm", return_value=mock_llm)
+    mock_build_embed = mocker.patch("src.indexer._build_embedding", return_value=mock_embed)
     mock_settings = mocker.patch("src.indexer.Settings")
-    
-    # Run init
-    initialize_settings()
-    
-    # Should still initialize LLM (with generic settings or fallback) and Embeddings
-    assert mock_llm_cls.called
-    assert mock_embed.called
-    # Verify assignment
-    assert mock_settings.llm == mock_llm_instance
+
+    initialize_settings(cfg)
+
+    mock_build_llm.assert_called_once_with(cfg)
+    mock_build_embed.assert_called_once_with(cfg)
+    assert mock_settings.llm == mock_llm
+    assert mock_settings.embed_model == mock_embed
+
+
+def test_openai_embedding_requires_key(mocker):
+    cfg = ArchitextSettings(embedding_provider="openai", openai_api_key="")
+    with pytest.raises(ValueError):
+        initialize_settings(cfg)
+
+
+def test_openai_embedding_builds(mocker):
+    cfg = ArchitextSettings(
+        embedding_provider="openai",
+        embedding_model_name="text-embedding-3-small",
+        openai_api_key="key",
+        openai_api_base="https://api.openai.com/v1",
+    )
+
+    mock_openai_embed = mocker.patch("src.indexer.OpenAIEmbedding")
+    mock_llm = mocker.patch("src.indexer._build_llm", return_value=mocker.Mock())
+    mock_settings = mocker.patch("src.indexer.Settings")
+
+    initialize_settings(cfg)
+
+    mock_openai_embed.assert_called_once_with(
+        model="text-embedding-3-small",
+        api_key="key",
+        api_base="https://api.openai.com/v1",
+    )
+    mock_llm.assert_called_once_with(cfg)
+    assert mock_settings.embed_model == mock_openai_embed.return_value
