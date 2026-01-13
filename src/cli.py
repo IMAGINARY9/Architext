@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.config import load_settings
 from src.indexer import initialize_settings, load_documents, create_index, load_existing_index, query_index
 from src.ingestor import resolve_source, cleanup_cache
+from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
 
 def _build_parser():
     parser = argparse.ArgumentParser(description="Architext CLI: Local Codebase RAG")
@@ -15,6 +16,12 @@ def _build_parser():
         "--env-file",
         dest="env_file",
         help="Optional path to .env file for configuration overrides",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging for debugging",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -31,11 +38,35 @@ def _build_parser():
         action="store_true",
         help="Disable remote repo caching (local paths only)",
     )
+    index_parser.add_argument(
+        "--llm-provider",
+        choices=["local", "openai", "gemini", "anthropic"],
+        help="Override LLM provider from config",
+    )
+    index_parser.add_argument(
+        "--embedding-provider",
+        choices=["huggingface", "openai"],
+        help="Override embedding provider from config",
+    )
+    index_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview indexing without persisting (shows file counts, etc)",
+    )
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Ask a question about the indexed code")
     query_parser.add_argument("text", help="The question/query string")
     query_parser.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
+    query_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format for the response",
+    )
+
+    # List models command
+    list_parser = subparsers.add_parser("list-models", help="Show available LLM and embedding models")
 
     # Cache cleanup command
     cache_parser = subparsers.add_parser("cache-cleanup", help="Clean up old cached repos")
@@ -57,9 +88,31 @@ def main():
     parser = _build_parser()
     args = parser.parse_args()
 
-    if args.command not in ["index", "query", "cache-cleanup"]:
+    logger = VerboseLogger(verbose=args.verbose)
+
+    if not args.command:
         parser.print_help()
         sys.exit(1)
+
+    # List models doesn't need LLM/embedding init
+    if args.command == "list-models":
+        models_info = get_available_models_info()
+        print("\n" + "="*60)
+        print("AVAILABLE LLM & EMBEDDING MODELS")
+        print("="*60)
+        for category, info in models_info.items():
+            if isinstance(info, dict):
+                print(f"\n{category.upper()}:")
+                for key, value in info.items():
+                    if isinstance(value, dict):
+                        for k, v in value.items():
+                            print(f"  {k}: {v}")
+                    else:
+                        print(f"  {key}: {value}")
+            else:
+                print(f"  {category}: {info}")
+        print("\n" + "="*60 + "\n")
+        return
 
     # Cache cleanup doesn't need LLM/embedding init
     if args.command == "cache-cleanup":
@@ -67,40 +120,75 @@ def main():
         print(f"Cleanup complete. Removed {removed} cached repo(s).")
         return
 
+    # All other commands need settings and LLM init
     try:
         settings = load_settings(env_file=args.env_file)
-        print("Initializing AI models...")
+
+        # Override providers if specified
+        if hasattr(args, "llm_provider") and args.llm_provider:
+            settings.llm_provider = args.llm_provider
+            logger.debug(f"Overriding LLM provider: {args.llm_provider}")
+        if hasattr(args, "embedding_provider") and args.embedding_provider:
+            settings.embedding_provider = args.embedding_provider
+            logger.debug(f"Overriding embedding provider: {args.embedding_provider}")
+
+        logger.info("Initializing AI models...")
         initialize_settings(settings)
     except Exception as e:
-        print(f"CRITICAL ERROR: Failed to initialize AI models: {e}")
+        logger.error(f"Failed to initialize AI models: {e}")
         print("Ensure LLM/embedding backends are reachable and configuration is valid.")
         sys.exit(1)
 
     if args.command == "index":
         storage_path = _resolve_storage(args.storage, settings.storage_path)
+
+        # Handle dry-run mode
+        if args.dry_run:
+            logger.info("Running in DRY-RUN mode (no indexing)")
+            indexer = DryRunIndexer(logger)
+            preview = indexer.preview(args.source)
+            print("\n" + "="*60)
+            print("DRY-RUN PREVIEW")
+            print("="*60)
+            print(f"Source: {preview.get('source')}")
+            print(f"Resolved: {preview.get('resolved_path')}")
+            print(f"Documents: {preview.get('documents', 'N/A')}")
+            if "file_types" in preview:
+                print("\nFile types:")
+                for ext, count in preview["file_types"].items():
+                    print(f"  {ext}: {count}")
+            if "error" in preview:
+                print(f"Error: {preview['error']}")
+            print("="*60 + "\n")
+            return
+
         try:
-            print(f"Resolving source: {args.source}")
+            logger.info(f"Resolving source: {args.source}")
             source_path = resolve_source(args.source, use_cache=not args.no_cache)
-            print(f"Starting indexing for: {source_path}")
+            logger.info(f"Starting indexing for: {source_path}")
             documents = load_documents(str(source_path))
+            logger.info(f"Loaded {len(documents)} documents")
             create_index(documents, storage_path)
-            print("Indexing complete! Data saved to " + storage_path)
+            logger.info(f"Indexing complete! Data saved to {storage_path}")
         except Exception as e:
-            print(f"Error during indexing: {e}")
+            logger.error(f"Error during indexing: {e}")
             sys.exit(1)
 
     elif args.command == "query":
         storage_path = _resolve_storage(args.storage, settings.storage_path)
         try:
-            print(f"Loading index from: {storage_path}")
+            logger.info(f"Loading index from: {storage_path}")
             index = load_existing_index(storage_path)
-            print("Generating answer...")
+            logger.info("Generating answer...")
             response = query_index(index, args.text)
+            
+            # Format output
+            formatted = format_response(response, format=args.format)
             print("\n" + "="*40)
-            print(f"RESPONSE:\n{response}")
+            print(f"RESPONSE:\n{formatted}")
             print("="*40 + "\n")
         except Exception as e:
-            print(f"Error during querying: {e}")
+            logger.error(f"Error during querying: {e}")
             sys.exit(1)
 
 if __name__ == "__main__":

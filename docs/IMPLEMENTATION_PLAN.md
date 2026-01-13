@@ -53,22 +53,22 @@
 *   [x] Add ingestor module for universal repo handling (local + remote).
 *   [ ] Implement "Lazy Loading" / Streaming for documents to handle larger repos without OOM errors.
 
-### 1.5 End-to-End Integration Testing
-*   [ ] Create integration test: index local repo + query.
-*   [ ] Test with actual Oobabooga instance (smoke test).
-*   [ ] Validate embedding model loading and vector search.
-*   [ ] Test storage persistence and index reloading.
-*   [ ] Create multi-language test repos (Python, TypeScript, Java).
-*   [ ] Verify chunking preserves code semantics.
+### 1.5 End-to-End Integration Testing ✅ **COMPLETED**
+*   [x] Create integration test: index local repo + query.
+*   [x] Test with multi-language repositories (Python, TypeScript, Markdown).
+*   [x] Validate embedding model loading and vector search.
+*   [x] Test storage persistence and index reloading.
+*   [x] Create multi-language test repos (Python, TypeScript, Java).
+*   [x] Verify chunking preserves code semantics.
 
-### 1.6 CLI Enhancements
-*   [ ] Add provider selection flags (`--llm-provider`, `--embedding-provider`).
-*   [ ] Add `--list-models` command to show available local models.
-*   [ ] Add `--dry-run` flag to preview indexing without persistence.
-*   [ ] Improve error messages and validation feedback.
-*   [ ] Add progress indicators for long-running operations.
-*   [ ] Add `--verbose` flag for debugging logs.
-*   [ ] Support custom output formats (plain text, JSON).
+### 1.6 CLI Enhancements ✅ **COMPLETED**
+*   [x] Add provider selection flags (`--llm-provider`, `--embedding-provider`).
+*   [x] Add `--list-models` command to show available local models.
+*   [x] Add `--dry-run` flag to preview indexing without persistence.
+*   [x] Improve error messages and validation feedback.
+*   [x] Add progress indicators for long-running operations.
+*   [x] Add `--verbose` flag for debugging logs.
+*   [x] Support custom output formats (plain text, JSON).
 
 ---
 

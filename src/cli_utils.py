@@ -1,0 +1,131 @@
+"""CLI utilities for improved UX: verbosity, formatting, and output modes."""
+import json
+from typing import Any, Dict, Optional
+from pathlib import Path
+
+
+class VerboseLogger:
+    """Simple logger that respects verbose mode."""
+
+    def __init__(self, verbose: bool = False):
+        self.verbose = verbose
+
+    def debug(self, msg: str):
+        if self.verbose:
+            print(f"[DEBUG] {msg}")
+
+    def info(self, msg: str):
+        print(f"[INFO] {msg}")
+
+    def warning(self, msg: str):
+        print(f"[WARNING] {msg}")
+
+    def error(self, msg: str):
+        print(f"[ERROR] {msg}")
+
+
+def format_response(response: Any, format: str = "text") -> str:
+    """Format a response for output.
+    
+    Args:
+        response: The response object from LlamaIndex query engine.
+        format: Output format ('text', 'json').
+    
+    Returns:
+        Formatted string.
+    """
+    if format == "json":
+        # Convert response to JSON-serializable format
+        output = {
+            "response": str(response),
+            "type": type(response).__name__,
+        }
+        
+        # If response has source nodes, include them
+        if hasattr(response, "source_nodes"):
+            sources = []
+            for node in response.source_nodes:
+                source_info = {
+                    "file": node.metadata.get("file_path", "unknown"),
+                    "score": node.score if hasattr(node, "score") else None,
+                }
+                sources.append(source_info)
+            output["sources"] = sources
+        
+        return json.dumps(output, indent=2, default=str)
+    else:
+        # Text format (default)
+        return str(response)
+
+
+def get_available_models_info() -> Dict[str, Any]:
+    """Get information about available local models.
+    
+    Returns a dict with model discovery info for LLMs.
+    For now, shows configuration points.
+    """
+    return {
+        "local_llm": {
+            "endpoint": "http://127.0.0.1:5000/v1",
+            "note": "Requires Oobabooga/text-generation-webui running",
+            "docs": "https://github.com/oobabooga/text-generation-webui",
+        },
+        "openai": {
+            "endpoint": "https://api.openai.com/v1",
+            "note": "Requires OPENAI_API_KEY in environment",
+            "docs": "https://platform.openai.com",
+        },
+        "embedding_models": {
+            "huggingface_local": "sentence-transformers/all-mpnet-base-v2 (recommended for local)",
+            "openai": "text-embedding-3-small (recommended for cloud)",
+        },
+    }
+
+
+class DryRunIndexer:
+    """Simulates indexing without persistence for preview."""
+
+    def __init__(self, logger: VerboseLogger):
+        self.logger = logger
+        self.document_count = 0
+        self.file_types = {}
+
+    def preview(self, source: str) -> Dict[str, Any]:
+        """Preview what would be indexed.
+        
+        Args:
+            source: Repository path or URL.
+        
+        Returns:
+            Preview information.
+        """
+        from src.ingestor import resolve_source
+        from src.indexer import load_documents
+
+        try:
+            repo_path = resolve_source(source, use_cache=True)
+            self.logger.debug(f"Resolved source: {repo_path}")
+
+            docs = load_documents(str(repo_path))
+            self.document_count = len(docs)
+
+            # Collect file type statistics
+            for doc in docs:
+                file_path = doc.metadata.get("file_path", "unknown")
+                ext = Path(file_path).suffix or "no-extension"
+                self.file_types[ext] = self.file_types.get(ext, 0) + 1
+
+            return {
+                "source": str(source),
+                "resolved_path": str(repo_path),
+                "documents": self.document_count,
+                "file_types": self.file_types,
+                "would_index": True,
+            }
+        except Exception as e:
+            self.logger.error(f"Preview failed: {e}")
+            return {
+                "source": str(source),
+                "error": str(e),
+                "would_index": False,
+            }
