@@ -96,6 +96,52 @@
 *   [ ] **Re-ranking (Cross-Encoders)**: Implement a second-stage retrieval step to re-rank the top-k results before passing them to the LLM. This significantly reduces noise and increases accuracy.
 *   [ ] **Hybrid Search**: (Optional) Combine keyword search with semantic search for better finding of specific class/function names.
 
+### 2.5 Default Task Suite (Agent-Optimized Workflows)
+**Goal:** Provide pre-built analysis tasks leveraging the indexed codebase, making Architext a reasoning engine for architecture, not just search.
+
+**Core Default Tasks:**
+*   [ ] **Repository Structure Analysis**: Generate visual/JSON map of module organization, layer separation, and dependency flow.
+    *   CLI: `architext analyze-structure <index_path>`
+    *   API: `POST /tasks/analyze-structure`
+    *   Output: Module tree, layer diagram (Mermaid), coupling metrics
+*   [ ] **Architectural Anti-Patterns Detection**: Identify circular dependencies, god objects, SoC violations, tight coupling.
+    *   CLI: `architext detect-anti-patterns <index_path>`
+    *   API: `POST /tasks/detect-anti-patterns`
+    *   Output: List of issues with severity + suggested fixes
+*   [ ] **Technology Stack Inventory**: What frameworks/libraries are used where, with counts and distribution.
+    *   CLI: `architext tech-stack <index_path>`
+    *   API: `POST /tasks/tech-stack`
+    *   Output: Structured list of frameworks, versions, usage breakdown
+*   [ ] **Architectural Health Scoring**: Rate modules by modularity, coupling, documentation coverage, testing gaps.
+    *   CLI: `architext health-score <index_path>`
+    *   API: `POST /tasks/health-score`
+    *   Output: Numeric scores (0-100) with breakdown by category + improvement suggestions
+*   [ ] **Impact Analysis**: "If I change module X, which components are affected?"
+    *   CLI: `architext impact-analysis <index_path> --module <module_name>`
+    *   API: `POST /tasks/impact-analysis`
+    *   Output: Dependency tree, list of affected components with confidence scores
+*   [ ] **Refactoring Recommendations**: Suggest architectural improvements with effort estimates and migration paths.
+    *   CLI: `architext refactoring-recommendations <index_path>`
+    *   API: `POST /tasks/refactoring-recommendations`
+    *   Output: Prioritized list of refactoring opportunities with effort/benefit analysis
+*   [ ] **Documentation Compilation**: Generate architecture decision records (ADRs), module summaries, and system diagrams from code.
+    *   CLI: `architext generate-docs <index_path> --output ./docs`
+    *   API: `POST /tasks/generate-docs`
+    *   Output: Markdown files, Mermaid diagrams, architecture summary
+
+**Implementation Approach:**
+*   Tasks are **parameterized** via request body: `{ "depth": "shallow|detailed|exhaustive", "output_format": "json|markdown|mermaid", ... }`
+*   All tasks **reuse the existing RAG pipeline** — no new infrastructure needed.
+*   Tasks can be **chained** for agent workflows: `index → analyze-structure → refactoring-recommendations → generate-docs`
+*   Support **async task execution** for long-running analyses (with `/tasks/<task_id>/status` polling endpoint).
+
+**Similar Features (Phase 2.5 Extensions):**
+*   [ ] **Dependency Graph Export**: Output in Mermaid, PlantUML, GraphQL formats for visualization tools.
+*   [ ] **Test Coverage Analysis**: Correlate test files to modules, identify gaps and testing priorities.
+*   [ ] **Architecture Pattern Detection**: Recognize and classify architectural patterns (MVC, microservices, monolith, plugin architecture, event-driven, etc.).
+*   [ ] **Diff-Based Architecture Review**: Compare two commits/branches: "What architectural changes happened? Are they aligned with the architecture guidelines?"
+*   [ ] **Onboarding Guide Generation**: Auto-generate "where to start reading the codebase" and navigation path based on stated purpose/role.
+
 ---
 
 ## Phase 3: Scale & Intelligence
