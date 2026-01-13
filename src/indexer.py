@@ -35,13 +35,18 @@ def initialize_settings():
     Settings.embed_model = embed_model
 
 def load_documents(path: str):
-    """Recursively read files from the directory."""
+    """Recursively read files from the directory, ignoring hidden files and common git folders."""
     if not os.path.exists(path):
         raise ValueError(f"Path does not exist: {path}")
         
     print(f"Loading documents from {path}...")
-    # recursive=True allows reading subdirectories
-    reader = SimpleDirectoryReader(input_dir=path, recursive=True)
+    # exclude_hidden=True helps avoid .git, .env, .vscode etc.
+    reader = SimpleDirectoryReader(
+        input_dir=path, 
+        recursive=True,
+        exclude_hidden=True,
+        exclude=["**/.git/**", "**/__pycache__/**", "**/*.pyc"]
+    )
     documents = reader.load_data()
     print(f"Loaded {len(documents)} documents.")
     return documents

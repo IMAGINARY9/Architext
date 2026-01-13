@@ -19,22 +19,36 @@
 **Goal:** Prove we can index a local folder and ask questions about it using a local LLM.
 
 ### 1.1 Environment Setup
-*   [ ] Verify Oobabooga API is running at `http://127.0.0.1:5000/v1`.
-*   [ ] Install dependencies: `llama-index`, `chromadb`, `sentence-transformers`.
+*   [x] Verify Oobabooga API is running at `http://127.0.0.1:5000/v1`.
+*   [x] Install dependencies: `llama-index`, `chromadb`, `sentence-transformers`, `llama-index-llms-openai-like`.
 
 ### 1.2 Core Indexing Logic (`src/indexer.py`)
-*   [ ] Implement `load_documents(path)`: Recursively read files (.py, .md, .js, etc.).
-*   [ ] Implement `create_index(documents)`: 
+*   [x] Implement `load_documents(path)`: Recursively read files (.py, .md, .js, etc.).
+*   [x] Implement `create_index(documents)`: 
     *   Use `HuggingFaceEmbedding` for vectorization.
     *   Store in `ChromaDB` (saved to `./storage`).
-*   [ ] Implement `query_index(query)`: Retrieve top-k chunks and generate response.
+*   [x] Implement `query_index(query)`: Retrieve top-k chunks and generate response.
 
 ### 1.3 CLI Interface (`src/cli.py`)
-*   [ ] Command: `python -m src.cli index <path_to_repo>`
-*   [ ] Command: `python -m src.cli query "Where is the login logic?"`
+*   [x] Command: `python -m src.cli index <path_to_repo>`
+*   [x] Command: `python -m src.cli query "Where is the login logic?"`
 
 ### 1.4 Connection Verification
-*   [ ] Script: `scripts/test_connection.py` to ensure LlamaIndex can talk to Oobabooga.
+*   [x] Script: `scripts/test_connection.py` to ensure LlamaIndex can talk to Oobabooga.
+
+### 1.5 Testing & Validation (Reliability & Security)
+*   [x] **Infrastructure**: Installed `pytest` and `pytest-mock`.
+*   [x] **Unit Tests**:
+    *   Verify `load_documents` respects `.gitignore` and ignores `.git/`, `.env`, and private keys (Security).
+    *   Test `initialize_settings` performs graceful fallback if model is missing.
+*   [x] **Integration Tests**:
+    *   [x] Mock LLM/Embedding calls to test `initialize_settings` and embedding setup without heavy model loading.
+    *   [x] Verify full `indexer` -> `CLI` pipeline via mocked LLM and embeddings, and ensure CLI exit codes on errors.
+
+**Recommended next testing steps (short-term):**
+- Add integration tests that run `python -m src.cli index` and `python -m src.cli query` with LLM & embedding calls mocked; assert exit codes and output.
+- Add a CI workflow (GitHub Actions) that runs `pytest` and fails on regressions.
+- Add code coverage reporting and set a reasonable coverage gate (e.g., 70%).
 
 ---
 
