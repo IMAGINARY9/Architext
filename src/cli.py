@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.config import load_settings
 from src.indexer import initialize_settings, load_documents, create_index, load_existing_index, query_index
+from src.ingestor import resolve_source, cleanup_cache
 
 def _build_parser():
     parser = argparse.ArgumentParser(description="Architext CLI: Local Codebase RAG")
@@ -20,13 +21,30 @@ def _build_parser():
 
     # Index command
     index_parser = subparsers.add_parser("index", help="Index a repository")
-    index_parser.add_argument("path", help="Path to the repository or folder to index")
+    index_parser.add_argument(
+        "source",
+        help="Local path or remote git URL (GitHub/GitLab/Gitea)",
+    )
     index_parser.add_argument("--storage", help="Path to save the vector DB (overrides config)")
+    index_parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable remote repo caching (local paths only)",
+    )
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Ask a question about the indexed code")
     query_parser.add_argument("text", help="The question/query string")
     query_parser.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
+
+    # Cache cleanup command
+    cache_parser = subparsers.add_parser("cache-cleanup", help="Clean up old cached repos")
+    cache_parser.add_argument(
+        "--max-age",
+        type=int,
+        default=30,
+        help="Remove repos unused for more than N days (default: 30)",
+    )
 
     return parser
 
@@ -39,9 +57,15 @@ def main():
     parser = _build_parser()
     args = parser.parse_args()
 
-    if args.command not in ["index", "query"]:
+    if args.command not in ["index", "query", "cache-cleanup"]:
         parser.print_help()
         sys.exit(1)
+
+    # Cache cleanup doesn't need LLM/embedding init
+    if args.command == "cache-cleanup":
+        removed = cleanup_cache(max_age_days=args.max_age)
+        print(f"Cleanup complete. Removed {removed} cached repo(s).")
+        return
 
     try:
         settings = load_settings(env_file=args.env_file)
@@ -55,8 +79,10 @@ def main():
     if args.command == "index":
         storage_path = _resolve_storage(args.storage, settings.storage_path)
         try:
-            print(f"Starting indexing for: {args.path}")
-            documents = load_documents(args.path)
+            print(f"Resolving source: {args.source}")
+            source_path = resolve_source(args.source, use_cache=not args.no_cache)
+            print(f"Starting indexing for: {source_path}")
+            documents = load_documents(str(source_path))
             create_index(documents, storage_path)
             print("Indexing complete! Data saved to " + storage_path)
         except Exception as e:

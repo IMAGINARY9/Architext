@@ -31,13 +31,25 @@
     ```bash
     python scripts/test_connection.py
     ```
-*   **Index a Repo (Planned):**
+*   **Index a Local Repository:**
     ```bash
     python -m src.cli index ./path/to/your/repo
     ```
-*   **Query (Planned):**
+*   **Index a Remote Repository (GitHub/GitLab):**
+    ```bash
+    # Clones to ~/.architext/cache/<repo_hash>
+    python -m src.cli index https://github.com/user/repo
+    
+    # Or with SSH
+    python -m src.cli index git@github.com:user/repo.git
+    ```
+*   **Query the Index:**
     ```bash
     python -m src.cli query "Explain the database schema"
+    ```
+*   **Clean Up Cached Repos:**
+    ```bash
+    python -m src.cli cache-cleanup --max-age 30
     ```
 
 ## Configuration

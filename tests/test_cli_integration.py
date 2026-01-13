@@ -13,6 +13,7 @@ def test_cli_index_command_success(temp_repo_path, mocker, capsys):
     mock_load_docs = mocker.patch("src.cli.load_documents", return_value=[Mock()])
     mock_create_index = mocker.patch("src.cli.create_index")
     mock_load_settings = mocker.patch("src.cli.load_settings")
+    mock_resolve_source = mocker.patch("src.cli.resolve_source", return_value=temp_repo_path)
 
     # Provide config so storage defaults are predictable
     cfg = ArchitextSettings(storage_path="./config_storage")
@@ -32,6 +33,7 @@ def test_cli_index_command_success(temp_repo_path, mocker, capsys):
     # Verify the flow
     mock_load_settings.assert_called_once()
     mock_initialize.assert_called_once_with(cfg)
+    mock_resolve_source.assert_called_once_with(temp_repo_path, use_cache=True)
     mock_load_docs.assert_called_once_with(temp_repo_path)
     docs = mock_load_docs.return_value
     mock_create_index.assert_called_once_with(docs, "./config_storage")
@@ -44,6 +46,7 @@ def test_cli_index_command_invalid_path(mocker, capsys):
     """Test that 'index' command fails gracefully with invalid path."""
     mock_initialize = mocker.patch("src.cli.initialize_settings")
     mock_load_settings = mocker.patch("src.cli.load_settings")
+    mock_resolve_source = mocker.patch("src.cli.resolve_source", side_effect=ValueError("Source not found"))
 
     from src.config import ArchitextSettings
     mock_load_settings.return_value = ArchitextSettings()
@@ -139,6 +142,7 @@ def test_cli_index_with_storage_param(temp_repo_path, mocker, capsys):
     mock_initialize = mocker.patch("src.cli.initialize_settings")
     mock_load_docs = mocker.patch("src.cli.load_documents", return_value=[Mock()])
     mock_create_index = mocker.patch("src.cli.create_index")
+    mock_resolve_source = mocker.patch("src.cli.resolve_source", return_value=temp_repo_path)
     mock_load_settings = mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
     
     custom_storage = "./custom_storage"
@@ -155,3 +159,21 @@ def test_cli_index_with_storage_param(temp_repo_path, mocker, capsys):
     mock_create_index.assert_called_once()
     call_args = mock_create_index.call_args
     assert call_args[0][1] == custom_storage
+
+
+def test_cli_cache_cleanup(mocker, capsys):
+    """Test that 'cache-cleanup' command works without LLM init."""
+    mock_cleanup = mocker.patch("src.cli.cleanup_cache", return_value=3)
+    
+    sys.argv = ["cli.py", "cache-cleanup", "--max-age", "14"]
+    
+    from src.cli import main
+    
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+    
+    mock_cleanup.assert_called_once_with(max_age_days=14)
+    captured = capsys.readouterr()
+    assert "Removed 3 cached repo(s)" in captured.out

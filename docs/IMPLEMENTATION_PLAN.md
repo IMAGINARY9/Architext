@@ -19,33 +19,56 @@
 
 ---
 
-## Phase 1: The Pivot (Foundation)
+## Phase 1: The Pivot (Foundation) ✅
 **Goal:** Transition from the rigid local MVP to a flexible, configuration-driven tool.
 
-### 1.1 Configuration System
-*   [ ] Replace hardcoded Oobabooga/Path settings with `src/config.py` using Pydantic.
-*   [ ] Support `.env` loading for sensitivity (e.g., `OPENAI_API_KEY`, `GITHUB_TOKEN`).
-*   [ ] Allow switching "Providers" via config:
+### 1.1 Configuration System ✅ **COMPLETED**
+*   [x] Replace hardcoded Oobabooga/Path settings with `src/config.py` using Pydantic.
+*   [x] Support `.env` loading for sensitivity (e.g., `OPENAI_API_KEY`, `GITHUB_TOKEN`).
+*   [x] Allow switching "Providers" via config:
     *   `LLM_PROVIDER`: `openai` | `gemini` | `local` | `anthropic`
     *   `EMBEDDING_PROVIDER`: `huggingface` (local) | `openai`
 
-### 1.2 Universal Ingestion (`src/ingestor.py`)
-*   [ ] Integrate `GitPython`.
-*   [ ] Logic: Detect if input is path or URL.
-    *   **Path:** Index in place.
-    *   **URL:** Clone to temporary cache (`~/.architext/cache/<repo_hash>`) or persistent storage.
-*   [ ] Handle authentication for private repos via SSH Agent or PAT (Personal Access Token).
+### 1.2 Universal Ingestion (`src/ingestor.py`) ✅ **COMPLETED**
+*   [x] Integrate `GitPython` for remote cloning.
+*   [x] Detect input type: local path vs. GitHub/GitLab URL.
+*   [x] Clone remote repos to cache directory (`~/.architext/cache/<repo_hash>`).
+*   [x] Handle authentication for private repos via SSH Agent or PAT (Personal Access Token).
+*   [x] Add `--repo` flag to CLI for remote indexing (changed to positional `source` arg).
+*   [x] Validate repo accessibility before indexing.
+*   [x] Add cleanup task for old cached repos.
 
-### 1.3 Flexible LLM Backend & Tuning (`src/llm.py`)
-*   [ ] Abstract LLM calls using `LiteLLM`.
-*   [ ] **Inference Tuning**: Expose parameters (`temperature`, `max_tokens`) via config.
-*   [ ] **Prompt Customization**: Support user-defined System Prompts via the config file (crucial for optimizing across different models like DeepSeek vs. GPT-4).
-*   [ ] **RAG Optimization**: Make retrieval parameters (`chunk_size`, `top_k`) configurable.
-*   [ ] Verify connectivity with Cloud (GPT-4o, Gemini) and Local (Oobabooga/Ollama) providers.
+### 1.3 Flexible LLM Backend & Tuning ✅ **COMPLETED**
+*   [x] Abstract LLM calls using OpenAI-compatible interface (OpenAILike).
+*   [x] **Inference Tuning**: Expose parameters (`temperature`, `max_tokens`) via config.
+*   [x] **Prompt Customization**: Support user-defined System Prompts via the config file (crucial for optimizing across different models like DeepSeek vs. GPT-4).
+*   [x] **RAG Optimization**: Make retrieval parameters (`chunk_size`, `top_k`) configurable.
+*   [x] Verify connectivity with Local (Oobabooga) and OpenAI providers.
+*   [ ] Add support for Gemini and Anthropic providers.
 
-### 1.4 Core Refactor
-*   [ ] Decouple `indexer.py` from CLI print statements. Make it a library.
+### 1.4 Core Refactor ✅ **COMPLETED**
+*   [x] Decouple `indexer.py` from CLI print statements. Make it a library.
+*   [x] Thread config through CLI with `--env-file` flag and storage path overrides.
+*   [x] Add comprehensive test coverage for config-driven flows.
+*   [x] Add ingestor module for universal repo handling (local + remote).
 *   [ ] Implement "Lazy Loading" / Streaming for documents to handle larger repos without OOM errors.
+
+### 1.5 End-to-End Integration Testing
+*   [ ] Create integration test: index local repo + query.
+*   [ ] Test with actual Oobabooga instance (smoke test).
+*   [ ] Validate embedding model loading and vector search.
+*   [ ] Test storage persistence and index reloading.
+*   [ ] Create multi-language test repos (Python, TypeScript, Java).
+*   [ ] Verify chunking preserves code semantics.
+
+### 1.6 CLI Enhancements
+*   [ ] Add provider selection flags (`--llm-provider`, `--embedding-provider`).
+*   [ ] Add `--list-models` command to show available local models.
+*   [ ] Add `--dry-run` flag to preview indexing without persistence.
+*   [ ] Improve error messages and validation feedback.
+*   [ ] Add progress indicators for long-running operations.
+*   [ ] Add `--verbose` flag for debugging logs.
+*   [ ] Support custom output formats (plain text, JSON).
 
 ---
 
