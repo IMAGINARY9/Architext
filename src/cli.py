@@ -64,6 +64,30 @@ def _build_parser():
         default="text",
         help="Output format for the response",
     )
+    query_parser.add_argument(
+        "--enable-hybrid",
+        action="store_true",
+        help="Enable hybrid keyword+vector scoring for this query",
+    )
+    query_parser.add_argument(
+        "--hybrid-alpha",
+        type=float,
+        help="Hybrid weight for vector score (0-1). Higher favors vectors",
+    )
+    query_parser.add_argument(
+        "--enable-rerank",
+        action="store_true",
+        help="Enable cross-encoder reranking for this query",
+    )
+    query_parser.add_argument(
+        "--rerank-model",
+        help="Cross-encoder model name for reranking",
+    )
+    query_parser.add_argument(
+        "--rerank-top-n",
+        type=int,
+        help="Number of top results to rerank",
+    )
 
     # List models command
     list_parser = subparsers.add_parser("list-models", help="Show available LLM and embedding models")
@@ -76,6 +100,12 @@ def _build_parser():
         default=30,
         help="Remove repos unused for more than N days (default: 30)",
     )
+
+    # Serve command
+    serve_parser = subparsers.add_parser("serve", help="Start the Architext API server")
+    serve_parser.add_argument("--host", default="0.0.0.0", help="Host to bind (default: 0.0.0.0)")
+    serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
+    serve_parser.add_argument("--reload", action="store_true", help="Enable autoreload (dev only)")
 
     return parser
 
@@ -118,6 +148,15 @@ def main():
     if args.command == "cache-cleanup":
         removed = cleanup_cache(max_age_days=args.max_age)
         print(f"Cleanup complete. Removed {removed} cached repo(s).")
+        return
+
+    # Serve command (defer to uvicorn)
+    if args.command == "serve":
+        from uvicorn import run
+        from src.server import create_app
+
+        app = create_app()
+        run(app=app, host=args.host, port=args.port, reload=args.reload)
         return
 
     # All other commands need settings and LLM init
@@ -176,11 +215,21 @@ def main():
 
     elif args.command == "query":
         storage_path = _resolve_storage(args.storage, settings.storage_path)
+        if args.enable_hybrid:
+            settings.enable_hybrid = True
+        if args.hybrid_alpha is not None:
+            settings.hybrid_alpha = args.hybrid_alpha
+        if args.enable_rerank:
+            settings.enable_rerank = True
+        if args.rerank_model:
+            settings.rerank_model = args.rerank_model
+        if args.rerank_top_n is not None:
+            settings.rerank_top_n = args.rerank_top_n
         try:
             logger.info(f"Loading index from: {storage_path}")
             index = load_existing_index(storage_path)
             logger.info("Generating answer...")
-            response = query_index(index, args.text)
+            response = query_index(index, args.text, settings=settings)
             
             # Format output
             formatted = format_response(response, format=args.format)

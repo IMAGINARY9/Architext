@@ -5,7 +5,13 @@ import json
 from unittest.mock import Mock, patch
 
 from src.config import ArchitextSettings
-from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
+from src.cli_utils import (
+    VerboseLogger,
+    format_response,
+    get_available_models_info,
+    DryRunIndexer,
+    to_agent_response,
+)
 
 
 class TestVerboseLogger:
@@ -89,6 +95,23 @@ class TestGetAvailableModelsInfo:
         # Each should have descriptive info
         assert "endpoint" in info["local_llm"]
         assert "docs" in info["openai"]
+
+
+class TestAgentResponse:
+    def test_to_agent_response(self):
+        response = Mock()
+        response.__str__ = Mock(return_value="Agent answer")
+
+        node = Mock()
+        node.metadata = {"file_path": "service.py"}
+        node.score = 0.87
+        response.source_nodes = [node]
+
+        payload = to_agent_response(response)
+
+        assert payload["answer"] == "Agent answer"
+        assert payload["confidence"] == 0.87
+        assert payload["sources"][0]["file"] == "service.py"
 
 
 class TestDryRunIndexer:

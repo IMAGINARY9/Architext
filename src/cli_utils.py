@@ -1,6 +1,6 @@
 """CLI utilities for improved UX: verbosity, formatting, and output modes."""
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from pathlib import Path
 
 
@@ -35,27 +35,50 @@ def format_response(response: Any, format: str = "text") -> str:
         Formatted string.
     """
     if format == "json":
-        # Convert response to JSON-serializable format
         output = {
             "response": str(response),
             "type": type(response).__name__,
         }
-        
-        # If response has source nodes, include them
-        if hasattr(response, "source_nodes"):
-            sources = []
-            for node in response.source_nodes:
-                source_info = {
-                    "file": node.metadata.get("file_path", "unknown"),
-                    "score": node.score if hasattr(node, "score") else None,
-                }
-                sources.append(source_info)
+        sources = extract_sources(response)
+        if sources:
             output["sources"] = sources
-        
         return json.dumps(output, indent=2, default=str)
-    else:
-        # Text format (default)
-        return str(response)
+    return str(response)
+
+
+def extract_sources(response: Any) -> List[Dict[str, Any]]:
+    """Pull source metadata from a LlamaIndex response object."""
+
+    sources: List[Dict[str, Any]] = []
+    if hasattr(response, "source_nodes"):
+        for node in response.source_nodes:
+            metadata = getattr(node, "metadata", {}) or {}
+            sources.append(
+                {
+                    "file": metadata.get("file_path", "unknown"),
+                    "score": getattr(node, "score", None),
+                    "metadata": metadata,
+                }
+            )
+    return sources
+
+
+def to_agent_response(response: Any) -> Dict[str, Any]:
+    """Build a strict schema JSON payload for agent consumers."""
+
+    sources = extract_sources(response)
+    scores = [s["score"] for s in sources if s.get("score") is not None]
+    confidence = max(scores) if scores else None
+
+    return {
+        "answer": str(response),
+        "confidence": confidence,
+        "sources": [
+            {"file": s.get("file", "unknown"), "score": s.get("score")}
+            for s in sources
+        ],
+        "type": type(response).__name__,
+    }
 
 
 def get_available_models_info() -> Dict[str, Any]:

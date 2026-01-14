@@ -143,7 +143,16 @@ def cleanup_cache(max_age_days: int = 30) -> int:
         
         if age_days > max_age_days:
             print(f"Removing cached repo: {repo_dir.name} (unused for {age_days:.0f} days)")
-            shutil.rmtree(repo_dir)
-            removed += 1
+            try:
+                # On Windows, need to handle read-only files in .git
+                def handle_remove_readonly(func, path, exc):
+                    import stat
+                    os.chmod(path, stat.S_IWRITE)
+                    func(path)
+                
+                shutil.rmtree(repo_dir, onerror=handle_remove_readonly)
+                removed += 1
+            except Exception as e:
+                print(f"Warning: Could not remove {repo_dir.name}: {e}")
     
     return removed

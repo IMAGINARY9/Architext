@@ -36,6 +36,15 @@ class ArchitextSettings(BaseSettings):
     chunk_size: int = Field(default=512, alias="CHUNK_SIZE")
     top_k: int = Field(default=5, alias="TOP_K")
 
+    # Retrieval enhancements
+    enable_rerank: bool = Field(default=False, alias="ENABLE_RERANK")
+    rerank_model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-6-v2", alias="RERANK_MODEL"
+    )
+    rerank_top_n: int = Field(default=10, alias="RERANK_TOP_N")
+    enable_hybrid: bool = Field(default=False, alias="ENABLE_HYBRID")
+    hybrid_alpha: float = Field(default=0.7, alias="HYBRID_ALPHA")
+
     # Storage
     storage_path: str = Field(default="./storage", alias="STORAGE_PATH")
 

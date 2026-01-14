@@ -13,9 +13,23 @@ env/
 
 # Storage / Database
 storage/
+storage-*
+storage-requests/
 models_cache/
+models_cache/**
 *.db
 *.sqlite
+# Test artifacts
+.pytest_cache/
+tests/__pycache__/
+*.log
+# Local index snapshots
+.architext/
+.architext/cache/
+
+# Temporary files created during manual testing
+*.tmp
+*.bak
 
 # IDE
 .vscode/

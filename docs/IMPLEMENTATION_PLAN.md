@@ -72,29 +72,40 @@
 
 ---
 
-## Phase 2: API & Agent Integration
+## Phase 2: API & Agent Integration ✅ (2.1-2.4 COMPLETE)
 **Goal:** Expose Architext as a service that other agents can query.
 
-### 2.1 The "Headless" Server (`src/server.py`)
-*   [ ] Implement a `FastAPI` service.
-*   [ ] Endpoints:
+### 2.1 The "Headless" Server (`src/server.py`) ✅ **COMPLETED**
+*   [x] Implement a `FastAPI` service.
+*   [x] Endpoints:
     *   `POST /index`: Trigger indexing of a repo URL or Trigger re-index.
     *   `POST /query`: Semantic search against a specific index.
     *   `GET /status`: Indexing progress.
+    *   `GET /tasks`: List all tasks.
+    *   `POST /tasks/{task_id}/cancel`: Cancel background tasks.
+    *   `POST /query/diagnostics`: Hybrid scoring diagnostics.
+*   [x] Thread pool-based async task execution.
 
-### 2.2 Structured Outputs
-*   [ ] Implement **Dual-Mode Response**:
+### 2.2 Structured Outputs ✅ **COMPLETED**
+*   [x] Implement **Dual-Mode Response**:
     *   **Human Mode**: Natural language summary with citations.
     *   **Agent Mode (JSON)**: Strict schema for machine parsing.
     *   *Schema Example:* `{ "answer": "...", "confidence": 0.9, "sources": [{"file": "auth.ts", "lines": [10, 20]}] }`
+*   [x] Source extraction helper (`extract_sources`).
+*   [x] Agent-optimized response formatter (`to_agent_response`).
 
-### 2.3 CLI Enhancements
-*   [ ] Add `architext serve` to start the API.
-*   [ ] Add `--format json` flag to `query` command.
+### 2.3 CLI Enhancements ✅ **COMPLETED**
+*   [x] Add `architext serve` to start the API.
+*   [x] Add `--format json` flag to `query` command.
+*   [x] Add hybrid search flags (`--enable-hybrid`, `--hybrid-alpha`).
+*   [x] Add reranking flags (`--enable-rerank`, `--rerank-model`, `--rerank-top-n`).
 
-### 2.4 Quality & Retrieval Optimization
-*   [ ] **Re-ranking (Cross-Encoders)**: Implement a second-stage retrieval step to re-rank the top-k results before passing them to the LLM. This significantly reduces noise and increases accuracy.
-*   [ ] **Hybrid Search**: (Optional) Combine keyword search with semantic search for better finding of specific class/function names.
+### 2.4 Quality & Retrieval Optimization ✅ **COMPLETED**
+*   [x] **Re-ranking (Cross-Encoders)**: Implement a second-stage retrieval step to re-rank the top-k results before passing them to the LLM. This significantly reduces noise and increases accuracy.
+*   [x] **Hybrid Search**: Combine keyword search with semantic search for better finding of specific class/function names.
+*   [x] **Progress Tracking**: Real-time indexing progress callbacks.
+*   [x] **Cross-Encoder Caching**: Model caching to avoid reloading.
+*   [x] **Configurable retrieval**: All hybrid/rerank parameters exposed via CLI and API.
 
 ### 2.5 Default Task Suite (Agent-Optimized Workflows)
 **Goal:** Provide pre-built analysis tasks leveraging the indexed codebase, making Architext a reasoning engine for architecture, not just search.
