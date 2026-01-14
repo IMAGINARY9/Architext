@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -31,6 +32,23 @@ DEFAULT_EXTENSIONS = {
 }
 
 
+ALLOWED_ANALYSIS_EXTENSIONS = set(DEFAULT_EXTENSIONS.keys()) | {
+    ".json",
+    ".yml",
+    ".yaml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".txt",
+}
+
+
+ALLOWED_ANALYSIS_BASENAMES = {
+    "dockerfile",
+    "makefile",
+}
+
+
 FRAMEWORK_PATTERNS = {
     "django": ["django"],
     "flask": ["flask"],
@@ -54,6 +72,16 @@ def _progress(progress_callback, payload: Dict[str, Any]):
         progress_callback(payload)
 
 
+@lru_cache(maxsize=32)
+def _load_files_from_storage_cached(storage_path: str) -> tuple[str, ...]:
+    return tuple(_load_files_from_storage(storage_path))
+
+
+@lru_cache(maxsize=32)
+def _gather_files_cached(source_path: str) -> tuple[str, ...]:
+    return tuple(_gather_files(source_path))
+
+
 def _load_files_from_storage(storage_path: str) -> List[str]:
     client = chromadb.PersistentClient(path=storage_path)
     collection = client.get_or_create_collection("architext_db")
@@ -70,7 +98,22 @@ def _load_files_from_storage(storage_path: str) -> List[str]:
 
 
 def _should_skip(path: Path) -> bool:
-    skip_fragments = {".git", "__pycache__", "node_modules", ".venv", ".env", "dist", "build"}
+    skip_fragments = {
+        ".git",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        ".env",
+        "dist",
+        "build",
+        ".pytest_cache",
+        "models_cache",
+        "storage",
+    }
+    for part in path.parts:
+        lower = part.lower()
+        if lower == "storage" or lower.startswith("storage-") or lower.startswith("storage_"):
+            return True
     return any(fragment in path.parts for fragment in skip_fragments) or path.name.startswith(".")
 
 
@@ -82,15 +125,22 @@ def _gather_files(source_path: str) -> List[str]:
             continue
         if _should_skip(file_path):
             continue
+        suffix = file_path.suffix.lower()
+        if suffix:
+            if suffix not in ALLOWED_ANALYSIS_EXTENSIONS:
+                continue
+        else:
+            if file_path.name.lower() not in ALLOWED_ANALYSIS_BASENAMES:
+                continue
         files.append(str(file_path))
     return files
 
 
 def collect_file_paths(storage_path: Optional[str], source_path: Optional[str]) -> List[str]:
     if source_path:
-        return _gather_files(source_path)
+        return list(_gather_files_cached(str(source_path)))
     if storage_path:
-        return _load_files_from_storage(storage_path)
+        return list(_load_files_from_storage_cached(str(storage_path)))
     raise ValueError("Either storage_path or source_path must be provided")
 
 
@@ -172,7 +222,9 @@ def analyze_structure(
     pruned = _prune_tree(tree, max_depth)
 
     extensions = Counter(Path(path).suffix for path in files)
-    languages = Counter(DEFAULT_EXTENSIONS.get(ext, "Other") for ext in extensions)
+    languages: Counter[str] = Counter()
+    for ext, count in extensions.items():
+        languages[DEFAULT_EXTENSIONS.get(ext, "Other")] += count
 
     summary = {
         "total_files": len(files),
@@ -193,6 +245,7 @@ def analyze_structure(
     return {"format": "json", "summary": summary, "tree": pruned}
 
 
+@lru_cache(maxsize=512)
 def _read_file_text(path: str, max_bytes: int = 200_000) -> str:
     try:
         data = Path(path).read_bytes()
@@ -216,7 +269,9 @@ def tech_stack(
     files = collect_file_paths(storage_path, source_path)
 
     extensions = Counter(Path(path).suffix for path in files)
-    languages = Counter(DEFAULT_EXTENSIONS.get(ext, "Other") for ext in extensions)
+    languages: Counter[str] = Counter()
+    for ext, count in extensions.items():
+        languages[DEFAULT_EXTENSIONS.get(ext, "Other")] += count
 
     framework_hits: Dict[str, int] = defaultdict(int)
     framework_files: Dict[str, List[str]] = defaultdict(list)
@@ -376,6 +431,10 @@ def detect_anti_patterns(
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
 
+    total_files = len(files)
+    directories = Counter(Path(path).parent for path in files)
+    avg_files_per_dir = total_files / max(len(directories), 1)
+
     issues = []
     large_files = []
     for path in files:
@@ -410,8 +469,155 @@ def detect_anti_patterns(
                 }
             )
 
+    # Documentation and test hygiene signals
+    doc_files = [path for path in files if Path(path).suffix in {".md", ".rst"}]
+    test_files = [path for path in files if "test" in Path(path).name.lower()]
+    doc_ratio = len(doc_files) / max(total_files, 1)
+    test_ratio = len(test_files) / max(total_files, 1)
+
+    if not test_files:
+        issues.append(
+            {
+                "type": "missing_tests",
+                "severity": "medium",
+                "details": "No test files detected (filenames containing 'test')",
+            }
+        )
+    elif test_ratio < 0.03:
+        issues.append(
+            {
+                "type": "low_test_presence",
+                "severity": "low",
+                "details": f"Test files ratio is low: {round(test_ratio, 3)}",
+            }
+        )
+
+    if not doc_files:
+        issues.append(
+            {
+                "type": "missing_docs",
+                "severity": "low",
+                "details": "No documentation files detected (.md/.rst)",
+            }
+        )
+    elif doc_ratio < 0.02:
+        issues.append(
+            {
+                "type": "low_doc_presence",
+                "severity": "low",
+                "details": f"Documentation files ratio is low: {round(doc_ratio, 3)}",
+            }
+        )
+
+    # Flat structure signal (lots of files per directory)
+    if avg_files_per_dir > 30:
+        issues.append(
+            {
+                "type": "flat_structure",
+                "severity": "medium",
+                "details": f"Average files per directory is high: {round(avg_files_per_dir, 2)}",
+            }
+        )
+
+    # Excessive single-directory concentration
+    if directories:
+        max_dir, max_count = max(directories.items(), key=lambda item: item[1])
+        concentration = max_count / max(total_files, 1)
+        if concentration > 0.6 and total_files >= 20:
+            issues.append(
+                {
+                    "type": "single_directory_concentration",
+                    "severity": "medium",
+                    "details": f"{max_count} files ({round(concentration, 2)}) in {max_dir}",
+                }
+            )
+
+    # Duplicate file stems (excluding extensions)
+    stems = [Path(path).stem.lower() for path in files]
+    stem_counts = Counter(stems)
+    duplicate_stems = [stem for stem, count in stem_counts.items() if count >= 3]
+    if duplicate_stems:
+        sample = duplicate_stems[:5]
+        issues.append(
+            {
+                "type": "duplicate_file_stems",
+                "severity": "low",
+                "details": f"Duplicate stems found (>=3 occurrences): {', '.join(sample)}",
+            }
+        )
+
+    # Missing CI configuration (GitHub Actions / GitLab / CircleCI / Azure Pipelines)
+    ci_files = [
+        path
+        for path in files
+        if any(
+            token in str(path).replace("\\", "/").lower()
+            for token in [
+                ".github/workflows/",
+                ".gitlab-ci",
+                "circleci/config.yml",
+                "azure-pipelines.yml",
+                "azure-pipelines.yaml",
+                "appveyor.yml",
+            ]
+        )
+    ]
+    if not ci_files and total_files >= 10:
+        issues.append(
+            {
+                "type": "missing_ci_config",
+                "severity": "low",
+                "details": "No CI configuration detected",
+            }
+        )
+
+    # Missing license file
+    has_license = any(Path(path).name.lower() in {"license", "license.md", "license.txt"} for path in files)
+    if not has_license and total_files >= 10:
+        issues.append(
+            {
+                "type": "missing_license",
+                "severity": "low",
+                "details": "No LICENSE file detected",
+            }
+        )
+
+    # Missing formatting config (Python/JS/TS/Prettier/EditorConfig)
+    formatting_files = {
+        ".editorconfig",
+        ".prettierrc",
+        ".prettierrc.json",
+        ".prettierrc.yml",
+        ".prettierrc.yaml",
+        "prettier.config.js",
+        "pyproject.toml",
+        "setup.cfg",
+        "tox.ini",
+        "ruff.toml",
+    }
+    has_formatting = any(Path(path).name.lower() in formatting_files for path in files)
+    if not has_formatting and total_files >= 10:
+        issues.append(
+            {
+                "type": "missing_formatting_config",
+                "severity": "low",
+                "details": "No formatting configuration detected (.editorconfig/prettier/pyproject/etc)",
+            }
+        )
+
     _progress(progress_callback, {"stage": "analyze", "message": "Building dependency graph"})
     graph = _build_import_graph(files)
+
+    coupling = sum(len(deps) for deps in graph.values()) / max(len(graph), 1)
+    if coupling > 12:
+        issues.append(
+            {
+                "type": "high_coupling",
+                "severity": "medium",
+                "details": f"Average dependencies per module is high: {round(coupling, 2)}",
+            }
+        )
+
     cycles = _find_cycles(graph)
     for cycle in cycles:
         issues.append(
@@ -422,7 +628,22 @@ def detect_anti_patterns(
             }
         )
 
-    return {"issues": issues, "counts": Counter(issue["type"] for issue in issues)}
+    severity_counts = Counter(issue.get("severity", "unknown") for issue in issues)
+
+    return {
+        "issues": issues,
+        "counts": Counter(issue["type"] for issue in issues),
+        "severity_counts": dict(severity_counts),
+        "metrics": {
+            "total_files": total_files,
+            "doc_files": len(doc_files),
+            "test_files": len(test_files),
+            "doc_ratio": round(doc_ratio, 3),
+            "test_ratio": round(test_ratio, 3),
+            "avg_files_per_dir": round(avg_files_per_dir, 2),
+            "avg_dependencies": round(coupling, 2),
+        },
+    }
 
 
 def health_score(
@@ -662,7 +883,7 @@ def architecture_pattern_detection(
     patterns = []
     files_lower = [str(path).lower() for path in files]
 
-    if any("controllers" in path and "views" in path for path in files_lower):
+    if any("controllers" in path for path in files_lower) and any("views" in path for path in files_lower):
         patterns.append("MVC")
     if any("services" in path for path in files_lower) and any("repositories" in path for path in files_lower):
         patterns.append("Service-Repository")

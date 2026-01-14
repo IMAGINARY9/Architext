@@ -27,6 +27,9 @@ tests/__pycache__/
 .architext/
 .architext/cache/
 
+# Local evaluation outputs
+.local/
+
 # Temporary files created during manual testing
 *.tmp
 *.bak

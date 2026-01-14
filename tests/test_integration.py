@@ -69,11 +69,23 @@ See docs/setup.md
 
 
 @pytest.fixture
-def initialized_settings(tmp_path):
-    """Provide initialized settings with HuggingFace embeddings for testing."""
+def initialized_settings(monkeypatch):
+    """Provide initialized settings with HuggingFace embeddings for testing.
+
+    Tests should be deterministic and must not attempt network downloads.
+    We rely on the repository's pre-populated local cache.
+    """
+
+    # Force offline mode to avoid HuggingFace Hub downloads during CI/tests.
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
+
+    repo_root = Path(__file__).resolve().parents[1]
+    cache_dir = repo_root / "models_cache"
+
     cfg = ArchitextSettings(
         embedding_provider="huggingface",
-        embedding_cache_dir=str(tmp_path / "cache"),
+        embedding_cache_dir=str(cache_dir),
     )
     initialize_settings(cfg)
     return cfg
@@ -167,15 +179,18 @@ def test_full_workflow(multi_lang_repo, tmp_path, initialized_settings):
 
 @pytest.mark.integration
 @patch("src.indexer.Settings")
-def test_embedding_model_loading(mock_settings, multi_lang_repo, tmp_path):
+def test_embedding_model_loading(mock_settings, multi_lang_repo):
     """Test that embedding models load correctly."""
     from src.config import ArchitextSettings
     from src.indexer import _build_embedding
     
     # Test HuggingFace embedding
+    repo_root = Path(__file__).resolve().parents[1]
+    cache_dir = repo_root / "models_cache"
+
     cfg = ArchitextSettings(
         embedding_provider="huggingface",
-        embedding_cache_dir=str(tmp_path / "cache"),
+        embedding_cache_dir=str(cache_dir),
     )
     
     embed_model = _build_embedding(cfg)

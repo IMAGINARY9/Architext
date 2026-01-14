@@ -380,8 +380,16 @@ def main():
         if args.command == "diff-architecture":
             baseline_files = None
             if args.baseline:
-                with open(args.baseline, "r", encoding="utf-8") as handle:
-                    baseline_files = json.load(handle)
+                if not os.path.exists(args.baseline):
+                    print(f"Baseline file not found: {args.baseline}")
+                    print("Provide a JSON file containing a list of file paths.")
+                    sys.exit(1)
+                try:
+                    with open(args.baseline, "r", encoding="utf-8") as handle:
+                        baseline_files = json.load(handle)
+                except Exception as exc:
+                    print(f"Failed to read baseline JSON: {exc}")
+                    sys.exit(1)
             result = diff_architecture_review(
                 storage_path=storage_path if not args.source else None,
                 source_path=args.source,
