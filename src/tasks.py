@@ -583,3 +583,129 @@ def generate_docs(
             (out_path / name).write_text(content, encoding="utf-8")
 
     return {"outputs": list(docs.keys()), "output_dir": output_dir, "inline": docs}
+
+
+def dependency_graph_export(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    output_format: str = "mermaid",
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+    graph = _build_import_graph(files)
+
+    edges = []
+    for src, deps in graph.items():
+        for dep in deps:
+            edges.append((src, dep))
+
+    if output_format == "json":
+        return {"format": "json", "nodes": list(graph.keys()), "edges": edges}
+
+    if output_format == "graphml":
+        lines = ["<graphml>", "<graph edgedefault=\"directed\">"]
+        for src, dep in edges:
+            lines.append(f"  <edge source=\"{src}\" target=\"{dep}\"/>")
+        lines.append("</graph>")
+        lines.append("</graphml>")
+        return {"format": "graphml", "content": "\n".join(lines)}
+
+    if output_format == "mermaid":
+        lines = ["graph TD"]
+        for src, dep in edges:
+            src_id = src.replace("-", "_")
+            dep_id = dep.replace("-", "_")
+            lines.append(f"  {src_id}[{Path(src).name}] --> {dep_id}[{Path(dep).name}]")
+        return {"format": "mermaid", "content": "\n".join(lines), "edge_count": len(edges)}
+
+    return {"format": "json", "nodes": list(graph.keys()), "edges": edges}
+
+
+def test_coverage_analysis(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+    source_files = [path for path in files if Path(path).suffix in DEFAULT_EXTENSIONS]
+    test_files = [path for path in files if "test" in Path(path).name.lower()]
+
+    mapping: Dict[str, List[str]] = defaultdict(list)
+    for src in source_files:
+        stem = Path(src).stem
+        for test in test_files:
+            if stem in Path(test).stem:
+                mapping[src].append(test)
+
+    uncovered = [src for src in source_files if src not in mapping]
+    coverage_ratio = 1 - (len(uncovered) / max(len(source_files), 1))
+
+    return {
+        "total_sources": len(source_files),
+        "total_tests": len(test_files),
+        "coverage_ratio": round(coverage_ratio, 2),
+        "uncovered": uncovered[:50],
+        "mapping": {k: v[:5] for k, v in mapping.items()},
+    }
+
+
+def architecture_pattern_detection(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+
+    patterns = []
+    files_lower = [str(path).lower() for path in files]
+
+    if any("controllers" in path and "views" in path for path in files_lower):
+        patterns.append("MVC")
+    if any("services" in path for path in files_lower) and any("repositories" in path for path in files_lower):
+        patterns.append("Service-Repository")
+    if any("microservice" in path for path in files_lower) or any("docker" in path for path in files_lower):
+        patterns.append("Microservices")
+    if any("plugins" in path for path in files_lower) or any("extensions" in path for path in files_lower):
+        patterns.append("Plugin Architecture")
+    if any("event" in path for path in files_lower) or any("kafka" in path for path in files_lower):
+        patterns.append("Event-Driven")
+
+    return {"patterns": patterns, "evidence": files_lower[:20]}
+
+
+def diff_architecture_review(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    baseline_files: Optional[List[str]] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    current_files = set(collect_file_paths(storage_path, source_path))
+    baseline_files = set(baseline_files or [])
+
+    added = sorted(current_files - baseline_files)
+    removed = sorted(baseline_files - current_files)
+
+    return {"added": added[:100], "removed": removed[:100], "added_count": len(added), "removed_count": len(removed)}
+
+
+def onboarding_guide(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+    root_files = [Path(path).name for path in files if len(Path(path).parts) <= 3]
+
+    entry_points = [f for f in root_files if f.lower() in {"readme.md", "setup.py", "pyproject.toml", "package.json", "main.py"}]
+    suggestions = ["Start with README and configuration files", "Review entry points and tests"]
+
+    return {
+        "entry_points": entry_points,
+        "suggestions": suggestions,
+        "root_files": root_files[:50],
+    }

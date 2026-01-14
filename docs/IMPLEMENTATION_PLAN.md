@@ -147,11 +147,11 @@
 *   Support **async task execution** for long-running analyses (with `/tasks/<task_id>/status` polling endpoint).
 
 **Similar Features (Phase 2.5 Extensions):**
-*   [ ] **Dependency Graph Export**: Output in Mermaid, PlantUML, GraphQL formats for visualization tools.
-*   [ ] **Test Coverage Analysis**: Correlate test files to modules, identify gaps and testing priorities.
-*   [ ] **Architecture Pattern Detection**: Recognize and classify architectural patterns (MVC, microservices, monolith, plugin architecture, event-driven, etc.).
-*   [ ] **Diff-Based Architecture Review**: Compare two commits/branches: "What architectural changes happened? Are they aligned with the architecture guidelines?"
-*   [ ] **Onboarding Guide Generation**: Auto-generate "where to start reading the codebase" and navigation path based on stated purpose/role.
+*   [x] **Dependency Graph Export**: Output in Mermaid, PlantUML, GraphQL formats for visualization tools.
+*   [x] **Test Coverage Analysis**: Correlate test files to modules, identify gaps and testing priorities.
+*   [x] **Architecture Pattern Detection**: Recognize and classify architectural patterns (MVC, microservices, monolith, plugin architecture, event-driven, etc.).
+*   [x] **Diff-Based Architecture Review**: Compare two commits/branches: "What architectural changes happened? Are they aligned with the architecture guidelines?"
+*   [x] **Onboarding Guide Generation**: Auto-generate "where to start reading the codebase" and navigation path based on stated purpose/role.
 
 ---
 

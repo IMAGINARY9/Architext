@@ -225,3 +225,88 @@ def test_generate_docs_task_inline(mocker, patched_settings):
     data = response.json()
     assert data["status"] == "completed"
     assert "result" in data
+
+
+def test_dependency_graph_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.dependency_graph_export", return_value={"format": "mermaid"})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/dependency-graph",
+        json={"storage": "./test-storage", "background": False, "output_format": "mermaid"},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_test_coverage_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.test_coverage_analysis", return_value={"coverage_ratio": 0.5})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/test-coverage",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_detect_patterns_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.architecture_pattern_detection", return_value={"patterns": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/detect-patterns",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_diff_architecture_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.diff_architecture_review", return_value={"added": [], "removed": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/diff-architecture",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_onboarding_guide_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.onboarding_guide", return_value={"entry_points": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/onboarding-guide",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data

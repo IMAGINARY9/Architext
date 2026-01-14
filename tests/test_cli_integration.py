@@ -310,3 +310,101 @@ def test_cli_generate_docs(mocker, capsys):
     mock_task.assert_called_once()
     captured = capsys.readouterr()
     assert "outputs" in captured.out
+
+
+def test_cli_dependency_graph(mocker, capsys):
+    """Dependency-graph command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch(
+        "src.cli.dependency_graph_export",
+        return_value={"format": "mermaid", "content": "graph TD"},
+    )
+
+    sys.argv = ["cli.py", "dependency-graph", "--storage", "./storage", "--output-format", "mermaid"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "graph TD" in captured.out
+
+
+def test_cli_test_coverage(mocker, capsys):
+    """Test-coverage command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.test_coverage_analysis", return_value={"coverage_ratio": 0.5})
+
+    sys.argv = ["cli.py", "test-coverage", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "coverage_ratio" in captured.out
+
+
+def test_cli_detect_patterns(mocker, capsys):
+    """Detect-patterns command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.architecture_pattern_detection", return_value={"patterns": []})
+
+    sys.argv = ["cli.py", "detect-patterns", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "patterns" in captured.out
+
+
+def test_cli_diff_architecture(mocker, capsys):
+    """Diff-architecture command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.diff_architecture_review", return_value={"added": []})
+
+    sys.argv = ["cli.py", "diff-architecture", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "added" in captured.out
+
+
+def test_cli_onboarding_guide(mocker, capsys):
+    """Onboarding-guide command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.onboarding_guide", return_value={"entry_points": []})
+
+    sys.argv = ["cli.py", "onboarding-guide", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "entry_points" in captured.out

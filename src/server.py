@@ -27,6 +27,11 @@ from src.tasks import (
     impact_analysis,
     refactoring_recommendations,
     generate_docs,
+    dependency_graph_export,
+    test_coverage_analysis,
+    architecture_pattern_detection,
+    diff_architecture_review,
+    onboarding_guide,
 )
 
 
@@ -387,6 +392,77 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             output_dir=request.output_dir,
         )
         _update_task(task_id, {"status": "completed", "result": result, "task": "generate-docs"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/dependency-graph", status_code=202)
+    async def dependency_graph_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("dependency-graph", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = dependency_graph_export(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+            output_format=request.output_format,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "dependency-graph"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/test-coverage", status_code=202)
+    async def test_coverage_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("test-coverage", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = test_coverage_analysis(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "test-coverage"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/detect-patterns", status_code=202)
+    async def detect_patterns_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("detect-patterns", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = architecture_pattern_detection(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "detect-patterns"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/diff-architecture", status_code=202)
+    async def diff_architecture_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("diff-architecture", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = diff_architecture_review(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "diff-architecture"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/onboarding-guide", status_code=202)
+    async def onboarding_guide_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("onboarding-guide", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = onboarding_guide(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "onboarding-guide"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
     @app.post("/query")

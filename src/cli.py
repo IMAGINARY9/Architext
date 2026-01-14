@@ -17,6 +17,11 @@ from src.tasks import (
     impact_analysis,
     refactoring_recommendations,
     generate_docs,
+    dependency_graph_export,
+    test_coverage_analysis,
+    architecture_pattern_detection,
+    diff_architecture_review,
+    onboarding_guide,
 )
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
@@ -172,6 +177,36 @@ def _build_parser():
     docs_parser.add_argument("--source", help="Source repo path (if not using storage)")
     docs_parser.add_argument("--output", help="Output directory for docs")
 
+    graph_parser = subparsers.add_parser("dependency-graph", help="Export dependency graph")
+    graph_parser.add_argument("--storage", help="Path to load the vector DB from")
+    graph_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    graph_parser.add_argument(
+        "--output-format",
+        choices=["mermaid", "json", "graphml"],
+        default="mermaid",
+        help="Output format",
+    )
+
+    coverage_parser = subparsers.add_parser("test-coverage", help="Analyze test coverage")
+    coverage_parser.add_argument("--storage", help="Path to load the vector DB from")
+    coverage_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    pattern_parser = subparsers.add_parser("detect-patterns", help="Detect architecture patterns")
+    pattern_parser.add_argument("--storage", help="Path to load the vector DB from")
+    pattern_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    diff_parser = subparsers.add_parser("diff-architecture", help="Review architecture diff")
+    diff_parser.add_argument("--storage", help="Path to load the vector DB from")
+    diff_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    diff_parser.add_argument(
+        "--baseline",
+        help="Path to a JSON file containing baseline file list",
+    )
+
+    onboard_parser = subparsers.add_parser("onboarding-guide", help="Generate onboarding guide")
+    onboard_parser.add_argument("--storage", help="Path to load the vector DB from")
+    onboard_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
     return parser
 
 
@@ -234,6 +269,11 @@ def main():
         "impact-analysis",
         "refactoring-recommendations",
         "generate-docs",
+        "dependency-graph",
+        "test-coverage",
+        "detect-patterns",
+        "diff-architecture",
+        "onboarding-guide",
     }:
         settings = load_settings(env_file=args.env_file)
         storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
@@ -308,6 +348,52 @@ def main():
                 storage_path=storage_path if not args.source else None,
                 source_path=args.source,
                 output_dir=args.output,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "dependency-graph":
+            result = dependency_graph_export(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                output_format=args.output_format,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "test-coverage":
+            result = test_coverage_analysis(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "detect-patterns":
+            result = architecture_pattern_detection(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "diff-architecture":
+            baseline_files = None
+            if args.baseline:
+                with open(args.baseline, "r", encoding="utf-8") as handle:
+                    baseline_files = json.load(handle)
+            result = diff_architecture_review(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                baseline_files=baseline_files,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "onboarding-guide":
+            result = onboarding_guide(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
             )
             _print_task_result(result)
             return
