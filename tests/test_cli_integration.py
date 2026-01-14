@@ -177,3 +177,136 @@ def test_cli_cache_cleanup(mocker, capsys):
     mock_cleanup.assert_called_once_with(max_age_days=14)
     captured = capsys.readouterr()
     assert "Removed 3 cached repo(s)" in captured.out
+
+
+def test_cli_analyze_structure(mocker, capsys):
+    """Analyze-structure command runs without LLM init."""
+    mock_load_settings = mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.analyze_structure", return_value={"format": "json", "summary": {}})
+
+    sys.argv = ["cli.py", "analyze-structure", "--storage", "./storage", "--depth", "shallow"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "summary" in captured.out
+
+
+def test_cli_tech_stack(mocker, capsys):
+    """Tech-stack command runs without LLM init."""
+    mock_load_settings = mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.tech_stack", return_value={"format": "json", "data": {}})
+
+    sys.argv = ["cli.py", "tech-stack", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "data" in captured.out
+
+
+def test_cli_detect_anti_patterns(mocker, capsys):
+    """Detect-anti-patterns command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.detect_anti_patterns", return_value={"issues": []})
+
+    sys.argv = ["cli.py", "detect-anti-patterns", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "issues" in captured.out
+
+
+def test_cli_health_score(mocker, capsys):
+    """Health-score command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.health_score", return_value={"score": 75})
+
+    sys.argv = ["cli.py", "health-score", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "score" in captured.out
+
+
+def test_cli_impact_analysis(mocker, capsys):
+    """Impact-analysis command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.impact_analysis", return_value={"affected": []})
+
+    sys.argv = ["cli.py", "impact-analysis", "module_x", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "affected" in captured.out
+
+
+def test_cli_refactoring_recommendations(mocker, capsys):
+    """Refactoring-recommendations command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.refactoring_recommendations", return_value={"recommendations": []})
+
+    sys.argv = ["cli.py", "refactoring-recommendations", "--storage", "./storage"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "recommendations" in captured.out
+
+
+def test_cli_generate_docs(mocker, capsys):
+    """Generate-docs command runs without LLM init."""
+    mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
+    mock_task = mocker.patch("src.cli.generate_docs", return_value={"outputs": []})
+
+    sys.argv = ["cli.py", "generate-docs", "--storage", "./storage", "--output", "./docs"]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    mock_task.assert_called_once()
+    captured = capsys.readouterr()
+    assert "outputs" in captured.out

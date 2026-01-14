@@ -106,3 +106,122 @@ def test_list_tasks_endpoint(patched_settings):
     assert response.status_code == 200
     data = response.json()
     assert "tasks" in data
+
+
+def test_analyze_structure_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.analyze_structure", return_value={"format": "json", "summary": {}})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/analyze-structure",
+        json={"storage": "./test-storage", "background": False, "output_format": "json"},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_tech_stack_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.tech_stack", return_value={"format": "json", "data": {}})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/tech-stack",
+        json={"storage": "./test-storage", "background": False, "output_format": "json"},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_detect_anti_patterns_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.detect_anti_patterns", return_value={"issues": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/detect-anti-patterns",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_health_score_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.health_score", return_value={"score": 80})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/health-score",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_impact_analysis_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.impact_analysis", return_value={"affected": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/impact-analysis",
+        json={"storage": "./test-storage", "background": False, "module": "module_x"},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_refactoring_recommendations_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.refactoring_recommendations", return_value={"recommendations": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/refactoring-recommendations",
+        json={"storage": "./test-storage", "background": False},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+
+
+def test_generate_docs_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.generate_docs", return_value={"outputs": []})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/generate-docs",
+        json={"storage": "./test-storage", "background": False, "output_dir": "./docs"},
+    )
+
+    assert response.status_code == 202
+    data = response.json()
+    assert data["status"] == "completed"
+    assert "result" in data

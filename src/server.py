@@ -19,6 +19,15 @@ from src.indexer import (
 )
 from src.ingestor import resolve_source
 from src.cli_utils import extract_sources, to_agent_response
+from src.tasks import (
+    analyze_structure,
+    tech_stack,
+    detect_anti_patterns,
+    health_score,
+    impact_analysis,
+    refactoring_recommendations,
+    generate_docs,
+)
 
 
 class IndexRequest(BaseModel):
@@ -48,6 +57,18 @@ class QueryRequest(BaseModel):
     enable_rerank: Optional[bool] = None
     rerank_model: Optional[str] = None
     rerank_top_n: Optional[int] = None
+
+
+class TaskRequest(BaseModel):
+    """Request payload for analysis tasks."""
+
+    storage: Optional[str] = None
+    source: Optional[str] = None
+    output_format: str = Field(default="json", pattern="^(json|markdown|mermaid)$")
+    depth: Optional[str] = Field(default="shallow", pattern="^(shallow|detailed|exhaustive)$")
+    module: Optional[str] = None
+    output_dir: Optional[str] = None
+    background: bool = True
 
 
 def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
@@ -137,6 +158,78 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         _update_task(task_id, {"future": future})
         return task_id
 
+    def _submit_analysis_task(task_name: str, payload: TaskRequest) -> str:
+        task_id = str(uuid4())
+        _update_task(task_id, {"status": "queued", "task": task_name})
+
+        def _run():
+            def progress_update(info: Dict[str, Any]):
+                _update_task(task_id, {"progress": info})
+
+            _update_task(task_id, {"status": "running"})
+            storage_path = payload.storage or base_settings.storage_path
+            try:
+                if task_name == "analyze-structure":
+                    result = analyze_structure(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        depth=payload.depth or "shallow",
+                        output_format=payload.output_format,
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "tech-stack":
+                    result = tech_stack(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        output_format=payload.output_format,
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "detect-anti-patterns":
+                    result = detect_anti_patterns(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "health-score":
+                    result = health_score(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "impact-analysis":
+                    if not payload.module:
+                        raise ValueError("module is required for impact analysis")
+                    result = impact_analysis(
+                        module=payload.module,
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "refactoring-recommendations":
+                    result = refactoring_recommendations(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "generate-docs":
+                    result = generate_docs(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=payload.source,
+                        output_dir=payload.output_dir,
+                        progress_callback=progress_update,
+                    )
+                else:
+                    raise ValueError("Unknown task")
+
+                _update_task(task_id, {"status": "completed", "result": result})
+            except Exception as exc:  # pylint: disable=broad-except
+                _update_task(task_id, {"status": "failed", "error": str(exc)})
+
+        future = executor.submit(_run)
+        future.add_done_callback(lambda fut: fut.result() if not fut.cancelled() else None)
+        _update_task(task_id, {"future": future})
+        return task_id
+
     app = FastAPI(title="Architext API", version="0.2.0")
     app.state.task_store = task_store
     app.state.settings = base_settings
@@ -187,6 +280,114 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         if cancelled:
             _update_task(task_id, {"status": "cancelled"})
         return {"task_id": task_id, "cancelled": cancelled}
+
+    @app.post("/tasks/analyze-structure", status_code=202)
+    async def analyze_structure_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("analyze-structure", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        storage_path = (request.storage or base_settings.storage_path) if not request.source else None
+        result = analyze_structure(
+            storage_path=storage_path,
+            source_path=request.source,
+            depth=request.depth or "shallow",
+            output_format=request.output_format,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "analyze-structure"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/tech-stack", status_code=202)
+    async def tech_stack_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("tech-stack", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        storage_path = (request.storage or base_settings.storage_path) if not request.source else None
+        result = tech_stack(
+            storage_path=storage_path,
+            source_path=request.source,
+            output_format=request.output_format,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "tech-stack"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/detect-anti-patterns", status_code=202)
+    async def detect_anti_patterns_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("detect-anti-patterns", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = detect_anti_patterns(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "detect-anti-patterns"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/health-score", status_code=202)
+    async def health_score_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("health-score", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = health_score(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "health-score"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/impact-analysis", status_code=202)
+    async def impact_analysis_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("impact-analysis", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        if not request.module:
+            raise HTTPException(status_code=400, detail="module is required")
+
+        task_id = str(uuid4())
+        result = impact_analysis(
+            module=request.module,
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "impact-analysis"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/refactoring-recommendations", status_code=202)
+    async def refactoring_recommendations_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("refactoring-recommendations", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = refactoring_recommendations(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "refactoring-recommendations"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/generate-docs", status_code=202)
+    async def generate_docs_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("generate-docs", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = generate_docs(
+            storage_path=(request.storage or base_settings.storage_path) if not request.source else None,
+            source_path=request.source,
+            output_dir=request.output_dir,
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "generate-docs"})
+        return {"task_id": task_id, "status": "completed", "result": result}
 
     @app.post("/query")
     async def run_query(request: QueryRequest) -> Dict[str, Any]:

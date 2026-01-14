@@ -1,12 +1,23 @@
 import argparse
 import sys
 import os
+import json
 
 # Ensure src can be imported if resolving paths is tricky, though running as module (python -m src.cli) usually handles this.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.config import load_settings
 from src.indexer import initialize_settings, load_documents, create_index, load_existing_index, query_index
+from src.tasks import (
+    analyze_structure,
+    tech_stack,
+    query_diagnostics,
+    detect_anti_patterns,
+    health_score,
+    impact_analysis,
+    refactoring_recommendations,
+    generate_docs,
+)
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
 
@@ -107,6 +118,60 @@ def _build_parser():
     serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
     serve_parser.add_argument("--reload", action="store_true", help="Enable autoreload (dev only)")
 
+    # Phase 2.5 tasks
+    structure_parser = subparsers.add_parser("analyze-structure", help="Analyze repository structure")
+    structure_parser.add_argument("--storage", help="Path to load the vector DB from")
+    structure_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    structure_parser.add_argument(
+        "--depth",
+        choices=["shallow", "detailed", "exhaustive"],
+        default="shallow",
+        help="Depth of structure analysis",
+    )
+    structure_parser.add_argument(
+        "--output-format",
+        choices=["json", "markdown", "mermaid"],
+        default="json",
+        help="Output format",
+    )
+
+    tech_parser = subparsers.add_parser("tech-stack", help="Analyze technology stack")
+    tech_parser.add_argument("--storage", help="Path to load the vector DB from")
+    tech_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    tech_parser.add_argument(
+        "--output-format",
+        choices=["json", "markdown"],
+        default="json",
+        help="Output format",
+    )
+
+    diag_parser = subparsers.add_parser("query-diagnostics", help="Export hybrid/keyword diagnostics for a query")
+    diag_parser.add_argument("text", help="Query text to diagnose")
+    diag_parser.add_argument("--storage", help="Path to load the vector DB from")
+    diag_parser.add_argument("--output", help="Optional path to save JSON diagnostics")
+
+    anti_parser = subparsers.add_parser("detect-anti-patterns", help="Detect architectural anti-patterns")
+    anti_parser.add_argument("--storage", help="Path to load the vector DB from")
+    anti_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    health_parser = subparsers.add_parser("health-score", help="Compute architectural health score")
+    health_parser.add_argument("--storage", help="Path to load the vector DB from")
+    health_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    impact_parser = subparsers.add_parser("impact-analysis", help="Analyze impact of a module change")
+    impact_parser.add_argument("module", help="Module name or path fragment")
+    impact_parser.add_argument("--storage", help="Path to load the vector DB from")
+    impact_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    refactor_parser = subparsers.add_parser("refactoring-recommendations", help="Suggest refactoring improvements")
+    refactor_parser.add_argument("--storage", help="Path to load the vector DB from")
+    refactor_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    docs_parser = subparsers.add_parser("generate-docs", help="Generate documentation bundle")
+    docs_parser.add_argument("--storage", help="Path to load the vector DB from")
+    docs_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    docs_parser.add_argument("--output", help="Output directory for docs")
+
     return parser
 
 
@@ -158,6 +223,94 @@ def main():
         app = create_app()
         run(app=app, host=args.host, port=args.port, reload=args.reload)
         return
+
+    # Task commands do not need LLM init
+    if args.command in {
+        "analyze-structure",
+        "tech-stack",
+        "query-diagnostics",
+        "detect-anti-patterns",
+        "health-score",
+        "impact-analysis",
+        "refactoring-recommendations",
+        "generate-docs",
+    }:
+        settings = load_settings(env_file=args.env_file)
+        storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
+
+        if args.command == "analyze-structure":
+            result = analyze_structure(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                depth=args.depth,
+                output_format=args.output_format,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "tech-stack":
+            result = tech_stack(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                output_format=args.output_format,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "query-diagnostics":
+            if not storage_path:
+                print("Storage path is required for diagnostics")
+                sys.exit(1)
+            result = query_diagnostics(storage_path=storage_path, query_text=args.text)
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as handle:
+                    json.dump(result, handle, indent=2)
+                print(f"Diagnostics saved to {args.output}")
+            else:
+                print(json.dumps(result, indent=2))
+            return
+
+        if args.command == "detect-anti-patterns":
+            result = detect_anti_patterns(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "health-score":
+            result = health_score(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "impact-analysis":
+            result = impact_analysis(
+                module=args.module,
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "refactoring-recommendations":
+            result = refactoring_recommendations(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "generate-docs":
+            result = generate_docs(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                output_dir=args.output,
+            )
+            _print_task_result(result)
+            return
 
     # All other commands need settings and LLM init
     try:
@@ -239,6 +392,13 @@ def main():
         except Exception as e:
             logger.error(f"Error during querying: {e}")
             sys.exit(1)
+
+
+def _print_task_result(result):
+    if result.get("format") == "markdown" or result.get("format") == "mermaid":
+        print(result.get("content", ""))
+    else:
+        print(json.dumps(result, indent=2))
 
 if __name__ == "__main__":
     main()

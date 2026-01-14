@@ -111,31 +111,31 @@
 **Goal:** Provide pre-built analysis tasks leveraging the indexed codebase, making Architext a reasoning engine for architecture, not just search.
 
 **Core Default Tasks:**
-*   [ ] **Repository Structure Analysis**: Generate visual/JSON map of module organization, layer separation, and dependency flow.
+*   [x] **Repository Structure Analysis**: Generate visual/JSON map of module organization, layer separation, and dependency flow.
     *   CLI: `architext analyze-structure <index_path>`
     *   API: `POST /tasks/analyze-structure`
     *   Output: Module tree, layer diagram (Mermaid), coupling metrics
-*   [ ] **Architectural Anti-Patterns Detection**: Identify circular dependencies, god objects, SoC violations, tight coupling.
+*   [x] **Architectural Anti-Patterns Detection**: Identify circular dependencies, god objects, SoC violations, tight coupling.
     *   CLI: `architext detect-anti-patterns <index_path>`
     *   API: `POST /tasks/detect-anti-patterns`
     *   Output: List of issues with severity + suggested fixes
-*   [ ] **Technology Stack Inventory**: What frameworks/libraries are used where, with counts and distribution.
+*   [x] **Technology Stack Inventory**: What frameworks/libraries are used where, with counts and distribution.
     *   CLI: `architext tech-stack <index_path>`
     *   API: `POST /tasks/tech-stack`
     *   Output: Structured list of frameworks, versions, usage breakdown
-*   [ ] **Architectural Health Scoring**: Rate modules by modularity, coupling, documentation coverage, testing gaps.
+*   [x] **Architectural Health Scoring**: Rate modules by modularity, coupling, documentation coverage, testing gaps.
     *   CLI: `architext health-score <index_path>`
     *   API: `POST /tasks/health-score`
     *   Output: Numeric scores (0-100) with breakdown by category + improvement suggestions
-*   [ ] **Impact Analysis**: "If I change module X, which components are affected?"
+*   [x] **Impact Analysis**: "If I change module X, which components are affected?"
     *   CLI: `architext impact-analysis <index_path> --module <module_name>`
     *   API: `POST /tasks/impact-analysis`
     *   Output: Dependency tree, list of affected components with confidence scores
-*   [ ] **Refactoring Recommendations**: Suggest architectural improvements with effort estimates and migration paths.
+*   [x] **Refactoring Recommendations**: Suggest architectural improvements with effort estimates and migration paths.
     *   CLI: `architext refactoring-recommendations <index_path>`
     *   API: `POST /tasks/refactoring-recommendations`
     *   Output: Prioritized list of refactoring opportunities with effort/benefit analysis
-*   [ ] **Documentation Compilation**: Generate architecture decision records (ADRs), module summaries, and system diagrams from code.
+*   [x] **Documentation Compilation**: Generate architecture decision records (ADRs), module summaries, and system diagrams from code.
     *   CLI: `architext generate-docs <index_path> --output ./docs`
     *   API: `POST /tasks/generate-docs`
     *   Output: Markdown files, Mermaid diagrams, architecture summary
