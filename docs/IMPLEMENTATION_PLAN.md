@@ -1,4 +1,6 @@
-# Architext: Implementation Plan & Roadmap (2.0)
+# Architext: Implementation Plan & Roadmap (v2.1)
+
+> **Status Update (Jan 2026):** Phases 1 and 2 are effectively **COMPLETE**. The project is now pivoting to **Remediation** (Phase 2.9) and **Semantic Intelligence** (Phase 3).
 
 ## Project Overview
 **Architext** is a universal architectural search engine designed to index any codebase (local or remote) and answer high-level questions. It acts as a specialized "Cortex" for software architecture, useful for both human developers and AI Orchestrators.
@@ -153,34 +155,78 @@
 *   [x] **Diff-Based Architecture Review**: Compare two commits/branches: "What architectural changes happened? Are they aligned with the architecture guidelines?"
 *   [x] **Onboarding Guide Generation**: Auto-generate "where to start reading the codebase" and navigation path based on stated purpose/role.
 
+---🚧 Phase 2.9: Critical Remediation (Priority: Immediate)
+**Goal:** Fix security vulnerabilities and stability risks identified during self-audit.
+
+### 2.9.1 Security Hardening
+*   [ ] **Path Traversal Protection**: Validate `storage` and `source` inputs in `server.py` to prevent arbitrary file reads (e.g., `../../../etc/passwd`).
+*   [ ] **Rate Limiting**: Implement token bucket or request limiting on FastAPI endpoints to prevent DOS.
+*   [ ] **Input Sanitization**: Ensure `read_bytes` and file operations do not accept tainted paths from API requests.
+
+### 2.9.2 Stability & Error Handling
+*   [ ] **Streaming Ingestion**: Replace full-memory `load_documents()` with a streaming/batch generator to prevent OOM on large (>1GB) repos.
+*   [ ] **Reranking Transparency**:
+    *   Fail loudly if `--enable-rerank` is requested but model fails to load.
+    *   Include `reranked: boolean` in response metadata so users know if fallback occurred.
+*   [ ] **Exception Visibility**: Capture and return stack traces in API error responses (instead of generic "failed").
+
+### 2.9.3 Configuration Integrity
+*   [ ] **Fix Provider Mismatch**: `config.py` allows `gemini`/`anthropic`, but `indexer.py` crashes.
+    *   *Action:* Implement `LiteLLM` integration OR remove unsupported options from Enum.
+*   [ ] **Task Durability**: Persist task state (SQLite/Postgres) so queued jobs survive server restarts.
+
 ---
 
-## Phase 3: Scale & Intelligence
-**Goal:** Handle massive enterprise monorepos and enhance retrieval accuracy.
+## 🔮 Phase 3: Semantic Intelligence & "Active Auditing"
+**Goal:** Pivot from "Passive Structural Indexing" to "Active Semantic Reasoning". 
+*Current methods (regex/heuristics) miss logic flaws; Phase 3 transforms Architext into a "Code Reasoner" that can perform deep audits.*
 
-### 3.1 Advanced Storage Strategy
-*   [ ] **Remote Vector Store Support**: Add adapters for:
-    *   Pinecone / Qdrant (Cloud scaling).
-    *   Remote Chroma (Team sharing).
-*   [ ] **Persistent Indexes**: Allow naming/saving indexes (e.g., `architext index --name "backend-v1" ./src`).
+### 3.1 Active Auditing Suite (Semantic Tasks)
+*   [ ] **`detect-vulnerabilities`**: Query the index for semantic risks (e.g., "Where is user input passed to file operations without validation?").
+*   [ ] **`logic-gap-analysis`**: Compare interface vs. implementation (e.g., "Which config options are defined but never used in the logic flow?").
+*   [ ] **`identify-silent-failures`**: Use LLM reasoning to find exception swallowing and inadequate error handling paths.
+*   [ ] **`security-heuristics`**: Add regex-based security matchers (Phase 2.5 extension) for `read_bytes(user_input)`, hardcoded keys, and inadequate sanitization.
 
-### 3.2 Advanced Retrieval & High-Fidelity Indexing
-*   [ ] **AST-Based Chunking**: Integrate `CodeSplitter` to respect function/class boundaries (Python, JS, Java) instead of arbitrary line breaks.
-*   [ ] **Context Injection**: Decorate every node with metadata (filename, class path) to preserve context in isolated chunks.
-*   [ ] **Code Knowledge Graph**: Integrate Graph stores to map function calls and dependencies, enabling complex "impact analysis" queries.
+### 3.2 Advanced Retrieval & Parsing
+*   [ ] **Logical/Intent-Based Chunking**: Integrate `tree-sitter` to index by logical block (full functions/classes) instead of arbitrary token counts.
+*   [ ] **AST-Based Dependency Graph**: Replace fragile regex import parsing with proper AST traversal for precise impact analysis.
+*   [ ] **Code Knowledge Graph**: Map function calls and variable usage to enable "deep" impact analysis and cross-file reasoning.
 
-### 3.3 Agent Ecosystem
-*   [ ] **MCP (Model Context Protocol) Server**: Wrap the API as an endpoint compatible with Claude Desktop / generic MCP clients.
+### 3.3 Infrastructure Scale
+*   [ ] **Remote Vector Stores**: Adapters for Pinecone/Qdrant/Weaviate for cloud scaling.
+
+### 3.4 Agent-Native Orchestration
+*   [ ] **Direct Agent Interface (`ask` command)**: A unified CLI/API entry point for agents to perform custom queries without pre-defined tasks.
+*   [ ] **MCP (Model Context Protocol) Server**: Wrap the API as an endpoint compatible with Claude Desktop and generic MCP clients to allow direct agent "tool-use".
+*   [ ] **Agent Force Multiplier Mode**: Optimize JSON schema outputs specifically for LLM context windows (reducing token overhead for structural telemetry).
+
+### 3.5 Multi-Model Synthesis (Phase 4 Planning)
+*   [ ] **Structural + Semantic Fusion**: Combine heuristic output (e.g., "this file is large") with semantic reasoning (e.g., "it's large because it violates SRP in these 3 places") to generate high-confidence refactoring roadmaps.
 
 ---
 
-## Performance & Optimization Guidelines
-*   **Prompt Tuning**: Different models (e.g., DeepSeek Coder vs. GPT-4) require unique instruction styles. Always test the system prompt in `config.py` when switching models.
-*   **Retrieval Knobs**: For large repositories, increase `chunk_size` to 1024 and use a Re-ranker to maintain precision.
-*   **Local Quantization**: When running local LLMs, prefer **GGUF (Q4_K_M or Q5_K_M)** formats via Ollama or Oobabooga to balance inference speed with architectural reasoning capabilities.
-*   **Embedding Models**: Use `mpnet-base-v2` for local precision or `text-embedding-3-small` for cloud-based cost efficiency.
+## Intelligence & Optimization Guidelines
 
-## Quality Assurance & Best Practices
+### 🧠 Model & Prompt Engineering (Key Differentiator)
+Architext's effectiveness relies on technical precision over "vibes".
+*   **Prompt Tuning**: Different models (e.g., DeepSeek Coder vs. GPT-4) require unique instruction styles. Always test and tune the `SYSTEM_PROMPT` in `config.py` when switching models to ensure architectural reasoning isn't lost.
+*   **Local LLM Quantization**: When running local LLMs, prefer **GGUF (Q4_K_M or Q5_K_M)** formats via Ollama or Oobabooga. This provides the best balance between inference speed and the structural reasoning required for codebase analysis.
+*   **Optimal Embedding Models**: 
+    *   **Local**: Use `all-mpnet-base-v2` for high-precision local vector search.
+    *   **Cloud**: Use `text-embedding-3-small` for a balance of cost and high-dimensional semantic mapping.
+*   **Retrieval Knobs**: For large repositories, increase `CHUNK_SIZE` to 1024 and use the **Re-ranker** (Phase 2.4) to maintain precision amidst background noise.
+
+### ⚙️ Performance & Resource Safety
+*   **Memory Safety**: Never load `all_files` list or full document content into RAM at once. Use generators and batch processing (`load_documents` refactor in Phase 2.9).
+*   **Concurrency**: Use `asyncio` for I/O bound tasks, and `ProcessPool` (via a proper task queue) for CPU-heavy parsing to avoid GIL contention.
+*   **Indexing Strategy**: For repositories with >100k files, implement "Lazy Indexing" or "Priority Indexing" (focusing on `src/` or `app/` before auxiliary folders).
+
+## Developer Resources
+*   **Unit Tests**: Run `pytest tests/` (76 passing).
+*   **Assessment Report**: See `docs/PROJECT_ASSESSMENT.md` for detailed audit findings.
+*   **Self-Reflection**: See `docs/SELF_REFLECTION_REPORT.md` for AI agent user-experience feedback.
+
+## Quality Assurance
 *   [ ] **Integration Tests**: Mock `LiteLLM` responses to test pipeline without real API costs.
 *   [ ] **Security Scans**: Ensure `.git` history and `.env` files are strictly ignored during indexing.
 *   [ ] **CI/CD**: GitHub Actions to run tests and linters (Ruff/Black).
