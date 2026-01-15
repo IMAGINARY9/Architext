@@ -36,7 +36,7 @@ def test_cli_index_command_success(temp_repo_path, mocker, capsys):
     mock_resolve_source.assert_called_once_with(temp_repo_path, use_cache=True, ssh_key=None)
     mock_gather_files.assert_called_once_with(temp_repo_path)
     file_paths = mock_gather_files.return_value
-    mock_create_index.assert_called_once_with(file_paths, "./config_storage")
+    mock_create_index.assert_called_once_with(file_paths, "./config_storage", settings=cfg)
     
     # Check output
     captured = capsys.readouterr()

@@ -170,6 +170,65 @@ def _sanitize_task_store(store: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str
     return sanitized
 
 
+def _mcp_tools_schema() -> List[Dict[str, Any]]:
+    return [
+        {
+            "name": "architext.query",
+            "description": "Query an index and return agent/human output.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "storage": {"type": "string"},
+                    "mode": {"type": "string", "enum": ["human", "agent"]},
+                    "compact": {"type": "boolean"},
+                    "enable_hybrid": {"type": "boolean"},
+                    "hybrid_alpha": {"type": "number"},
+                    "enable_rerank": {"type": "boolean"},
+                    "rerank_model": {"type": "string"},
+                    "rerank_top_n": {"type": "integer"},
+                },
+                "required": ["text"],
+            },
+        },
+        {
+            "name": "architext.ask",
+            "description": "Agent-optimized query with compact response support.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "storage": {"type": "string"},
+                    "compact": {"type": "boolean"},
+                    "enable_hybrid": {"type": "boolean"},
+                    "hybrid_alpha": {"type": "number"},
+                    "enable_rerank": {"type": "boolean"},
+                    "rerank_model": {"type": "string"},
+                    "rerank_top_n": {"type": "integer"},
+                },
+                "required": ["text"],
+            },
+        },
+        {
+            "name": "architext.task",
+            "description": "Run an analysis task synchronously.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "storage": {"type": "string"},
+                    "source": {"type": "string"},
+                    "output_format": {"type": "string"},
+                    "depth": {"type": "string"},
+                    "module": {"type": "string"},
+                    "output_dir": {"type": "string"},
+                },
+                "required": ["task"],
+            },
+        },
+    ]
+
+
 def _load_task_store(path: Path) -> Dict[str, Dict[str, Any]]:
     if not path.exists():
         return {}
@@ -177,196 +236,6 @@ def _load_task_store(path: Path) -> Dict[str, Dict[str, Any]]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
-
-    def _mcp_tools() -> List[Dict[str, Any]]:
-        return [
-            {
-                "name": "architext.query",
-                "description": "Query an index and return agent/human output.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "text": {"type": "string"},
-                        "storage": {"type": "string"},
-                        "mode": {"type": "string", "enum": ["human", "agent"]},
-                        "compact": {"type": "boolean"},
-                        "enable_hybrid": {"type": "boolean"},
-                        "hybrid_alpha": {"type": "number"},
-                        "enable_rerank": {"type": "boolean"},
-                        "rerank_model": {"type": "string"},
-                        "rerank_top_n": {"type": "integer"},
-                    },
-                    "required": ["text"],
-                },
-            },
-            {
-                "name": "architext.ask",
-                "description": "Agent-optimized query with compact response support.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "text": {"type": "string"},
-                        "storage": {"type": "string"},
-                        "compact": {"type": "boolean"},
-                        "enable_hybrid": {"type": "boolean"},
-                        "hybrid_alpha": {"type": "number"},
-                        "enable_rerank": {"type": "boolean"},
-                        "rerank_model": {"type": "string"},
-                        "rerank_top_n": {"type": "integer"},
-                    },
-                    "required": ["text"],
-                },
-            },
-            {
-                "name": "architext.task",
-                "description": "Run an analysis task synchronously.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "task": {"type": "string"},
-                        "storage": {"type": "string"},
-                        "source": {"type": "string"},
-                        "output_format": {"type": "string"},
-                        "depth": {"type": "string"},
-                        "module": {"type": "string"},
-                        "output_dir": {"type": "string"},
-                    },
-                    "required": ["task"],
-                },
-            },
-        ]
-
-    @app.get("/mcp/tools")
-    async def mcp_tools() -> Dict[str, Any]:
-        return {"tools": _mcp_tools()}
-
-    @app.post("/mcp/run")
-    async def mcp_run(request: MCPRunRequest) -> Dict[str, Any]:
-        tool = request.tool
-        args = request.arguments or {}
-
-        if tool == "architext.query":
-            payload = QueryRequest(**args)
-            return await run_query(payload)
-
-        if tool == "architext.ask":
-            payload = AskRequest(**args)
-            return await run_ask(payload)
-
-        if tool == "architext.task":
-            task_name = args.get("task")
-            payload = TaskRequest(
-                storage=args.get("storage"),
-                source=args.get("source"),
-                output_format=args.get("output_format", "json"),
-                depth=args.get("depth"),
-                module=args.get("module"),
-                output_dir=args.get("output_dir"),
-                background=False,
-            )
-
-            if task_name == "analyze-structure":
-                result = analyze_structure(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    depth=payload.depth or "shallow",
-                    output_format=payload.output_format,
-                )
-            elif task_name == "tech-stack":
-                result = tech_stack(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    output_format=payload.output_format,
-                )
-            elif task_name == "detect-anti-patterns":
-                result = detect_anti_patterns(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "health-score":
-                result = health_score(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "impact-analysis":
-                result = impact_analysis(
-                    module=payload.module or "",
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "refactoring-recommendations":
-                result = refactoring_recommendations(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "generate-docs":
-                result = generate_docs(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    output_dir=_resolve_output_dir(payload.output_dir),
-                )
-            elif task_name == "dependency-graph":
-                result = dependency_graph_export(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    output_format=payload.output_format,
-                )
-            elif task_name == "test-coverage":
-                result = test_coverage_analysis(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "detect-patterns":
-                result = architecture_pattern_detection(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "diff-architecture":
-                result = diff_architecture_review(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "onboarding-guide":
-                result = onboarding_guide(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "detect-vulnerabilities":
-                result = detect_vulnerabilities(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "logic-gap-analysis":
-                result = logic_gap_analysis(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "identify-silent-failures":
-                result = identify_silent_failures(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "security-heuristics":
-                result = security_heuristics(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "code-knowledge-graph":
-                result = code_knowledge_graph(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "synthesis-roadmap":
-                result = synthesis_roadmap(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            else:
-                raise HTTPException(status_code=400, detail="Unknown task")
-
-            return {"task": task_name, "result": result}
-
-        raise HTTPException(status_code=400, detail="Unknown MCP tool")
 
     if not isinstance(data, dict):
         return {}
@@ -1054,6 +923,138 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         payload["reranked"] = bool(request_settings.enable_rerank)
         payload["hybrid_enabled"] = bool(request_settings.enable_hybrid)
         return payload
+
+    @app.get("/mcp/tools")
+    async def mcp_tools() -> Dict[str, Any]:
+        return {"tools": _mcp_tools_schema()}
+
+    @app.post("/mcp/run")
+    async def mcp_run(request: MCPRunRequest) -> Dict[str, Any]:
+        tool = request.tool
+        args = request.arguments or {}
+
+        if tool == "architext.query":
+            payload = QueryRequest(**args)
+            return await run_query(payload)
+
+        if tool == "architext.ask":
+            payload = AskRequest(**args)
+            return await run_ask(payload)
+
+        if tool == "architext.task":
+            task_name = args.get("task")
+            payload = TaskRequest(
+                storage=args.get("storage"),
+                source=args.get("source"),
+                output_format=args.get("output_format", "json"),
+                depth=args.get("depth"),
+                module=args.get("module"),
+                output_dir=args.get("output_dir"),
+                background=False,
+            )
+
+            if task_name == "analyze-structure":
+                result = analyze_structure(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    depth=payload.depth or "shallow",
+                    output_format=payload.output_format,
+                )
+            elif task_name == "tech-stack":
+                result = tech_stack(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    output_format=payload.output_format,
+                )
+            elif task_name == "detect-anti-patterns":
+                result = detect_anti_patterns(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "health-score":
+                result = health_score(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "impact-analysis":
+                result = impact_analysis(
+                    module=payload.module or "",
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "refactoring-recommendations":
+                result = refactoring_recommendations(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "generate-docs":
+                result = generate_docs(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    output_dir=_resolve_output_dir(payload.output_dir),
+                )
+            elif task_name == "dependency-graph":
+                result = dependency_graph_export(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    output_format=payload.output_format,
+                )
+            elif task_name == "test-coverage":
+                result = test_coverage_analysis(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "detect-patterns":
+                result = architecture_pattern_detection(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "diff-architecture":
+                result = diff_architecture_review(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "onboarding-guide":
+                result = onboarding_guide(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "detect-vulnerabilities":
+                result = detect_vulnerabilities(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "logic-gap-analysis":
+                result = logic_gap_analysis(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "identify-silent-failures":
+                result = identify_silent_failures(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "security-heuristics":
+                result = security_heuristics(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "code-knowledge-graph":
+                result = code_knowledge_graph(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "synthesis-roadmap":
+                result = synthesis_roadmap(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Unknown task")
+
+            return {"task": task_name, "result": result}
+
+        raise HTTPException(status_code=400, detail="Unknown MCP tool")
 
     @app.post("/query/diagnostics")
     async def query_diagnostics(request: QueryRequest) -> Dict[str, Any]:

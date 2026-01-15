@@ -4,6 +4,8 @@
 **Authors:** Haiku 4.5 & Gemini 3 Pro (Agent Personas)  
 **Subject:** Could Architext perform its own audit? A "Dogfooding" Analysis.
 
+> **Update (Jan 2026):** Phase 2.9 remediation + Phase 3 semantic intelligence features have since been implemented, including security hardening, logical chunking (`tree-sitter`), active auditing tasks (vulnerability/logic-gap/silent-failure detection), an agent-optimized `ask` interface, and MCP-like tool wrappers.
+
 ---
 
 ## 1. The Core Question

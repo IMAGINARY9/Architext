@@ -1,7 +1,7 @@
 # Architext: Professional Project Assessment
 **Date:** January 15, 2026  
-**Status:** Phase 1 Complete + Phase 2 Implemented  
-**Test Coverage:** 76/76 Passing (18.98s)  
+**Status:** Phase 1 Complete + Phase 2 Implemented + Phase 2.9 Remediation + Phase 3 Implemented  
+**Test Coverage:** 84/84 Passing (`pytest tests/`), 86/86 Passing (`pytest`)  
 **Build Health:** ✅ Stable
 
 ---
@@ -9,7 +9,7 @@
 ## Executive Summary
 
 **Architext is a production-capable RAG system for codebase analysis**, successfully implementing Phase 1 + the full Phase 2.5 task suite. The project demonstrates strong architectural foundation with:
-- **38 CLI commands** (index, query, 13 analysis tasks, serve, cache-cleanup)
+- **40+ CLI commands** (index, query, ask, 13+ analysis tasks, serve, cache-cleanup)
 - **Configuration-driven extensibility** (Pydantic + .env)
 - **Universal ingestion** (local/GitHub/GitLab/SSH with caching)
 - **Dual LLM support** (local + OpenAI-compatible)
@@ -39,6 +39,19 @@ Since this assessment, the following high-priority fixes have been implemented (
 
 ---
 
+## Phase 3 Update (Jan 2026)
+
+Since this assessment, Phase 3 has been implemented:
+
+- ✅ **Active Auditing Tasks**: vulnerability heuristics + logic gap analysis + silent failure detection.
+- ✅ **Tree-sitter logical chunking** (function/class level) with improved multi-language import extraction.
+- ✅ **Vector store provider selection** (Chroma default; optional Qdrant/Pinecone/Weaviate adapters).
+- ✅ **Agent-native query interface**: `/ask` endpoint + `ask` CLI command with compact JSON output.
+- ✅ **MCP-like tool wrappers**: `GET /mcp/tools` + `POST /mcp/run`.
+- ✅ **Synthesis roadmap** task that fuses structural + semantic findings.
+
+---
+
 ## Project Status vs. Plan
 
 | Phase | Planned | Delivered | Status |
@@ -47,17 +60,17 @@ Since this assessment, the following high-priority fixes have been implemented (
 | **1.2** | Universal Ingestion | ✅ Full | Complete |
 | **1.3** | Flexible LLM Backend | ⚠️ Partial | OpenAI-Like only; Gemini/Anthropic declared but not implemented |
 | **1.4** | Core Refactor | ✅ Full | Complete |
-| **1.5** | Integration Testing | ✅ Full | 76 tests passing |
+| **1.5** | Integration Testing | ✅ Full | 84 tests passing (`pytest tests/`) |
 | **1.6** | CLI Polish | ✅ Full | 7 primary commands + 13 task commands |
 | **2.1** | FastAPI Server | ✅ Full | 538 lines, async task support |
 | **2.2** | Structured Outputs | ✅ Full | JSON + human mode |
 | **2.3** | CLI Enhancements | ✅ Full | Hybrid, rerank, provider flags |
 | **2.4** | Retrieval Optimization | ✅ Full | Hybrid search + cross-encoder reranking |
 | **2.5** | Default Task Suite | ✅ Full | 13 analysis tasks (structure, tech-stack, anti-patterns, health-score, impact-analysis, refactoring, docs, dependency-graph, test-coverage, pattern-detection, diff-review, onboarding, diagnostics) |
-| **3.x** | Phase 3 (Advanced) | ❌ Not Started | MCP server, AST-based chunking, remote vector stores |
+| **3.x** | Phase 3 (Advanced) | ✅ Full | Implemented (active auditing, logical chunking, vector store adapters, ask + MCP-like wrappers) |
 
 ### Discrepancy Alert ⚠️
-- **Documentation claims 38/38 tests**, actual status is **76/76 passing**
+- **Documentation claims 38/38 tests**, actual status is **84/84 tests passing (`pytest tests/`)**
 - Docs are outdated; Phase 2.5 tasks are fully implemented but not documented
 
 ---
@@ -210,7 +223,7 @@ For a 1GB+ codebase (e.g., Linux kernel, enterprise monorepo):
 - Implement streaming document loader
 - Process batches (e.g., 1000 docs at a time)
 - Add progress callbacks for visibility
-- Consider AST-based chunking (Phase 3 planned but not started)
+- Consider AST-based chunking (implemented in Phase 3 via tree-sitter logical chunking)
 
 ---
 
@@ -499,7 +512,7 @@ Server (FastAPI async)
 1. **Large Monorepos (1M+ files)**
    - OOM during indexing
    - Regex-based dependency analysis breaks down
-   - **Recommendation:** Wait for Phase 3 (AST-based, streaming)
+   - **Update:** Phase 3 implemented tree-sitter logical chunking; streaming ingestion was addressed in Phase 2.9.
 
 2. **Precise Dependency Tracking**
    - Misses dynamic imports, conditional includes
@@ -676,7 +689,7 @@ Server (FastAPI async)
 
 ### Summary
 
-**Architext is a well-engineered tool for codebase analysis and architectural discovery**, suitable for team onboarding, code review automation, and AI agent integration. Phase 1 + Phase 2.5 are complete and tested; Phase 3 features are not started.
+**Architext is a well-engineered tool for codebase analysis and architectural discovery**, suitable for team onboarding, code review automation, and AI agent integration. Phase 1 + Phase 2.5 are complete and tested; Phase 2.9 and Phase 3 features are implemented.
 
 The project delivers **real value** for architectural understanding and documentation generation, but has **critical gaps** that limit real-world applicability:
 
@@ -744,4 +757,4 @@ Coverage by Module:
 ## Technical Resources
 *   **Detailed Roadmap**: See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for Phase 2.9 and Phase 3 goals.
 *   **Dogfooding Analysis**: See [docs/SELF_REFLECTION_REPORT.md](docs/SELF_REFLECTION_REPORT.md) for the AI Agent perspective on this tool.
-*   **Test Suite**: `pytest tests/` (76 passing).
+*   **Test Suite**: `pytest tests/` (84 passing) or `pytest` (86 passing).

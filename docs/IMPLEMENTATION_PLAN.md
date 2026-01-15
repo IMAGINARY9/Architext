@@ -12,11 +12,12 @@
 
 ## Tech Stack (Revised)
 *   **Language:** Python 3.10+
-*   **Core Logic:** LlamaIndex / LangChain (orchestration)
-*   **LLM Interface:** `LiteLLM` (Unified interface for OpenAI, Vertex, Bedrock, & Local)
+*   **Core Logic:** LlamaIndex (RAG orchestration)
+*   **LLM Interface:** OpenAI + OpenAI-compatible providers (via `llama-index-llms-openai` and `llama-index-llms-openai-like`)
 *   **Ingestion:** `GitPython` (Remote cloning), Native File I/O
-*   **Vector Database:** ChromaDB (Local/Server mode), extensible to Pinecone/Qdrant
-*   **Interface:** CLI (`click`/`typer`) & API (`FastAPI`)
+*   **Vector Database:** ChromaDB (Local/Server mode), with optional adapter scaffolding for Pinecone/Qdrant/Weaviate
+*   **Parsing/Chunking:** `tree-sitter` + `tree-sitter-languages` (logical chunking by function/class when enabled)
+*   **Interface:** CLI (`argparse`) & API (`FastAPI`)
 *   **Config:** `pydantic-settings` (.env management)
 
 ---
@@ -193,11 +194,11 @@
 *   [x] **Code Knowledge Graph**: Map function calls and variable usage to enable "deep" impact analysis and cross-file reasoning.
 
 ### 3.3 Infrastructure Scale
-*   [x] **Remote Vector Stores**: Adapters for Pinecone/Qdrant/Weaviate for cloud scaling.
+*   [x] **Remote Vector Stores**: Adapters for Pinecone/Qdrant/Weaviate for cloud scaling (optional deps; Chroma remains default).
 
 ### 3.4 Agent-Native Orchestration
 *   [x] **Direct Agent Interface (`ask` command)**: A unified CLI/API entry point for agents to perform custom queries without pre-defined tasks.
-*   [x] **MCP (Model Context Protocol) Server**: Wrap the API as an endpoint compatible with Claude Desktop and generic MCP clients to allow direct agent "tool-use".
+*   [x] **MCP-like Tool Endpoints**: `GET /mcp/tools` + `POST /mcp/run` wrappers for tool discovery/invocation (MCP-style; not a full MCP server implementation).
 *   [x] **Agent Force Multiplier Mode**: Optimize JSON schema outputs specifically for LLM context windows (reducing token overhead for structural telemetry).
 
 ### 3.5 Multi-Model Synthesis (Phase 4 Planning)
@@ -222,7 +223,7 @@ Architext's effectiveness relies on technical precision over "vibes".
 *   **Indexing Strategy**: For repositories with >100k files, implement "Lazy Indexing" or "Priority Indexing" (focusing on `src/` or `app/` before auxiliary folders).
 
 ## Developer Resources
-*   **Unit Tests**: Run `pytest tests/` (76 passing).
+*   **Unit Tests**: Run `pytest tests/` (84 passing) or `pytest` (86 passing).
 *   **Assessment Report**: See `docs/PROJECT_ASSESSMENT.md` for detailed audit findings.
 *   **Self-Reflection**: See `docs/SELF_REFLECTION_REPORT.md` for AI agent user-experience feedback.
 

@@ -92,6 +92,94 @@ def test_query_endpoint_override_flags(mocker, patched_settings):
     assert settings.rerank_top_n == 3
 
 
+def test_ask_endpoint_compact_agent_schema(mocker, patched_settings):
+    mock_response = Mock()
+    mock_response.__str__ = Mock(return_value="answer")
+    node = Mock()
+    node.metadata = {"file_path": "app.py", "start_line": 10, "end_line": 20}
+    node.score = 0.9
+    mock_response.source_nodes = [node]
+
+    mocker.patch("src.server.load_existing_index", return_value=Mock())
+    mocker.patch("src.server.query_index", return_value=mock_response)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/ask",
+        json={"text": "hello", "storage": "./test-storage", "compact": True},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "answer"
+    assert data["sources"][0]["file"] == "app.py"
+    assert "reranked" in data
+    assert "hybrid_enabled" in data
+
+
+def test_mcp_tools_lists_tools(patched_settings):
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.get("/mcp/tools")
+    assert response.status_code == 200
+    data = response.json()
+    names = {tool["name"] for tool in data["tools"]}
+    assert "architext.query" in names
+    assert "architext.ask" in names
+    assert "architext.task" in names
+
+
+def test_mcp_run_query_dispatch(mocker, patched_settings):
+    mock_response = Mock()
+    mock_response.__str__ = Mock(return_value="answer")
+    mock_response.source_nodes = []
+
+    mocker.patch("src.server.load_existing_index", return_value=Mock())
+    mocker.patch("src.server.query_index", return_value=mock_response)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/mcp/run",
+        json={
+            "tool": "architext.query",
+            "arguments": {"text": "hello", "mode": "agent", "storage": "./test-storage"},
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "answer"
+
+
+def test_mcp_run_task_dispatch(mocker, patched_settings):
+    mocker.patch("src.server.analyze_structure", return_value={"format": "json", "summary": {}})
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/mcp/run",
+        json={
+            "tool": "architext.task",
+            "arguments": {
+                "task": "analyze-structure",
+                "storage": "./test-storage",
+                "output_format": "json",
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["task"] == "analyze-structure"
+    assert data["result"]["format"] == "json"
+
+
 def test_status_unknown_task_returns_404(patched_settings):
     app = create_app(settings=patched_settings)
     client = TestClient(app)
