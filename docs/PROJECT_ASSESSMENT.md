@@ -20,6 +20,25 @@ However, there are **critical gaps, design flaws, and risks** that limit real-wo
 
 ---
 
+## Remediation Update (Jan 2026)
+
+Since this assessment, the following high-priority fixes have been implemented (Phase 2.9):
+
+- ✅ **Path traversal protection** with allowlisted roots in API task/index endpoints.
+- ✅ **Rate limiting** via token bucket middleware (configurable).
+- ✅ **Streaming/batch ingestion** to avoid OOM on large repositories.
+- ✅ **Rerank transparency** and fail-loud behavior when reranking is requested.
+- ✅ **Exception visibility** with traceback capture in task failures.
+- ✅ **Provider mismatch resolved** (Gemini/Anthropic removed until LiteLLM integration).
+- ✅ **Task durability** via persisted task store (stale tasks noted after restart).
+- ✅ **Shared file exclusion logic** across indexing and tasks.
+- ✅ **Python AST-based import parsing** to improve dependency graphs.
+- ✅ **Cycle detection limits** to prevent long-running DFS on large graphs.
+- ✅ **Docstring-aware documentation scoring** in health metrics.
+- ✅ **SSH key support** for private repo cloning.
+
+---
+
 ## Project Status vs. Plan
 
 | Phase | Planned | Delivered | Status |

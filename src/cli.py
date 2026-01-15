@@ -7,7 +7,13 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.config import load_settings
-from src.indexer import initialize_settings, load_documents, create_index, load_existing_index, query_index
+from src.indexer import (
+    initialize_settings,
+    gather_index_files,
+    create_index_from_paths,
+    load_existing_index,
+    query_index,
+)
 from src.tasks import (
     analyze_structure,
     tech_stack,
@@ -55,8 +61,12 @@ def _build_parser():
         help="Disable remote repo caching (local paths only)",
     )
     index_parser.add_argument(
+        "--ssh-key",
+        help="Path to SSH private key for cloning private repos",
+    )
+    index_parser.add_argument(
         "--llm-provider",
-        choices=["local", "openai", "gemini", "anthropic"],
+        choices=["local", "openai"],
         help="Override LLM provider from config",
     )
     index_parser.add_argument(
@@ -450,11 +460,15 @@ def main():
 
         try:
             logger.info(f"Resolving source: {args.source}")
-            source_path = resolve_source(args.source, use_cache=not args.no_cache)
+            source_path = resolve_source(
+                args.source,
+                use_cache=not args.no_cache,
+                ssh_key=args.ssh_key,
+            )
             logger.info(f"Starting indexing for: {source_path}")
-            documents = load_documents(str(source_path))
-            logger.info(f"Loaded {len(documents)} documents")
-            create_index(documents, storage_path)
+            file_paths = gather_index_files(str(source_path))
+            logger.info(f"Found {len(file_paths)} files to index")
+            create_index_from_paths(file_paths, storage_path)
             logger.info(f"Indexing complete! Data saved to {storage_path}")
         except Exception as e:
             logger.error(f"Error during indexing: {e}")

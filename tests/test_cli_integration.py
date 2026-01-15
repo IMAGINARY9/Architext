@@ -10,8 +10,8 @@ def test_cli_index_command_success(temp_repo_path, mocker, capsys):
     """Test that 'index' command runs successfully with mocked dependencies."""
     # Mock all the heavy dependencies
     mock_initialize = mocker.patch("src.cli.initialize_settings")
-    mock_load_docs = mocker.patch("src.cli.load_documents", return_value=[Mock()])
-    mock_create_index = mocker.patch("src.cli.create_index")
+    mock_gather_files = mocker.patch("src.cli.gather_index_files", return_value=[os.path.join(temp_repo_path, "main.py")])
+    mock_create_index = mocker.patch("src.cli.create_index_from_paths")
     mock_load_settings = mocker.patch("src.cli.load_settings")
     mock_resolve_source = mocker.patch("src.cli.resolve_source", return_value=temp_repo_path)
 
@@ -33,10 +33,10 @@ def test_cli_index_command_success(temp_repo_path, mocker, capsys):
     # Verify the flow
     mock_load_settings.assert_called_once()
     mock_initialize.assert_called_once_with(cfg)
-    mock_resolve_source.assert_called_once_with(temp_repo_path, use_cache=True)
-    mock_load_docs.assert_called_once_with(temp_repo_path)
-    docs = mock_load_docs.return_value
-    mock_create_index.assert_called_once_with(docs, "./config_storage")
+    mock_resolve_source.assert_called_once_with(temp_repo_path, use_cache=True, ssh_key=None)
+    mock_gather_files.assert_called_once_with(temp_repo_path)
+    file_paths = mock_gather_files.return_value
+    mock_create_index.assert_called_once_with(file_paths, "./config_storage")
     
     # Check output
     captured = capsys.readouterr()
@@ -140,8 +140,8 @@ def test_cli_no_command(capsys):
 def test_cli_index_with_storage_param(temp_repo_path, mocker, capsys):
     """Test that 'index' command respects --storage parameter."""
     mock_initialize = mocker.patch("src.cli.initialize_settings")
-    mock_load_docs = mocker.patch("src.cli.load_documents", return_value=[Mock()])
-    mock_create_index = mocker.patch("src.cli.create_index")
+    mocker.patch("src.cli.gather_index_files", return_value=[os.path.join(temp_repo_path, "main.py")])
+    mock_create_index = mocker.patch("src.cli.create_index_from_paths")
     mock_resolve_source = mocker.patch("src.cli.resolve_source", return_value=temp_repo_path)
     mock_load_settings = mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
     

@@ -91,3 +91,21 @@ To move from a "Structure Inspector" to a true "Architecture Reasoner," the foll
 The irony of the current implementation is that Architext is a tool designed to use RAG for codebase analysis, but its own analysis tasks (Phase 2.5) don't actually use RAG—they use pattern matching and heuristics. 
 
 By pivoting to **Phase 3: Semantic Intelligence**, Architext will finally become the tool it was conceptually designed to be: a reasoning engine that understands why code exists, not just where it lives.
+
+---
+
+## Post-Reflection Actions (Jan 2026)
+The following concrete remediations were completed before Phase 3 work begins:
+
+- Path allowlists for API `source` and `storage` inputs.
+- Rate limiting for FastAPI endpoints.
+- Streaming/batched ingestion to avoid large-repo OOM.
+- Rerank failures now surface as errors; response metadata includes rerank status.
+- Exception tracebacks recorded for task failures.
+- Provider mismatch resolved by deferring Gemini/Anthropic until LiteLLM integration.
+- Task state persistence across restarts (stale tasks marked).
+- Shared file exclusion rules across indexing/tasks.
+- Python AST-based imports for more accurate dependency graphs.
+- Cycle detection time/depth caps.
+- Docstring-aware documentation scoring.
+- SSH key support for private repo cloning.

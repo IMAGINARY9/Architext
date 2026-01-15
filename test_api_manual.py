@@ -8,15 +8,16 @@ sys.path.insert(0, 'c:/Users/tusik/Documents/GitHub/Architext')
 
 from src.config import ArchitextSettings
 from fastapi.testclient import TestClient
+from pathlib import Path
 
 def test_api():
     # Import with patches
     import unittest.mock as mock
     
     with mock.patch("src.server.initialize_settings"):
-        with mock.patch("src.server.load_documents", return_value=[Mock()]):
-            with mock.patch("src.server.create_index"):
-                with mock.patch("src.server.resolve_source", return_value="./tests"):
+        with mock.patch("src.server.gather_index_files", return_value=["./tests/test.py"]):
+            with mock.patch("src.server.create_index_from_paths"):
+                with mock.patch("src.server.resolve_source", return_value=Path("./tests")):
                     from src.server import create_app
                     
                     settings = ArchitextSettings(storage_path="./storage-tests")

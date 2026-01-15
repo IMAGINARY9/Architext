@@ -10,7 +10,7 @@ import hashlib
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 from urllib.parse import urlparse
 
 try:
@@ -43,7 +43,7 @@ def _ensure_cache_dir() -> Path:
     return CACHE_DIR
 
 
-def resolve_source(source: str, use_cache: bool = True) -> Path:
+def resolve_source(source: str, use_cache: bool = True, ssh_key: Optional[str] = None) -> Path:
     """
     Resolve a source (local path or remote URL) to a local directory.
     
@@ -78,7 +78,7 @@ def resolve_source(source: str, use_cache: bool = True) -> Path:
                 f"Remote source not allowed without cache: {source}"
             )
         
-        return _clone_to_cache(source)
+        return _clone_to_cache(source, ssh_key=ssh_key)
     
     # Not found locally, not a recognized remote format
     if local_path.exists():
@@ -90,17 +90,21 @@ def resolve_source(source: str, use_cache: bool = True) -> Path:
     )
 
 
-def _clone_to_cache(url: str) -> Path:
+def _clone_to_cache(url: str, ssh_key: Optional[str] = None) -> Path:
     """Clone a git repo to cache and return the path."""
     cache_dir = _ensure_cache_dir()
     repo_hash = _compute_repo_hash(url)
     repo_path = cache_dir / repo_hash
+
+    env = _build_git_env(ssh_key)
     
     # If already cached, update it
     if repo_path.exists():
         print(f"Updating cached repo: {repo_path}")
         try:
             repo = Repo(repo_path)
+            if env:
+                repo.git.update_environment(**env)
             repo.remotes.origin.pull()
         except (InvalidGitRepositoryError, GitCommandError) as e:
             print(f"Warning: Could not update cache, using existing: {e}")
@@ -108,11 +112,21 @@ def _clone_to_cache(url: str) -> Path:
         # Clone fresh
         print(f"Cloning {url} to {repo_path}...")
         try:
-            Repo.clone_from(url, repo_path)
+            Repo.clone_from(url, repo_path, env=env)
         except GitCommandError as e:
             raise RuntimeError(f"Failed to clone {url}: {e}")
     
     return repo_path
+
+
+def _build_git_env(ssh_key: Optional[str]) -> Dict[str, str]:
+    if not ssh_key:
+        return {}
+    key_path = Path(ssh_key).expanduser().resolve()
+    if not key_path.exists():
+        raise ValueError(f"SSH key not found: {key_path}")
+    ssh_command = f"ssh -i \"{key_path}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+    return {"GIT_SSH_COMMAND": ssh_command}
 
 
 def cleanup_cache(max_age_days: int = 30) -> int:

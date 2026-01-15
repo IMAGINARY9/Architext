@@ -1,6 +1,7 @@
 import os
 import re
-from typing import Optional, List, Dict
+from pathlib import Path
+from typing import Optional, List, Dict, Iterable, Iterator
 
 import chromadb
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings
@@ -13,6 +14,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
 
 from src.config import ArchitextSettings, load_settings
+from src.file_filters import should_skip_path
 
 
 def _build_llm(cfg: ArchitextSettings):
@@ -73,46 +75,106 @@ def initialize_settings(settings: Optional[ArchitextSettings] = None) -> Archite
 
     return cfg
 
-def load_documents(path: str, progress_callback=None):
-    """Recursively read files from the directory, ignoring hidden files and common git folders."""
+INDEXABLE_EXTENSIONS = {
+    ".py",
+    ".md",
+    ".rst",
+    ".txt",
+    ".java",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".cs",
+    ".rb",
+    ".php",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".toml",
+    ".ini",
+    ".cfg",
+}
+
+EXCLUDED_NAME_PATTERNS = {".min.js"}
+EXCLUDED_SUFFIXES = {".pyc", ".map"}
+
+
+def _is_indexable_file(file_path: Path) -> bool:
+    if file_path.name.startswith("."):
+        return False
+    lowered = file_path.name.lower()
+    if any(lowered.endswith(pattern) for pattern in EXCLUDED_NAME_PATTERNS):
+        return False
+    if file_path.suffix.lower() in EXCLUDED_SUFFIXES:
+        return False
+    return file_path.suffix.lower() in INDEXABLE_EXTENSIONS
+
+
+def gather_index_files(path: str, progress_callback=None) -> List[str]:
+    """Collect indexable file paths from a directory."""
     if not os.path.exists(path):
         raise ValueError(f"Path does not exist: {path}")
-    
+
     if progress_callback:
         progress_callback({"stage": "loading", "message": "Scanning files..."})
-        
-    print(f"Loading documents from {path}...")
-    
-    from pathlib import Path
-    
-    # Manually collect files to index with explicit extension filtering
-    source_extensions = [".py", ".md", ".rst", ".txt", ".java", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".c", ".cpp", ".h", ".hpp", ".cs", ".rb", ".php", ".yaml", ".yml", ".json", ".toml", ".ini", ".cfg"]
-    exclude_patterns = ["/.git/", "/__pycache__/", "/node_modules/", "/.venv/", "/.env/", "/build/", "/dist/", ".pyc", ".min.js", ".map"]
-    
+
     source_path = Path(path)
-    all_files = []
-    
-    for ext in source_extensions:
-        for file_path in source_path.rglob(f"*{ext}"):
-            str_path = str(file_path)
-            # Skip hidden files (starting with .)
-            if any(part.startswith('.') and part not in {'.py', '.md', '.txt', '.rs', '.c', '.h', '.cs', '.rb', '.php', '.js', '.ts', '.tsx', '.jsx', '.go', '.java', '.cpp', '.hpp', '.yaml', '.yml', '.json', '.toml', '.ini', '.cfg'} for part in file_path.parts):
-                continue
-            if not any(pattern in str_path.replace('\\', '/') for pattern in exclude_patterns):
-                all_files.append(str(file_path))
-    
+    all_files: List[str] = []
+
+    for file_path in source_path.rglob("*"):
+        if file_path.is_dir():
+            continue
+        if should_skip_path(file_path):
+            continue
+        if not _is_indexable_file(file_path):
+            continue
+        all_files.append(str(file_path))
+
     if not all_files:
         raise ValueError(f"No indexable files found in {path}")
-    
-    print(f"Found {len(all_files)} files to index")
-    
+
+    return all_files
+
+
+def iter_document_batches(
+    file_paths: List[str],
+    batch_size: int = 500,
+    progress_callback=None,
+) -> Iterator[List]:
+    """Yield documents in batches to avoid loading everything into memory."""
+    total_files = len(file_paths)
+    for start in range(0, total_files, batch_size):
+        batch_files = file_paths[start : start + batch_size]
+        reader = SimpleDirectoryReader(input_files=batch_files)
+        documents = reader.load_data()
+        if progress_callback:
+            progress_callback(
+                {
+                    "stage": "loading",
+                    "message": f"Loaded {min(start + len(batch_files), total_files)} / {total_files} files",
+                    "count": min(start + len(batch_files), total_files),
+                    "total": total_files,
+                }
+            )
+        yield documents
+
+
+def load_documents(path: str, progress_callback=None):
+    """Load all documents into memory (legacy)."""
+    all_files = gather_index_files(path, progress_callback=progress_callback)
     reader = SimpleDirectoryReader(input_files=all_files)
     documents = reader.load_data()
-    print(f"Loaded {len(documents)} documents.")
-    
     if progress_callback:
-        progress_callback({"stage": "loading", "message": f"Loaded {len(documents)} documents", "count": len(documents)})
-    
+        progress_callback(
+            {"stage": "loading", "message": f"Loaded {len(documents)} documents", "count": len(documents)}
+        )
     return documents
 
 def create_index(documents, storage_path="./storage", progress_callback=None):
@@ -143,6 +205,57 @@ def create_index(documents, storage_path="./storage", progress_callback=None):
     if progress_callback:
         progress_callback({"stage": "indexing", "message": "Index created successfully", "completed": True})
     
+    return index
+
+
+def create_index_from_paths(
+    file_paths: List[str],
+    storage_path: str = "./storage",
+    batch_size: int = 500,
+    progress_callback=None,
+):
+    """Create an index from file paths using batched document loading."""
+    if not file_paths:
+        raise ValueError("No files provided for indexing")
+
+    if progress_callback:
+        progress_callback({"stage": "indexing", "message": "Initializing vector store..."})
+
+    db = chromadb.PersistentClient(path=storage_path)
+    chroma_collection = db.get_or_create_collection("architext_db")
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+    batches = iter_document_batches(file_paths, batch_size=batch_size, progress_callback=progress_callback)
+    try:
+        first_batch = next(batches)
+    except StopIteration as exc:
+        raise ValueError("No documents loaded for indexing") from exc
+
+    index = VectorStoreIndex.from_documents(
+        first_batch,
+        storage_context=storage_context,
+        show_progress=True,
+    )
+
+    indexed_count = len(first_batch)
+    for batch in batches:
+        if not batch:
+            continue
+        index.insert_documents(batch)
+        indexed_count += len(batch)
+        if progress_callback:
+            progress_callback(
+                {
+                    "stage": "indexing",
+                    "message": f"Indexed {indexed_count} documents",
+                    "count": indexed_count,
+                }
+            )
+
+    if progress_callback:
+        progress_callback({"stage": "indexing", "message": "Index created successfully", "completed": True})
+
     return index
 
 def load_existing_index(storage_path="./storage"):
@@ -238,8 +351,7 @@ def _apply_cross_encoder_rerank(
     try:
         from sentence_transformers import CrossEncoder
     except Exception as exc:  # pylint: disable=broad-except
-        print(f"[WARNING] Cross-encoder unavailable, skipping rerank: {exc}")
-        return nodes
+        raise RuntimeError(f"Cross-encoder unavailable for rerank: {exc}") from exc
 
     rerank_limit = min(max(top_n, 1), len(nodes))
     candidates = nodes[:rerank_limit]
@@ -249,8 +361,7 @@ def _apply_cross_encoder_rerank(
         model = _get_cross_encoder(model_name)
         scores = model.predict(pairs)
     except Exception as exc:  # pylint: disable=broad-except
-        print(f"[WARNING] Rerank failed, returning base order: {exc}")
-        return nodes
+        raise RuntimeError(f"Rerank failed for model '{model_name}': {exc}") from exc
 
     for node, score in zip(candidates, scores):
         node.score = float(score)
@@ -259,18 +370,13 @@ def _apply_cross_encoder_rerank(
     return candidates + nodes[rerank_limit:]
 
 
+import threading
+
 _CROSS_ENCODER_CACHE: Dict[str, "CrossEncoder"] = {}
-_CROSS_ENCODER_LOCK = None
+_CROSS_ENCODER_LOCK = threading.RLock()
 
 
 def _get_cross_encoder(model_name: str):
-    global _CROSS_ENCODER_LOCK
-
-    if _CROSS_ENCODER_LOCK is None:
-        import threading
-
-        _CROSS_ENCODER_LOCK = threading.Lock()
-
     with _CROSS_ENCODER_LOCK:
         if model_name not in _CROSS_ENCODER_CACHE:
             from sentence_transformers import CrossEncoder

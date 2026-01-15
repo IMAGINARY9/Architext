@@ -46,7 +46,7 @@
 *   [x] **Prompt Customization**: Support user-defined System Prompts via the config file (crucial for optimizing across different models like DeepSeek vs. GPT-4).
 *   [x] **RAG Optimization**: Make retrieval parameters (`chunk_size`, `top_k`) configurable.
 *   [x] Verify connectivity with Local (Oobabooga) and OpenAI providers.
-*   [ ] Add support for Gemini and Anthropic providers.
+*   [ ] Add support for Gemini and Anthropic providers (deferred; removed from config until LiteLLM integration).
 
 ### 1.4 Core Refactor ✅ **COMPLETED**
 *   [x] Decouple `indexer.py` from CLI print statements. Make it a library.
@@ -155,25 +155,25 @@
 *   [x] **Diff-Based Architecture Review**: Compare two commits/branches: "What architectural changes happened? Are they aligned with the architecture guidelines?"
 *   [x] **Onboarding Guide Generation**: Auto-generate "where to start reading the codebase" and navigation path based on stated purpose/role.
 
----🚧 Phase 2.9: Critical Remediation (Priority: Immediate)
+---✅ Phase 2.9: Critical Remediation (Priority: Immediate)
 **Goal:** Fix security vulnerabilities and stability risks identified during self-audit.
 
 ### 2.9.1 Security Hardening
-*   [ ] **Path Traversal Protection**: Validate `storage` and `source` inputs in `server.py` to prevent arbitrary file reads (e.g., `../../../etc/passwd`).
-*   [ ] **Rate Limiting**: Implement token bucket or request limiting on FastAPI endpoints to prevent DOS.
-*   [ ] **Input Sanitization**: Ensure `read_bytes` and file operations do not accept tainted paths from API requests.
+*   [x] **Path Traversal Protection**: Validate `storage` and `source` inputs in `server.py` to prevent arbitrary file reads (e.g., `../../../etc/passwd`).
+*   [x] **Rate Limiting**: Implement token bucket or request limiting on FastAPI endpoints to prevent DOS.
+*   [x] **Input Sanitization**: Ensure `read_bytes` and file operations do not accept tainted paths from API requests.
 
 ### 2.9.2 Stability & Error Handling
-*   [ ] **Streaming Ingestion**: Replace full-memory `load_documents()` with a streaming/batch generator to prevent OOM on large (>1GB) repos.
-*   [ ] **Reranking Transparency**:
+*   [x] **Streaming Ingestion**: Replace full-memory `load_documents()` with a streaming/batch generator to prevent OOM on large (>1GB) repos.
+*   [x] **Reranking Transparency**:
     *   Fail loudly if `--enable-rerank` is requested but model fails to load.
     *   Include `reranked: boolean` in response metadata so users know if fallback occurred.
-*   [ ] **Exception Visibility**: Capture and return stack traces in API error responses (instead of generic "failed").
+*   [x] **Exception Visibility**: Capture and return stack traces in API error responses (instead of generic "failed").
 
 ### 2.9.3 Configuration Integrity
-*   [ ] **Fix Provider Mismatch**: `config.py` allows `gemini`/`anthropic`, but `indexer.py` crashes.
+*   [x] **Fix Provider Mismatch**: `config.py` allows `gemini`/`anthropic`, but `indexer.py` crashes.
     *   *Action:* Implement `LiteLLM` integration OR remove unsupported options from Enum.
-*   [ ] **Task Durability**: Persist task state (SQLite/Postgres) so queued jobs survive server restarts.
+*   [x] **Task Durability**: Persist task state (SQLite/Postgres) so queued jobs survive server restarts.
 
 ---
 

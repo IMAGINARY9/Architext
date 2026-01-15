@@ -13,9 +13,7 @@ class ArchitextSettings(BaseSettings):
     """Top-level configuration for LLM, embeddings, and retrieval."""
 
     # LLM configuration
-    llm_provider: Literal["openai", "gemini", "local", "anthropic"] = Field(
-        default="local", alias="LLM_PROVIDER"
-    )
+    llm_provider: Literal["openai", "local"] = Field(default="local", alias="LLM_PROVIDER")
     llm_model: str = Field(default="local-model", alias="LLM_MODEL")
     openai_api_base: str = Field(default="http://127.0.0.1:5000/v1", alias="OPENAI_API_BASE")
     openai_api_key: str = Field(default="local", alias="OPENAI_API_KEY")
@@ -47,6 +45,12 @@ class ArchitextSettings(BaseSettings):
 
     # Storage
     storage_path: str = Field(default="./storage", alias="STORAGE_PATH")
+
+    # Server security & limits
+    rate_limit_per_minute: int = Field(default=120, alias="RATE_LIMIT_PER_MINUTE")
+    allowed_source_roots: Optional[str] = Field(default=None, alias="ALLOWED_SOURCE_ROOTS")
+    allowed_storage_roots: Optional[str] = Field(default=None, alias="ALLOWED_STORAGE_ROOTS")
+    task_store_path: str = Field(default="~/.architext/task_store.json", alias="TASK_STORE_PATH")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
 

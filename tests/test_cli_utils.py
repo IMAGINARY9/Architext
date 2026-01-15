@@ -125,11 +125,9 @@ class TestDryRunIndexer:
         indexer = DryRunIndexer(logger)
 
         with patch("src.ingestor.resolve_source", return_value=repo_dir):
-            with patch("src.indexer.load_documents") as mock_load:
-                mock_doc = Mock()
-                mock_doc.metadata = {"file_path": "test.py"}
-                mock_load.return_value = [mock_doc]
-                
+            with patch("src.indexer.gather_index_files") as mock_gather:
+                mock_gather.return_value = [str(repo_dir / "test.py")]
+
                 preview = indexer.preview(str(repo_dir))
         
         assert preview["documents"] == 1

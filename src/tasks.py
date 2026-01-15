@@ -1,14 +1,19 @@
 """Phase 2.5 analysis tasks for Architext."""
 from __future__ import annotations
 
+import ast
 import json
-from collections import Counter, defaultdict
+import os
 import re
+import time
+from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import chromadb
+
+from src.file_filters import should_skip_path
 
 
 DEFAULT_EXTENSIONS = {
@@ -97,33 +102,13 @@ def _load_files_from_storage(storage_path: str) -> List[str]:
     return sorted(set(file_paths))
 
 
-def _should_skip(path: Path) -> bool:
-    skip_fragments = {
-        ".git",
-        "__pycache__",
-        "node_modules",
-        ".venv",
-        ".env",
-        "dist",
-        "build",
-        ".pytest_cache",
-        "models_cache",
-        "storage",
-    }
-    for part in path.parts:
-        lower = part.lower()
-        if lower == "storage" or lower.startswith("storage-") or lower.startswith("storage_"):
-            return True
-    return any(fragment in path.parts for fragment in skip_fragments) or path.name.startswith(".")
-
-
 def _gather_files(source_path: str) -> List[str]:
     root = Path(source_path)
     files: List[str] = []
     for file_path in root.rglob("*"):
         if file_path.is_dir():
             continue
-        if _should_skip(file_path):
+        if should_skip_path(file_path):
             continue
         suffix = file_path.suffix.lower()
         if suffix:
@@ -340,10 +325,6 @@ def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:
 
 
 IMPORT_PATTERNS = {
-    ".py": [
-        re.compile(r"^\s*import\s+([\w\.]+)", re.MULTILINE),
-        re.compile(r"^\s*from\s+([\w\.]+)\s+import", re.MULTILINE),
-    ],
     ".js": [re.compile(r"import\s+.*?from\s+['\"](.*?)['\"]")],
     ".ts": [re.compile(r"import\s+.*?from\s+['\"](.*?)['\"]")],
     ".jsx": [re.compile(r"import\s+.*?from\s+['\"](.*?)['\"]")],
@@ -356,8 +337,35 @@ def _module_key(path: str) -> str:
     return str(Path(path).with_suffix(""))
 
 
+def _module_name(path: str, root: Path) -> str:
+    relative = Path(path).resolve().relative_to(root)
+    if relative.name == "__init__.py":
+        return ".".join(relative.parent.parts)
+    return ".".join(relative.with_suffix("").parts)
+
+
 def _extract_imports(path: str, content: str) -> List[str]:
     suffix = Path(path).suffix
+    if suffix == ".py":
+        try:
+            tree = ast.parse(content)
+        except Exception:
+            return []
+
+        imports: List[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.append(alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module
+                level = node.level or 0
+                if level > 0:
+                    imports.append(f".{level}:{module or ''}")
+                elif module:
+                    imports.append(module)
+        return imports
+
     patterns = IMPORT_PATTERNS.get(suffix, [])
     imports: List[str] = []
     for pattern in patterns:
@@ -370,21 +378,51 @@ def _extract_imports(path: str, content: str) -> List[str]:
 
 def _build_import_graph(files: List[str]) -> Dict[str, List[str]]:
     graph: Dict[str, List[str]] = defaultdict(list)
+    if not files:
+        return graph
+
+    root = Path(os.path.commonpath(files)).resolve()
     file_lookup = {_module_key(path): path for path in files}
+    module_lookup: Dict[str, str] = {}
+    for path in files:
+        try:
+            module_lookup[_module_name(path, root)] = _module_key(path)
+        except Exception:
+            continue
+
     for path in files:
         content = _read_file_text(path)
         if not content:
             continue
         module = _module_key(path)
+        suffix = Path(path).suffix
+        current_module = None
+        if suffix == ".py":
+            try:
+                current_module = _module_name(path, root)
+            except Exception:
+                current_module = None
+
         for imported in _extract_imports(path, content):
+            if suffix == ".py" and imported.startswith("."):
+                resolved = _resolve_python_relative_import(current_module, imported)
+                if resolved and resolved in module_lookup:
+                    graph[module].append(module_lookup[resolved])
+                continue
+
             if imported.startswith("."):
                 resolved = _resolve_relative_import(path, imported)
                 if resolved in file_lookup:
                     graph[module].append(resolved)
-            else:
-                for key in file_lookup:
-                    if key.endswith(imported.replace(".", "/")):
-                        graph[module].append(key)
+                continue
+
+            if imported in module_lookup:
+                graph[module].append(module_lookup[imported])
+                continue
+
+            for key in file_lookup:
+                if key.endswith(imported.replace(".", "/")):
+                    graph[module].append(key)
     return graph
 
 
@@ -396,12 +434,44 @@ def _resolve_relative_import(path: str, import_path: str) -> str:
     return str(current.joinpath(*parts))
 
 
-def _find_cycles(graph: Dict[str, List[str]], limit: int = 10) -> List[List[str]]:
+def _resolve_python_relative_import(current_module: Optional[str], encoded: str) -> Optional[str]:
+    if not current_module:
+        return None
+    try:
+        level_text, module = encoded.split(":", 1)
+        level = int(level_text.lstrip(".")) if level_text else 0
+    except ValueError:
+        return None
+
+    base_parts = current_module.split(".")
+    if len(base_parts) > 0:
+        base_parts = base_parts[:-1]
+
+    if level > 1:
+        base_parts = base_parts[: max(len(base_parts) - (level - 1), 0)]
+
+    if module:
+        base_parts.extend(module.split("."))
+
+    return ".".join(base_parts) if base_parts else None
+
+
+def _find_cycles(
+    graph: Dict[str, List[str]],
+    limit: int = 10,
+    time_limit: float = 1.0,
+    max_depth: int = 12,
+) -> List[List[str]]:
     cycles: List[List[str]] = []
     path_stack: List[str] = []
     visited: Dict[str, str] = {}
+    start_time = time.time()
 
     def dfs(node: str):
+        if time.time() - start_time > time_limit:
+            return
+        if len(path_stack) > max_depth:
+            return
         if len(cycles) >= limit:
             return
         visited[node] = "visiting"
@@ -419,6 +489,8 @@ def _find_cycles(graph: Dict[str, List[str]], limit: int = 10) -> List[List[str]
     for node in graph:
         if visited.get(node) is None:
             dfs(node)
+        if len(cycles) >= limit or time.time() - start_time > time_limit:
+            break
 
     return cycles
 
@@ -646,6 +718,28 @@ def detect_anti_patterns(
     }
 
 
+def _count_python_docstrings(files: List[str]) -> int:
+    count = 0
+    for path in files:
+        if Path(path).suffix != ".py":
+            continue
+        content = _read_file_text(path)
+        if not content:
+            continue
+        try:
+            tree = ast.parse(content)
+        except Exception:
+            continue
+
+        if ast.get_docstring(tree):
+            count += 1
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if ast.get_docstring(node):
+                    count += 1
+    return count
+
+
 def health_score(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
@@ -665,13 +759,16 @@ def health_score(
 
     doc_files = [path for path in files if Path(path).suffix in {".md", ".rst"}]
     doc_coverage = min(len(doc_files) / max(total_files, 1), 1.0)
+    docstring_count = _count_python_docstrings(files)
+    py_files = [path for path in files if Path(path).suffix == ".py"]
+    docstring_coverage = min(docstring_count / max(len(py_files), 1), 1.0)
 
     test_files = [path for path in files if "test" in Path(path).name.lower()]
     test_coverage = min(len(test_files) / max(total_files, 1), 1.0)
 
     modularity_score = max(0, 100 - avg_files_per_dir * 2)
     coupling_score = max(0, 100 - coupling * 5)
-    documentation_score = doc_coverage * 100
+    documentation_score = (doc_coverage * 0.6 + docstring_coverage * 0.4) * 100
     testing_score = test_coverage * 100
 
     overall = (modularity_score + coupling_score + documentation_score + testing_score) / 4
@@ -685,6 +782,8 @@ def health_score(
             "testing": round(testing_score, 2),
             "avg_files_per_dir": round(avg_files_per_dir, 2),
             "avg_dependencies": round(coupling, 2),
+            "doc_files": len(doc_files),
+            "docstrings": docstring_count,
         },
     }
 

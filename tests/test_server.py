@@ -9,14 +9,16 @@ from src.server import create_app
 @pytest.fixture
 def patched_settings(mocker):
     mocker.patch("src.server.initialize_settings")
-    settings = ArchitextSettings(storage_path="./test-storage")
+    settings = ArchitextSettings(storage_path="./test-storage", task_store_path="./test-task-store.json")
     return settings
 
 
 def test_index_endpoint_inline(mocker, tmp_path, patched_settings):
     mocker.patch("src.server.resolve_source", return_value=tmp_path)
-    mocker.patch("src.server.load_documents", return_value=[Mock()])
-    mocker.patch("src.server.create_index")
+    mocker.patch("src.server.gather_index_files", return_value=[str(tmp_path / "a.py")])
+    mocker.patch("src.server.create_index_from_paths")
+    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.allowed_storage_roots = str(tmp_path)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)

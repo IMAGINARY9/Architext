@@ -123,18 +123,17 @@ class DryRunIndexer:
             Preview information.
         """
         from src.ingestor import resolve_source
-        from src.indexer import load_documents
+        from src.indexer import gather_index_files
 
         try:
             repo_path = resolve_source(source, use_cache=True)
             self.logger.debug(f"Resolved source: {repo_path}")
 
-            docs = load_documents(str(repo_path))
-            self.document_count = len(docs)
+            file_paths = gather_index_files(str(repo_path))
+            self.document_count = len(file_paths)
 
             # Collect file type statistics
-            for doc in docs:
-                file_path = doc.metadata.get("file_path", "unknown")
+            for file_path in file_paths:
                 ext = Path(file_path).suffix or "no-extension"
                 self.file_types[ext] = self.file_types.get(ext, 0) + 1
 
