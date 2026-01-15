@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 import os
 import threading
 import time
@@ -506,7 +507,22 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         _update_task(task_id, {"future": future})
         return task_id
 
-    app = FastAPI(title="Architext API", version="0.2.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        try:
+            yield
+        finally:
+            with lock:
+                for task_id, payload in task_store.items():
+                    future = payload.get("future")
+                    if future is not None and not future.done():
+                        future.cancel()
+                    if payload.get("status") in {"queued", "running"}:
+                        payload["status"] = "stale"
+                        payload["note"] = "Server shutdown before completion"
+                _persist_task_store(task_store_path, task_store)
+
+    app = FastAPI(title="Architext API", version="0.2.0", lifespan=lifespan)
     app.state.task_store = task_store
     app.state.settings = base_settings
     app.state.executor = executor
@@ -524,18 +540,6 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                     content={"detail": "Rate limit exceeded. Try again later."},
                 )
             return await call_next(request)
-
-    @app.on_event("shutdown")
-    async def _shutdown_cleanup():
-        with lock:
-            for task_id, payload in task_store.items():
-                future = payload.get("future")
-                if future is not None and not future.done():
-                    future.cancel()
-                if payload.get("status") in {"queued", "running"}:
-                    payload["status"] = "stale"
-                    payload["note"] = "Server shutdown before completion"
-            _persist_task_store(task_store_path, task_store)
 
     @app.get("/health")
     async def health() -> Dict[str, str]:
