@@ -9,7 +9,7 @@ import time
 from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import chromadb
 
@@ -52,6 +52,85 @@ ALLOWED_ANALYSIS_BASENAMES = {
     "dockerfile",
     "makefile",
 }
+
+SECURITY_RULES = [
+    {
+        "id": "py-open-user-input",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(
+            r"\bopen\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
+            re.IGNORECASE,
+        ),
+        "description": "Potential file operation with user-controlled input",
+    },
+    {
+        "id": "py-path-read-user-input",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(
+            r"\b(read_text|read_bytes)\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
+            re.IGNORECASE,
+        ),
+        "description": "Potential file read with user-controlled input",
+    },
+    {
+        "id": "py-subprocess-user-input",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(
+            r"\b(subprocess\.run|subprocess\.popen|os\.system)\([^)]*(request|input|user|params|query)[^)]*\)",
+            re.IGNORECASE,
+        ),
+        "description": "Potential command execution using user input",
+    },
+    {
+        "id": "py-eval-exec",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(r"\b(eval|exec)\(.*\)", re.IGNORECASE),
+        "description": "Dynamic code execution detected",
+    },
+    {
+        "id": "js-fs-user-input",
+        "severity": "high",
+        "extensions": {".js", ".ts", ".jsx", ".tsx"},
+        "pattern": re.compile(
+            r"\bfs\.(readFile|readFileSync|writeFile|writeFileSync|createReadStream|createWriteStream)\(.*(req\.|request|params|query|body)\b",
+            re.IGNORECASE,
+        ),
+        "description": "Potential fs operation with request data",
+    },
+    {
+        "id": "hardcoded-secret",
+        "severity": "medium",
+        "extensions": None,
+        "pattern": re.compile(
+            r"\b(api_key|secret|password|token|access_key)\b\s*[:=]\s*['\"][^'\"]{6,}['\"]",
+            re.IGNORECASE,
+        ),
+        "description": "Potential hardcoded secret",
+    },
+]
+
+SEMANTIC_VULNERABILITY_QUERIES = [
+    {
+        "id": "unvalidated-file-io",
+        "prompt": "Where is user input passed into file operations without validation?",
+    },
+    {
+        "id": "path-traversal",
+        "prompt": "Find any code that constructs file paths from user input without sanitizing traversal like ..",
+    },
+    {
+        "id": "silent-exceptions",
+        "prompt": "Locate try/except blocks that swallow errors without logging or re-throwing.",
+    },
+    {
+        "id": "dynamic-code-exec",
+        "prompt": "Find dynamic code execution (eval/exec) or unsafe command execution paths.",
+    },
+]
 
 
 FRAMEWORK_PATTERNS = {
@@ -236,6 +315,40 @@ def _read_file_text(path: str, max_bytes: int = 200_000) -> str:
         data = Path(path).read_bytes()
     except Exception:
         return ""
+
+
+def _line_number_from_index(text: str, idx: int) -> int:
+    return text[:idx].count("\n") + 1
+
+
+def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict[str, Any]]:
+    findings: List[Dict[str, Any]] = []
+    for path in files:
+        suffix = Path(path).suffix.lower()
+        content = _read_file_text(path)
+        if not content:
+            continue
+        lines = content.splitlines()
+        for idx, line in enumerate(lines, start=1):
+            for rule in SECURITY_RULES:
+                extensions = rule.get("extensions")
+                if extensions and suffix not in extensions:
+                    continue
+                pattern = rule.get("pattern")
+                if pattern and pattern.search(line):
+                    findings.append(
+                        {
+                            "rule_id": rule.get("id"),
+                            "severity": rule.get("severity"),
+                            "description": rule.get("description"),
+                            "file": path,
+                            "line": idx,
+                            "snippet": line.strip()[:300],
+                        }
+                    )
+                    if len(findings) >= max_findings:
+                        return findings
+    return findings
     if len(data) > max_bytes:
         data = data[:max_bytes]
     try:
@@ -1028,4 +1141,206 @@ def onboarding_guide(
         "entry_points": entry_points,
         "suggestions": suggestions,
         "root_files": root_files[:50],
+    }
+
+
+def security_heuristics(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    max_findings: int = 500,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+    _progress(progress_callback, {"stage": "analyze", "message": "Scanning for heuristic matches"})
+
+    findings = _scan_security_rules(files, max_findings=max_findings)
+    severity_counts = Counter(item.get("severity", "unknown") for item in findings)
+    rule_counts = Counter(item.get("rule_id", "unknown") for item in findings)
+
+    return {
+        "findings": findings,
+        "counts": {
+            "total": len(findings),
+            "by_severity": dict(severity_counts),
+            "by_rule": dict(rule_counts),
+        },
+    }
+
+
+def detect_vulnerabilities(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    heuristics = security_heuristics(
+        storage_path=storage_path,
+        source_path=source_path,
+        progress_callback=progress_callback,
+    )
+
+    semantic_results = []
+    semantic_enabled = False
+    semantic_error = None
+
+    if storage_path:
+        try:
+            from src.indexer import load_existing_index, query_index, initialize_settings
+            from src.config import load_settings
+            from src.cli_utils import extract_sources
+
+            initialize_settings(load_settings())
+            index = load_existing_index(storage_path)
+            semantic_enabled = True
+            for query in SEMANTIC_VULNERABILITY_QUERIES:
+                response = query_index(index, query["prompt"])
+                semantic_results.append(
+                    {
+                        "id": query["id"],
+                        "prompt": query["prompt"],
+                        "answer": str(response),
+                        "sources": extract_sources(response),
+                    }
+                )
+        except Exception as exc:  # pylint: disable=broad-except
+            semantic_error = str(exc)
+
+    return {
+        "heuristics": heuristics,
+        "semantic": semantic_results,
+        "semantic_enabled": semantic_enabled,
+        "semantic_error": semantic_error,
+    }
+
+
+def logic_gap_analysis(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+
+    config_file = None
+    settings_fields: List[Tuple[str, int]] = []
+    for path in files:
+        if Path(path).name.lower() != "config.py":
+            continue
+        content = _read_file_text(path)
+        if "ArchitextSettings" not in content:
+            continue
+        try:
+            tree = ast.parse(content)
+        except Exception:
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef) and node.name == "ArchitextSettings":
+                for item in node.body:
+                    if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
+                        settings_fields.append((item.target.id, item.lineno))
+                    elif isinstance(item, ast.Assign):
+                        for target in item.targets:
+                            if isinstance(target, ast.Name):
+                                settings_fields.append((target.id, item.lineno))
+        if settings_fields:
+            config_file = path
+            break
+
+    if not settings_fields:
+        return {
+            "note": "No ArchitextSettings fields found",
+            "config_file": config_file,
+            "unused_settings": [],
+        }
+
+    used = set()
+    candidate_files = [path for path in files if Path(path).suffix == ".py" and path != config_file]
+    for path in candidate_files:
+        content = _read_file_text(path)
+        if not content:
+            continue
+        for field, _lineno in settings_fields:
+            if field in used:
+                continue
+            if re.search(rf"\b{re.escape(field)}\b", content):
+                used.add(field)
+
+    unused = [
+        {"name": field, "defined_at": lineno}
+        for field, lineno in settings_fields
+        if field not in used
+    ]
+
+    return {
+        "config_file": config_file,
+        "settings_defined": len(settings_fields),
+        "settings_used": len(used),
+        "unused_settings": unused,
+    }
+
+
+def identify_silent_failures(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+    findings: List[Dict[str, Any]] = []
+
+    for path in files:
+        suffix = Path(path).suffix.lower()
+        content = _read_file_text(path)
+        if not content:
+            continue
+
+        if suffix == ".py":
+            lines = content.splitlines()
+            for idx, line in enumerate(lines):
+                if not re.match(r"\s*except\b", line):
+                    continue
+                if not line.rstrip().endswith(":"):
+                    continue
+                base_indent = len(line) - len(line.lstrip())
+                cursor = idx + 1
+                while cursor < len(lines):
+                    candidate = lines[cursor]
+                    if not candidate.strip() or candidate.lstrip().startswith("#"):
+                        cursor += 1
+                        continue
+                    indent = len(candidate) - len(candidate.lstrip())
+                    if indent <= base_indent:
+                        break
+                    stripped = candidate.strip()
+                    if stripped in {"pass", "continue", "return", "..."}:
+                        findings.append(
+                            {
+                                "file": path,
+                                "line": cursor + 1,
+                                "severity": "medium",
+                                "type": "silent_exception",
+                                "snippet": stripped,
+                            }
+                        )
+                    break
+        elif suffix in {".js", ".ts", ".jsx", ".tsx"}:
+            for match in re.finditer(
+                r"catch\s*\([^\)]*\)\s*\{\s*(?:\/\*.*?\*\/\s*|\/\/.*?\n\s*)*\}",
+                content,
+                re.IGNORECASE | re.DOTALL,
+            ):
+                line = _line_number_from_index(content, match.start())
+                findings.append(
+                    {
+                        "file": path,
+                        "line": line,
+                        "severity": "medium",
+                        "type": "silent_exception",
+                        "snippet": "empty catch block",
+                    }
+                )
+
+    return {
+        "findings": findings,
+        "count": len(findings),
     }

@@ -182,10 +182,10 @@
 *Current methods (regex/heuristics) miss logic flaws; Phase 3 transforms Architext into a "Code Reasoner" that can perform deep audits.*
 
 ### 3.1 Active Auditing Suite (Semantic Tasks)
-*   [ ] **`detect-vulnerabilities`**: Query the index for semantic risks (e.g., "Where is user input passed to file operations without validation?").
-*   [ ] **`logic-gap-analysis`**: Compare interface vs. implementation (e.g., "Which config options are defined but never used in the logic flow?").
-*   [ ] **`identify-silent-failures`**: Use LLM reasoning to find exception swallowing and inadequate error handling paths.
-*   [ ] **`security-heuristics`**: Add regex-based security matchers (Phase 2.5 extension) for `read_bytes(user_input)`, hardcoded keys, and inadequate sanitization.
+*   [x] **`detect-vulnerabilities`**: Query the index for semantic risks (e.g., "Where is user input passed to file operations without validation?").
+*   [x] **`logic-gap-analysis`**: Compare interface vs. implementation (e.g., "Which config options are defined but never used in the logic flow?").
+*   [x] **`identify-silent-failures`**: Use LLM reasoning to find exception swallowing and inadequate error handling paths.
+*   [x] **`security-heuristics`**: Add regex-based security matchers (Phase 2.5 extension) for `read_bytes(user_input)`, hardcoded keys, and inadequate sanitization.
 
 ### 3.2 Advanced Retrieval & Parsing
 *   [ ] **Logical/Intent-Based Chunking**: Integrate `tree-sitter` to index by logical block (full functions/classes) instead of arbitrary token counts.

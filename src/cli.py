@@ -28,6 +28,10 @@ from src.tasks import (
     architecture_pattern_detection,
     diff_architecture_review,
     onboarding_guide,
+    detect_vulnerabilities,
+    logic_gap_analysis,
+    identify_silent_failures,
+    security_heuristics,
 )
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
@@ -217,6 +221,22 @@ def _build_parser():
     onboard_parser.add_argument("--storage", help="Path to load the vector DB from")
     onboard_parser.add_argument("--source", help="Source repo path (if not using storage)")
 
+    vuln_parser = subparsers.add_parser("detect-vulnerabilities", help="Semantic + heuristic vulnerability sweep")
+    vuln_parser.add_argument("--storage", help="Path to load the vector DB from")
+    vuln_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    logic_parser = subparsers.add_parser("logic-gap-analysis", help="Find defined but unused config settings")
+    logic_parser.add_argument("--storage", help="Path to load the vector DB from")
+    logic_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    silent_parser = subparsers.add_parser("identify-silent-failures", help="Find silent exception handling")
+    silent_parser.add_argument("--storage", help="Path to load the vector DB from")
+    silent_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
+    sec_parser = subparsers.add_parser("security-heuristics", help="Run regex-based security heuristics")
+    sec_parser.add_argument("--storage", help="Path to load the vector DB from")
+    sec_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
     return parser
 
 
@@ -284,6 +304,10 @@ def main():
         "detect-patterns",
         "diff-architecture",
         "onboarding-guide",
+        "detect-vulnerabilities",
+        "logic-gap-analysis",
+        "identify-silent-failures",
+        "security-heuristics",
     }:
         settings = load_settings(env_file=args.env_file)
         storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
@@ -410,6 +434,38 @@ def main():
 
         if args.command == "onboarding-guide":
             result = onboarding_guide(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "detect-vulnerabilities":
+            result = detect_vulnerabilities(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "logic-gap-analysis":
+            result = logic_gap_analysis(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "identify-silent-failures":
+            result = identify_silent_failures(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "security-heuristics":
+            result = security_heuristics(
                 storage_path=storage_path if not args.source else None,
                 source_path=args.source,
             )

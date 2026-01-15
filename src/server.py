@@ -38,6 +38,10 @@ from src.tasks import (
     architecture_pattern_detection,
     diff_architecture_review,
     onboarding_guide,
+    detect_vulnerabilities,
+    logic_gap_analysis,
+    identify_silent_failures,
+    security_heuristics,
 )
 
 
@@ -368,6 +372,30 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                         output_dir=_resolve_output_dir(payload.output_dir),
                         progress_callback=progress_update,
                     )
+                elif task_name == "detect-vulnerabilities":
+                    result = detect_vulnerabilities(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=_resolve_task_source(payload.source, source_roots),
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "logic-gap-analysis":
+                    result = logic_gap_analysis(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=_resolve_task_source(payload.source, source_roots),
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "identify-silent-failures":
+                    result = identify_silent_failures(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=_resolve_task_source(payload.source, source_roots),
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "security-heuristics":
+                    result = security_heuristics(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=_resolve_task_source(payload.source, source_roots),
+                        progress_callback=progress_update,
+                    )
                 else:
                     raise ValueError("Unknown task")
 
@@ -637,6 +665,62 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             source_path=_resolve_task_source(request.source, source_roots),
         )
         _update_task(task_id, {"status": "completed", "result": result, "task": "onboarding-guide"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/detect-vulnerabilities", status_code=202)
+    async def detect_vulnerabilities_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("detect-vulnerabilities", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = detect_vulnerabilities(
+            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
+            source_path=_resolve_task_source(request.source, source_roots),
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "detect-vulnerabilities"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/logic-gap-analysis", status_code=202)
+    async def logic_gap_analysis_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("logic-gap-analysis", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = logic_gap_analysis(
+            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
+            source_path=_resolve_task_source(request.source, source_roots),
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "logic-gap-analysis"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/identify-silent-failures", status_code=202)
+    async def identify_silent_failures_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("identify-silent-failures", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = identify_silent_failures(
+            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
+            source_path=_resolve_task_source(request.source, source_roots),
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "identify-silent-failures"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/security-heuristics", status_code=202)
+    async def security_heuristics_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("security-heuristics", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = security_heuristics(
+            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
+            source_path=_resolve_task_source(request.source, source_roots),
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "security-heuristics"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
     @app.post("/query")
