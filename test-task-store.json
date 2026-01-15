@@ -1,0 +1,98 @@
+{
+  "cbcf9b88-e483-4492-88b4-be341d5a492b": {
+    "status": "completed",
+    "storage_path": "C:\\Users\\tusik\\AppData\\Local\\Temp\\pytest-of-tusik\\pytest-49\\test_index_endpoint_inline0",
+    "progress": {
+      "stage": "resolving",
+      "message": "Resolving source..."
+    },
+    "documents": 1
+  },
+  "25e5a0c7-544f-4294-ad19-8c54e4a98e8f": {
+    "status": "completed",
+    "result": {
+      "format": "json",
+      "summary": {}
+    },
+    "task": "analyze-structure"
+  },
+  "ddeb92ca-56d2-4985-88ba-4957f9a13b68": {
+    "status": "completed",
+    "result": {
+      "format": "json",
+      "data": {}
+    },
+    "task": "tech-stack"
+  },
+  "e7dde3cd-e147-42a1-b278-1d2df1197304": {
+    "status": "completed",
+    "result": {
+      "issues": []
+    },
+    "task": "detect-anti-patterns"
+  },
+  "cdc0e2c0-3fb2-467f-bfd4-14b5a228f20a": {
+    "status": "completed",
+    "result": {
+      "score": 80
+    },
+    "task": "health-score"
+  },
+  "3add48b3-85e8-4126-b88e-df8e4c916463": {
+    "status": "completed",
+    "result": {
+      "affected": []
+    },
+    "task": "impact-analysis"
+  },
+  "0d4f7b91-cac1-4c9e-97f7-33f49da05aa1": {
+    "status": "completed",
+    "result": {
+      "recommendations": []
+    },
+    "task": "refactoring-recommendations"
+  },
+  "8c1f1ab4-33b6-4c77-a155-448f9cf9f1d3": {
+    "status": "completed",
+    "result": {
+      "outputs": []
+    },
+    "task": "generate-docs"
+  },
+  "e3d943a4-6fa6-4592-ba84-8a324401df3a": {
+    "status": "completed",
+    "result": {
+      "format": "mermaid"
+    },
+    "task": "dependency-graph"
+  },
+  "4d218a75-8f66-4a0f-a625-14495ba5de88": {
+    "status": "completed",
+    "result": {
+      "coverage_ratio": 0.5
+    },
+    "task": "test-coverage"
+  },
+  "f0926c6b-cc8b-46c0-8466-6ebd8073ad9d": {
+    "status": "completed",
+    "result": {
+      "patterns": []
+    },
+    "task": "detect-patterns"
+  },
+  "caf37bde-c736-4df3-85d5-85b1c4360024": {
+    "status": "completed",
+    "result": {
+      "added": [],
+      "removed": []
+    },
+    "task": "diff-architecture"
+  },
+  "f882adca-e85b-42d4-ae6c-9064eefe0ed7": {
+    "status": "completed",
+    "result": {
+      "entry_points": []
+    },
+    "task": "onboarding-guide"
+  }
+}
