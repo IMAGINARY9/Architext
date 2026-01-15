@@ -188,12 +188,12 @@
 *   [x] **`security-heuristics`**: Add regex-based security matchers (Phase 2.5 extension) for `read_bytes(user_input)`, hardcoded keys, and inadequate sanitization.
 
 ### 3.2 Advanced Retrieval & Parsing
-*   [ ] **Logical/Intent-Based Chunking**: Integrate `tree-sitter` to index by logical block (full functions/classes) instead of arbitrary token counts.
-*   [ ] **AST-Based Dependency Graph**: Replace fragile regex import parsing with proper AST traversal for precise impact analysis.
-*   [ ] **Code Knowledge Graph**: Map function calls and variable usage to enable "deep" impact analysis and cross-file reasoning.
+*   [x] **Logical/Intent-Based Chunking**: Integrate `tree-sitter` to index by logical block (full functions/classes) instead of arbitrary token counts.
+*   [x] **AST-Based Dependency Graph**: Replace fragile regex import parsing with proper AST traversal for precise impact analysis.
+*   [x] **Code Knowledge Graph**: Map function calls and variable usage to enable "deep" impact analysis and cross-file reasoning.
 
 ### 3.3 Infrastructure Scale
-*   [ ] **Remote Vector Stores**: Adapters for Pinecone/Qdrant/Weaviate for cloud scaling.
+*   [x] **Remote Vector Stores**: Adapters for Pinecone/Qdrant/Weaviate for cloud scaling.
 
 ### 3.4 Agent-Native Orchestration
 *   [ ] **Direct Agent Interface (`ask` command)**: A unified CLI/API entry point for agents to perform custom queries without pre-defined tasks.

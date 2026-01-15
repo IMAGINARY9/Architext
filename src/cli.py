@@ -32,6 +32,7 @@ from src.tasks import (
     logic_gap_analysis,
     identify_silent_failures,
     security_heuristics,
+    code_knowledge_graph,
 )
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
@@ -237,6 +238,10 @@ def _build_parser():
     sec_parser.add_argument("--storage", help="Path to load the vector DB from")
     sec_parser.add_argument("--source", help="Source repo path (if not using storage)")
 
+    knowledge_parser = subparsers.add_parser("code-knowledge-graph", help="Generate code knowledge graph")
+    knowledge_parser.add_argument("--storage", help="Path to load the vector DB from")
+    knowledge_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
     return parser
 
 
@@ -308,6 +313,7 @@ def main():
         "logic-gap-analysis",
         "identify-silent-failures",
         "security-heuristics",
+        "code-knowledge-graph",
     }:
         settings = load_settings(env_file=args.env_file)
         storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
@@ -472,6 +478,14 @@ def main():
             _print_task_result(result)
             return
 
+        if args.command == "code-knowledge-graph":
+            result = code_knowledge_graph(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
     # All other commands need settings and LLM init
     try:
         settings = load_settings(env_file=args.env_file)
@@ -524,7 +538,7 @@ def main():
             logger.info(f"Starting indexing for: {source_path}")
             file_paths = gather_index_files(str(source_path))
             logger.info(f"Found {len(file_paths)} files to index")
-            create_index_from_paths(file_paths, storage_path)
+            create_index_from_paths(file_paths, storage_path, settings=settings)
             logger.info(f"Indexing complete! Data saved to {storage_path}")
         except Exception as e:
             logger.error(f"Error during indexing: {e}")

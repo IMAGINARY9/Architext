@@ -42,6 +42,7 @@ from src.tasks import (
     logic_gap_analysis,
     identify_silent_failures,
     security_heuristics,
+    code_knowledge_graph,
 )
 
 
@@ -276,7 +277,12 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 )
                 return
 
-            create_index_from_paths(file_paths, storage_path, progress_callback=progress_update)
+            create_index_from_paths(
+                file_paths,
+                storage_path,
+                progress_callback=progress_update,
+                settings=task_settings,
+            )
             _update_task(
                 task_id,
                 {
@@ -392,6 +398,12 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                     )
                 elif task_name == "security-heuristics":
                     result = security_heuristics(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=_resolve_task_source(payload.source, source_roots),
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "code-knowledge-graph":
+                    result = code_knowledge_graph(
                         storage_path=storage_path if not payload.source else None,
                         source_path=_resolve_task_source(payload.source, source_roots),
                         progress_callback=progress_update,
@@ -721,6 +733,20 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             source_path=_resolve_task_source(request.source, source_roots),
         )
         _update_task(task_id, {"status": "completed", "result": result, "task": "security-heuristics"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
+    @app.post("/tasks/code-knowledge-graph", status_code=202)
+    async def code_knowledge_graph_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("code-knowledge-graph", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = code_knowledge_graph(
+            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
+            source_path=_resolve_task_source(request.source, source_roots),
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "code-knowledge-graph"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
     @app.post("/query")

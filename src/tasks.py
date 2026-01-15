@@ -167,6 +167,15 @@ def _gather_files_cached(source_path: str) -> tuple[str, ...]:
 
 
 def _load_files_from_storage(storage_path: str) -> List[str]:
+    try:
+        from src.config import load_settings
+    except Exception:
+        load_settings = None
+
+    if load_settings:
+        settings = load_settings()
+        if settings.vector_store_provider != "chroma":
+            raise ValueError("storage-based tasks require chroma vector store; use --source instead")
     client = chromadb.PersistentClient(path=storage_path)
     collection = client.get_or_create_collection("architext_db")
     data = collection.get(include=["metadatas"])
@@ -317,6 +326,17 @@ def _read_file_text(path: str, max_bytes: int = 200_000) -> str:
         return ""
 
 
+def _get_ts_parser(language_name: str):
+    try:
+        from tree_sitter_languages import get_parser  # type: ignore[import-not-found]
+    except Exception:
+        return None
+    try:
+        return get_parser(language_name)
+    except Exception:
+        return None
+
+
 def _line_number_from_index(text: str, idx: int) -> int:
     return text[:idx].count("\n") + 1
 
@@ -406,6 +426,11 @@ def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:
     from llama_index.vector_stores.chroma import ChromaVectorStore
     from llama_index.core.schema import QueryBundle
     from src.indexer import _tokenize, _keyword_score
+    from src.config import load_settings
+
+    settings = load_settings()
+    if settings.vector_store_provider != "chroma":
+        raise ValueError("query_diagnostics requires chroma vector store")
 
     client = chromadb.PersistentClient(path=storage_path)
     collection = client.get_or_create_collection("architext_db")
@@ -478,6 +503,32 @@ def _extract_imports(path: str, content: str) -> List[str]:
                 elif module:
                     imports.append(module)
         return imports
+
+    language_map = {
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".ts": "typescript",
+        ".tsx": "tsx",
+        ".java": "java",
+    }
+    language = language_map.get(suffix)
+    parser = _get_ts_parser(language) if language else None
+    if parser:
+        imports: List[str] = []
+        tree = parser.parse(content.encode("utf-8", errors="ignore"))
+        root = tree.root_node
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if node.type in {"import_statement", "import_declaration"}:
+                statement = content[node.start_byte : node.end_byte]
+                match = re.search(r"['\"](.*?)['\"]", statement)
+                if match:
+                    imports.append(match.group(1))
+            for child in reversed(node.children):
+                stack.append(child)
+        if imports:
+            return imports
 
     patterns = IMPORT_PATTERNS.get(suffix, [])
     imports: List[str] = []
@@ -1141,6 +1192,94 @@ def onboarding_guide(
         "entry_points": entry_points,
         "suggestions": suggestions,
         "root_files": root_files[:50],
+    }
+
+
+def code_knowledge_graph(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    max_edges: int = 2000,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+    nodes: Dict[str, Dict[str, Any]] = {}
+    edges: List[Dict[str, Any]] = []
+    unsupported: List[str] = []
+
+    for path in files:
+        suffix = Path(path).suffix.lower()
+        if suffix != ".py":
+            if suffix in {".js", ".ts", ".tsx", ".jsx"}:
+                unsupported.append(path)
+            continue
+        content = _read_file_text(path)
+        if not content:
+            continue
+        try:
+            tree = ast.parse(content)
+        except Exception:
+            continue
+
+        function_stack: List[str] = []
+
+        class Visitor(ast.NodeVisitor):
+            def visit_ClassDef(self, node: ast.ClassDef):
+                name = f"{path}:{node.name}"
+                nodes[name] = {
+                    "id": name,
+                    "type": "class",
+                    "file": path,
+                    "line": node.lineno,
+                }
+                function_stack.append(name)
+                self.generic_visit(node)
+                function_stack.pop()
+
+            def visit_FunctionDef(self, node: ast.FunctionDef):
+                parent = function_stack[-1] if function_stack else None
+                name = f"{path}:{node.name}"
+                nodes[name] = {
+                    "id": name,
+                    "type": "function",
+                    "file": path,
+                    "line": node.lineno,
+                }
+                if parent:
+                    edges.append({"source": parent, "target": name, "type": "defines"})
+                function_stack.append(name)
+                self.generic_visit(node)
+                function_stack.pop()
+
+            def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+                self.visit_FunctionDef(node)
+
+            def visit_Call(self, node: ast.Call):
+                if len(edges) >= max_edges:
+                    return
+                caller = function_stack[-1] if function_stack else f"{path}:<module>"
+                if caller not in nodes:
+                    nodes[caller] = {
+                        "id": caller,
+                        "type": "module",
+                        "file": path,
+                        "line": 1,
+                    }
+                callee = None
+                if isinstance(node.func, ast.Name):
+                    callee = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    callee = node.func.attr
+                if callee:
+                    edges.append({"source": caller, "target": callee, "type": "calls"})
+                self.generic_visit(node)
+
+        Visitor().visit(tree)
+
+    return {
+        "nodes": list(nodes.values()),
+        "edges": edges[:max_edges],
+        "unsupported_files": unsupported[:50],
     }
 
 

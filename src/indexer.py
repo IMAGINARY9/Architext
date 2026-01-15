@@ -1,10 +1,10 @@
 import os
 import re
 from pathlib import Path
-from typing import Optional, List, Dict, Iterable, Iterator
+from typing import Optional, List, Dict, Iterable, Iterator, Tuple, TYPE_CHECKING
 
 import chromadb
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings, Document
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
@@ -15,6 +15,9 @@ from llama_index.llms.openai_like import OpenAILike
 
 from src.config import ArchitextSettings, load_settings
 from src.file_filters import should_skip_path
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 
 def _build_llm(cfg: ArchitextSettings):
@@ -74,6 +77,67 @@ def initialize_settings(settings: Optional[ArchitextSettings] = None) -> Archite
     Settings.embed_model = _build_embedding(cfg)
 
     return cfg
+
+
+def _resolve_collection_name(cfg: ArchitextSettings) -> str:
+    return cfg.vector_store_collection or "architext_db"
+
+
+def _build_vector_store(cfg: ArchitextSettings, storage_path: str):
+    provider = cfg.vector_store_provider
+    collection = _resolve_collection_name(cfg)
+
+    if provider == "chroma":
+        db = chromadb.PersistentClient(path=storage_path)
+        chroma_collection = db.get_or_create_collection(collection)
+        return ChromaVectorStore(chroma_collection=chroma_collection)
+
+    if provider == "qdrant":
+        try:
+            from qdrant_client import QdrantClient  # type: ignore[import-not-found]
+            from llama_index.vector_stores.qdrant import QdrantVectorStore  # type: ignore[import-not-found]
+        except Exception as exc:  # pylint: disable=broad-except
+            raise RuntimeError(
+                "Qdrant adapter requires qdrant-client and llama-index-vector-stores-qdrant"
+            ) from exc
+        if not cfg.qdrant_url:
+            raise ValueError("QDRANT_URL is required for qdrant vector store")
+        client = QdrantClient(url=cfg.qdrant_url, api_key=cfg.qdrant_api_key)
+        return QdrantVectorStore(client=client, collection_name=collection)
+
+    if provider == "pinecone":
+        try:
+            from pinecone import Pinecone  # type: ignore[import-not-found]
+            from llama_index.vector_stores.pinecone import PineconeVectorStore  # type: ignore[import-not-found]
+        except Exception as exc:  # pylint: disable=broad-except
+            raise RuntimeError(
+                "Pinecone adapter requires pinecone-client and llama-index-vector-stores-pinecone"
+            ) from exc
+        if not cfg.pinecone_api_key or not cfg.pinecone_index_name:
+            raise ValueError("PINECONE_API_KEY and PINECONE_INDEX_NAME are required")
+        client = Pinecone(api_key=cfg.pinecone_api_key)
+        index = client.Index(cfg.pinecone_index_name)
+        return PineconeVectorStore(pinecone_index=index)
+
+    if provider == "weaviate":
+        try:
+            import weaviate  # type: ignore[import-not-found]
+            from llama_index.vector_stores.weaviate import WeaviateVectorStore  # type: ignore[import-not-found]
+        except Exception as exc:  # pylint: disable=broad-except
+            raise RuntimeError(
+                "Weaviate adapter requires weaviate-client and llama-index-vector-stores-weaviate"
+            ) from exc
+        if not cfg.weaviate_url:
+            raise ValueError("WEAVIATE_URL is required for weaviate vector store")
+        client = weaviate.Client(
+            url=cfg.weaviate_url,
+            auth_client_secret=weaviate.AuthApiKey(cfg.weaviate_api_key)
+            if cfg.weaviate_api_key
+            else None,
+        )
+        return WeaviateVectorStore(weaviate_client=client, index_name=collection)
+
+    raise ValueError(f"Unsupported vector store provider: {cfg.vector_store_provider}")
 
 INDEXABLE_EXTENSIONS = {
     ".py",
@@ -143,17 +207,132 @@ def gather_index_files(path: str, progress_callback=None) -> List[str]:
     return all_files
 
 
+def _get_ts_parser(language_name: str):
+    try:
+        from tree_sitter_languages import get_parser  # type: ignore[import-not-found]
+    except Exception:
+        return None
+    try:
+        return get_parser(language_name)
+    except Exception:
+        return None
+
+
+def _node_chunks_for_language(content: str, language_name: str) -> List[Tuple[int, int, str]]:
+    parser = _get_ts_parser(language_name)
+    if parser is None:
+        return []
+
+    tree = parser.parse(content.encode("utf-8", errors="ignore"))
+    root = tree.root_node
+    if language_name == "python":
+        target_types = {"function_definition", "class_definition"}
+    elif language_name in {"javascript", "typescript", "tsx"}:
+        target_types = {"function_declaration", "method_definition", "class_declaration"}
+    elif language_name == "java":
+        target_types = {"method_declaration", "class_declaration"}
+    elif language_name == "go":
+        target_types = {"function_declaration", "method_declaration", "type_declaration"}
+    else:
+        target_types = set()
+
+    if not target_types:
+        return []
+
+    chunks: List[Tuple[int, int, str]] = []
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type in target_types:
+            chunks.append((node.start_byte, node.end_byte, node.type))
+        for child in reversed(node.children):
+            stack.append(child)
+    return chunks
+
+
+def _documents_from_paths_logical(file_paths: List[str], cfg: ArchitextSettings) -> List[Document]:
+    documents: List[Document] = []
+    max_chars = max(2000, cfg.chunk_size * 6)
+
+    language_by_ext = {
+        ".py": "python",
+        ".js": "javascript",
+        ".ts": "typescript",
+        ".tsx": "tsx",
+        ".jsx": "javascript",
+        ".java": "java",
+        ".go": "go",
+    }
+
+    for path in file_paths:
+        try:
+            text = Path(path).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        suffix = Path(path).suffix.lower()
+        language = language_by_ext.get(suffix)
+        chunks = _node_chunks_for_language(text, language) if language else []
+
+        if not chunks:
+            if text:
+                documents.append(Document(text=text, metadata={"file_path": str(path)}))
+            continue
+
+        for start, end, chunk_type in chunks:
+            chunk_text = text[start:end]
+            if not chunk_text.strip():
+                continue
+            start_line = text[:start].count("\n") + 1
+            end_line = text[:end].count("\n") + 1
+
+            if len(chunk_text) > max_chars:
+                for offset in range(0, len(chunk_text), max_chars):
+                    slice_text = chunk_text[offset : offset + max_chars]
+                    slice_start_line = start_line + chunk_text[:offset].count("\n")
+                    slice_end_line = slice_start_line + slice_text.count("\n")
+                    documents.append(
+                        Document(
+                            text=slice_text,
+                            metadata={
+                                "file_path": str(path),
+                                "start_line": slice_start_line,
+                                "end_line": slice_end_line,
+                                "chunk_type": chunk_type,
+                                "slice_offset": offset,
+                            },
+                        )
+                    )
+            else:
+                documents.append(
+                    Document(
+                        text=chunk_text,
+                        metadata={
+                            "file_path": str(path),
+                            "start_line": start_line,
+                            "end_line": end_line,
+                            "chunk_type": chunk_type,
+                        },
+                    )
+                )
+    return documents
+
+
 def iter_document_batches(
     file_paths: List[str],
     batch_size: int = 500,
     progress_callback=None,
+    settings: Optional[ArchitextSettings] = None,
 ) -> Iterator[List]:
     """Yield documents in batches to avoid loading everything into memory."""
     total_files = len(file_paths)
+    active_settings = settings or load_settings()
     for start in range(0, total_files, batch_size):
         batch_files = file_paths[start : start + batch_size]
-        reader = SimpleDirectoryReader(input_files=batch_files)
-        documents = reader.load_data()
+        if active_settings.chunking_strategy == "logical":
+            documents = _documents_from_paths_logical(batch_files, active_settings)
+        else:
+            reader = SimpleDirectoryReader(input_files=batch_files)
+            documents = reader.load_data()
         if progress_callback:
             progress_callback(
                 {
@@ -184,12 +363,8 @@ def create_index(documents, storage_path="./storage", progress_callback=None):
     if progress_callback:
         progress_callback({"stage": "indexing", "message": "Initializing vector store..."})
     
-    # Create Chroma Client
-    db = chromadb.PersistentClient(path=storage_path)
-    chroma_collection = db.get_or_create_collection("architext_db")
-    
-    # Create Vector Store
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    settings = load_settings()
+    vector_store = _build_vector_store(settings, storage_path)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
     
     print("Creating VectorStoreIndex (this may take a while)...")
@@ -213,6 +388,7 @@ def create_index_from_paths(
     storage_path: str = "./storage",
     batch_size: int = 500,
     progress_callback=None,
+    settings: Optional[ArchitextSettings] = None,
 ):
     """Create an index from file paths using batched document loading."""
     if not file_paths:
@@ -221,12 +397,16 @@ def create_index_from_paths(
     if progress_callback:
         progress_callback({"stage": "indexing", "message": "Initializing vector store..."})
 
-    db = chromadb.PersistentClient(path=storage_path)
-    chroma_collection = db.get_or_create_collection("architext_db")
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    active_settings = settings or load_settings()
+    vector_store = _build_vector_store(active_settings, storage_path)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    batches = iter_document_batches(file_paths, batch_size=batch_size, progress_callback=progress_callback)
+    batches = iter_document_batches(
+        file_paths,
+        batch_size=batch_size,
+        progress_callback=progress_callback,
+        settings=active_settings,
+    )
     try:
         first_batch = next(batches)
     except StopIteration as exc:
@@ -260,10 +440,9 @@ def create_index_from_paths(
 
 def load_existing_index(storage_path="./storage"):
     """Load an existing index from ChromaDB."""
-    print(f"Loading existing index from {storage_path}...")
-    db = chromadb.PersistentClient(path=storage_path)
-    chroma_collection = db.get_or_create_collection("architext_db")
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    settings = load_settings()
+    print(f"Loading existing index from {storage_path} (provider={settings.vector_store_provider})...")
+    vector_store = _build_vector_store(settings, storage_path)
     
     index = VectorStoreIndex.from_vector_store(
         vector_store=vector_store,

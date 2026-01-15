@@ -33,6 +33,9 @@ class ArchitextSettings(BaseSettings):
     # Retrieval knobs
     chunk_size: int = Field(default=512, alias="CHUNK_SIZE")
     top_k: int = Field(default=5, alias="TOP_K")
+    chunking_strategy: Literal["logical", "file"] = Field(
+        default="logical", alias="CHUNKING_STRATEGY"
+    )
 
     # Retrieval enhancements
     enable_rerank: bool = Field(default=False, alias="ENABLE_RERANK")
@@ -45,6 +48,16 @@ class ArchitextSettings(BaseSettings):
 
     # Storage
     storage_path: str = Field(default="./storage", alias="STORAGE_PATH")
+    vector_store_provider: Literal["chroma", "qdrant", "pinecone", "weaviate"] = Field(
+        default="chroma", alias="VECTOR_STORE_PROVIDER"
+    )
+    vector_store_collection: str = Field(default="architext_db", alias="VECTOR_STORE_COLLECTION")
+    qdrant_url: Optional[str] = Field(default=None, alias="QDRANT_URL")
+    qdrant_api_key: Optional[str] = Field(default=None, alias="QDRANT_API_KEY")
+    pinecone_api_key: Optional[str] = Field(default=None, alias="PINECONE_API_KEY")
+    pinecone_index_name: Optional[str] = Field(default=None, alias="PINECONE_INDEX_NAME")
+    weaviate_url: Optional[str] = Field(default=None, alias="WEAVIATE_URL")
+    weaviate_api_key: Optional[str] = Field(default=None, alias="WEAVIATE_API_KEY")
 
     # Server security & limits
     rate_limit_per_minute: int = Field(default=120, alias="RATE_LIMIT_PER_MINUTE")
