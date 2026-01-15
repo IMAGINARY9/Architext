@@ -33,9 +33,17 @@ from src.tasks import (
     identify_silent_failures,
     security_heuristics,
     code_knowledge_graph,
+    synthesis_roadmap,
 )
 from src.ingestor import resolve_source, cleanup_cache
-from src.cli_utils import VerboseLogger, format_response, get_available_models_info, DryRunIndexer
+from src.cli_utils import (
+    VerboseLogger,
+    format_response,
+    get_available_models_info,
+    DryRunIndexer,
+    to_agent_response,
+    to_agent_response_compact,
+)
 
 def _build_parser():
     parser = argparse.ArgumentParser(description="Architext CLI: Local Codebase RAG")
@@ -115,6 +123,39 @@ def _build_parser():
         help="Cross-encoder model name for reranking",
     )
     query_parser.add_argument(
+        "--rerank-top-n",
+        type=int,
+        help="Number of top results to rerank",
+    )
+
+    ask_parser = subparsers.add_parser("ask", help="Agent-optimized query")
+    ask_parser.add_argument("text", help="The question/query string")
+    ask_parser.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
+    ask_parser.add_argument(
+        "--compact",
+        action="store_true",
+        help="Return compact agent schema output",
+    )
+    ask_parser.add_argument(
+        "--enable-hybrid",
+        action="store_true",
+        help="Enable hybrid keyword+vector scoring for this query",
+    )
+    ask_parser.add_argument(
+        "--hybrid-alpha",
+        type=float,
+        help="Hybrid weight for vector score (0-1). Higher favors vectors",
+    )
+    ask_parser.add_argument(
+        "--enable-rerank",
+        action="store_true",
+        help="Enable cross-encoder reranking for this query",
+    )
+    ask_parser.add_argument(
+        "--rerank-model",
+        help="Cross-encoder model name for reranking",
+    )
+    ask_parser.add_argument(
         "--rerank-top-n",
         type=int,
         help="Number of top results to rerank",
@@ -242,6 +283,10 @@ def _build_parser():
     knowledge_parser.add_argument("--storage", help="Path to load the vector DB from")
     knowledge_parser.add_argument("--source", help="Source repo path (if not using storage)")
 
+    roadmap_parser = subparsers.add_parser("synthesis-roadmap", help="Generate synthesis refactor roadmap")
+    roadmap_parser.add_argument("--storage", help="Path to load the vector DB from")
+    roadmap_parser.add_argument("--source", help="Source repo path (if not using storage)")
+
     return parser
 
 
@@ -314,6 +359,7 @@ def main():
         "identify-silent-failures",
         "security-heuristics",
         "code-knowledge-graph",
+        "synthesis-roadmap",
     }:
         settings = load_settings(env_file=args.env_file)
         storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
@@ -486,6 +532,14 @@ def main():
             _print_task_result(result)
             return
 
+        if args.command == "synthesis-roadmap":
+            result = synthesis_roadmap(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+            )
+            _print_task_result(result)
+            return
+
     # All other commands need settings and LLM init
     try:
         settings = load_settings(env_file=args.env_file)
@@ -569,6 +623,34 @@ def main():
             print("="*40 + "\n")
         except Exception as e:
             logger.error(f"Error during querying: {e}")
+            sys.exit(1)
+
+    elif args.command == "ask":
+        storage_path = _resolve_storage(args.storage, settings.storage_path)
+        if args.enable_hybrid:
+            settings.enable_hybrid = True
+        if args.hybrid_alpha is not None:
+            settings.hybrid_alpha = args.hybrid_alpha
+        if args.enable_rerank:
+            settings.enable_rerank = True
+        if args.rerank_model:
+            settings.rerank_model = args.rerank_model
+        if args.rerank_top_n is not None:
+            settings.rerank_top_n = args.rerank_top_n
+        try:
+            logger.info(f"Loading index from: {storage_path}")
+            index = load_existing_index(storage_path)
+            logger.info("Generating agent response...")
+            response = query_index(index, args.text, settings=settings)
+
+            payload = (
+                to_agent_response_compact(response)
+                if args.compact
+                else to_agent_response(response)
+            )
+            print(json.dumps(payload, indent=2))
+        except Exception as e:
+            logger.error(f"Error during ask: {e}")
             sys.exit(1)
 
 

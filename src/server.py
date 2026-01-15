@@ -24,7 +24,7 @@ from src.indexer import (
     query_index,
 )
 from src.ingestor import resolve_source, CACHE_DIR
-from src.cli_utils import extract_sources, to_agent_response
+from src.cli_utils import extract_sources, to_agent_response, to_agent_response_compact
 from src.tasks import (
     analyze_structure,
     tech_stack,
@@ -43,6 +43,7 @@ from src.tasks import (
     identify_silent_failures,
     security_heuristics,
     code_knowledge_graph,
+    synthesis_roadmap,
 )
 
 
@@ -72,6 +73,18 @@ class QueryRequest(BaseModel):
     enable_rerank: Optional[bool] = None
     rerank_model: Optional[str] = None
     rerank_top_n: Optional[int] = None
+    compact: Optional[bool] = None
+
+
+class AskRequest(BaseModel):
+    text: str
+    storage: Optional[str] = None
+    compact: bool = True
+    enable_hybrid: Optional[bool] = None
+    hybrid_alpha: Optional[float] = None
+    enable_rerank: Optional[bool] = None
+    rerank_model: Optional[str] = None
+    rerank_top_n: Optional[int] = None
 
 
 class TaskRequest(BaseModel):
@@ -84,6 +97,11 @@ class TaskRequest(BaseModel):
     module: Optional[str] = None
     output_dir: Optional[str] = None
     background: bool = True
+
+
+class MCPRunRequest(BaseModel):
+    tool: str
+    arguments: Dict[str, Any] = Field(default_factory=dict)
 
 
 class _RateLimiter:
@@ -159,6 +177,196 @@ def _load_task_store(path: Path) -> Dict[str, Dict[str, Any]]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+    def _mcp_tools() -> List[Dict[str, Any]]:
+        return [
+            {
+                "name": "architext.query",
+                "description": "Query an index and return agent/human output.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"},
+                        "storage": {"type": "string"},
+                        "mode": {"type": "string", "enum": ["human", "agent"]},
+                        "compact": {"type": "boolean"},
+                        "enable_hybrid": {"type": "boolean"},
+                        "hybrid_alpha": {"type": "number"},
+                        "enable_rerank": {"type": "boolean"},
+                        "rerank_model": {"type": "string"},
+                        "rerank_top_n": {"type": "integer"},
+                    },
+                    "required": ["text"],
+                },
+            },
+            {
+                "name": "architext.ask",
+                "description": "Agent-optimized query with compact response support.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"},
+                        "storage": {"type": "string"},
+                        "compact": {"type": "boolean"},
+                        "enable_hybrid": {"type": "boolean"},
+                        "hybrid_alpha": {"type": "number"},
+                        "enable_rerank": {"type": "boolean"},
+                        "rerank_model": {"type": "string"},
+                        "rerank_top_n": {"type": "integer"},
+                    },
+                    "required": ["text"],
+                },
+            },
+            {
+                "name": "architext.task",
+                "description": "Run an analysis task synchronously.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "task": {"type": "string"},
+                        "storage": {"type": "string"},
+                        "source": {"type": "string"},
+                        "output_format": {"type": "string"},
+                        "depth": {"type": "string"},
+                        "module": {"type": "string"},
+                        "output_dir": {"type": "string"},
+                    },
+                    "required": ["task"],
+                },
+            },
+        ]
+
+    @app.get("/mcp/tools")
+    async def mcp_tools() -> Dict[str, Any]:
+        return {"tools": _mcp_tools()}
+
+    @app.post("/mcp/run")
+    async def mcp_run(request: MCPRunRequest) -> Dict[str, Any]:
+        tool = request.tool
+        args = request.arguments or {}
+
+        if tool == "architext.query":
+            payload = QueryRequest(**args)
+            return await run_query(payload)
+
+        if tool == "architext.ask":
+            payload = AskRequest(**args)
+            return await run_ask(payload)
+
+        if tool == "architext.task":
+            task_name = args.get("task")
+            payload = TaskRequest(
+                storage=args.get("storage"),
+                source=args.get("source"),
+                output_format=args.get("output_format", "json"),
+                depth=args.get("depth"),
+                module=args.get("module"),
+                output_dir=args.get("output_dir"),
+                background=False,
+            )
+
+            if task_name == "analyze-structure":
+                result = analyze_structure(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    depth=payload.depth or "shallow",
+                    output_format=payload.output_format,
+                )
+            elif task_name == "tech-stack":
+                result = tech_stack(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    output_format=payload.output_format,
+                )
+            elif task_name == "detect-anti-patterns":
+                result = detect_anti_patterns(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "health-score":
+                result = health_score(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "impact-analysis":
+                result = impact_analysis(
+                    module=payload.module or "",
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "refactoring-recommendations":
+                result = refactoring_recommendations(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "generate-docs":
+                result = generate_docs(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    output_dir=_resolve_output_dir(payload.output_dir),
+                )
+            elif task_name == "dependency-graph":
+                result = dependency_graph_export(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                    output_format=payload.output_format,
+                )
+            elif task_name == "test-coverage":
+                result = test_coverage_analysis(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "detect-patterns":
+                result = architecture_pattern_detection(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "diff-architecture":
+                result = diff_architecture_review(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "onboarding-guide":
+                result = onboarding_guide(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "detect-vulnerabilities":
+                result = detect_vulnerabilities(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "logic-gap-analysis":
+                result = logic_gap_analysis(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "identify-silent-failures":
+                result = identify_silent_failures(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "security-heuristics":
+                result = security_heuristics(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "code-knowledge-graph":
+                result = code_knowledge_graph(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            elif task_name == "synthesis-roadmap":
+                result = synthesis_roadmap(
+                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
+                    source_path=_resolve_task_source(payload.source, source_roots),
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Unknown task")
+
+            return {"task": task_name, "result": result}
+
+        raise HTTPException(status_code=400, detail="Unknown MCP tool")
 
     if not isinstance(data, dict):
         return {}
@@ -404,6 +612,12 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                     )
                 elif task_name == "code-knowledge-graph":
                     result = code_knowledge_graph(
+                        storage_path=storage_path if not payload.source else None,
+                        source_path=_resolve_task_source(payload.source, source_roots),
+                        progress_callback=progress_update,
+                    )
+                elif task_name == "synthesis-roadmap":
+                    result = synthesis_roadmap(
                         storage_path=storage_path if not payload.source else None,
                         source_path=_resolve_task_source(payload.source, source_roots),
                         progress_callback=progress_update,
@@ -749,6 +963,20 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         _update_task(task_id, {"status": "completed", "result": result, "task": "code-knowledge-graph"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
+    @app.post("/tasks/synthesis-roadmap", status_code=202)
+    async def synthesis_roadmap_task(request: TaskRequest) -> Dict[str, Any]:
+        if request.background:
+            task_id = _submit_analysis_task("synthesis-roadmap", request)
+            return {"task_id": task_id, "status": "queued"}
+
+        task_id = str(uuid4())
+        result = synthesis_roadmap(
+            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
+            source_path=_resolve_task_source(request.source, source_roots),
+        )
+        _update_task(task_id, {"status": "completed", "result": result, "task": "synthesis-roadmap"})
+        return {"task_id": task_id, "status": "completed", "result": result}
+
     @app.post("/query")
     async def run_query(request: QueryRequest) -> Dict[str, Any]:
         storage_path = _resolve_storage_path(request.storage)
@@ -777,7 +1005,11 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         hybrid_enabled = bool(request_settings.enable_hybrid)
 
         if request.mode == "agent":
-            payload = to_agent_response(response)
+            payload = (
+                to_agent_response_compact(response)
+                if request.compact
+                else to_agent_response(response)
+            )
             payload["reranked"] = reranked
             payload["hybrid_enabled"] = hybrid_enabled
             return payload
@@ -789,6 +1021,39 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             "reranked": reranked,
             "hybrid_enabled": hybrid_enabled,
         }
+
+    @app.post("/ask")
+    async def run_ask(request: AskRequest) -> Dict[str, Any]:
+        storage_path = _resolve_storage_path(request.storage)
+
+        overrides = {}
+        if request.enable_hybrid is not None:
+            overrides["enable_hybrid"] = request.enable_hybrid
+        if request.hybrid_alpha is not None:
+            overrides["hybrid_alpha"] = request.hybrid_alpha
+        if request.enable_rerank is not None:
+            overrides["enable_rerank"] = request.enable_rerank
+        if request.rerank_model:
+            overrides["rerank_model"] = request.rerank_model
+        if request.rerank_top_n is not None:
+            overrides["rerank_top_n"] = request.rerank_top_n
+
+        request_settings = base_settings.model_copy(update=overrides) if overrides else base_settings
+
+        try:
+            index = load_existing_index(storage_path)
+            response = query_index(index, request.text, settings=request_settings)
+        except Exception as exc:  # pylint: disable=broad-except
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        payload = (
+            to_agent_response_compact(response)
+            if request.compact
+            else to_agent_response(response)
+        )
+        payload["reranked"] = bool(request_settings.enable_rerank)
+        payload["hybrid_enabled"] = bool(request_settings.enable_hybrid)
+        return payload
 
     @app.post("/query/diagnostics")
     async def query_diagnostics(request: QueryRequest) -> Dict[str, Any]:

@@ -196,12 +196,12 @@
 *   [x] **Remote Vector Stores**: Adapters for Pinecone/Qdrant/Weaviate for cloud scaling.
 
 ### 3.4 Agent-Native Orchestration
-*   [ ] **Direct Agent Interface (`ask` command)**: A unified CLI/API entry point for agents to perform custom queries without pre-defined tasks.
-*   [ ] **MCP (Model Context Protocol) Server**: Wrap the API as an endpoint compatible with Claude Desktop and generic MCP clients to allow direct agent "tool-use".
-*   [ ] **Agent Force Multiplier Mode**: Optimize JSON schema outputs specifically for LLM context windows (reducing token overhead for structural telemetry).
+*   [x] **Direct Agent Interface (`ask` command)**: A unified CLI/API entry point for agents to perform custom queries without pre-defined tasks.
+*   [x] **MCP (Model Context Protocol) Server**: Wrap the API as an endpoint compatible with Claude Desktop and generic MCP clients to allow direct agent "tool-use".
+*   [x] **Agent Force Multiplier Mode**: Optimize JSON schema outputs specifically for LLM context windows (reducing token overhead for structural telemetry).
 
 ### 3.5 Multi-Model Synthesis (Phase 4 Planning)
-*   [ ] **Structural + Semantic Fusion**: Combine heuristic output (e.g., "this file is large") with semantic reasoning (e.g., "it's large because it violates SRP in these 3 places") to generate high-confidence refactoring roadmaps.
+*   [x] **Structural + Semantic Fusion**: Combine heuristic output (e.g., "this file is large") with semantic reasoning (e.g., "it's large because it violates SRP in these 3 places") to generate high-confidence refactoring roadmaps.
 
 ---
 

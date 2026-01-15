@@ -58,6 +58,8 @@ def extract_sources(response: Any) -> List[Dict[str, Any]]:
                     "file": metadata.get("file_path", "unknown"),
                     "score": getattr(node, "score", None),
                     "metadata": metadata,
+                    "start_line": metadata.get("start_line"),
+                    "end_line": metadata.get("end_line"),
                 }
             )
     return sources
@@ -74,10 +76,38 @@ def to_agent_response(response: Any) -> Dict[str, Any]:
         "answer": str(response),
         "confidence": confidence,
         "sources": [
-            {"file": s.get("file", "unknown"), "score": s.get("score")}
+            {
+                "file": s.get("file", "unknown"),
+                "score": s.get("score"),
+                "start_line": s.get("start_line"),
+                "end_line": s.get("end_line"),
+            }
             for s in sources
         ],
         "type": type(response).__name__,
+    }
+
+
+def to_agent_response_compact(response: Any) -> Dict[str, Any]:
+    """Compact response schema for agent context windows."""
+    sources = extract_sources(response)
+    scores = [s["score"] for s in sources if s.get("score") is not None]
+    confidence = max(scores) if scores else None
+
+    compact_sources = []
+    for source in sources:
+        compact_sources.append(
+            {
+                "file": source.get("file", "unknown"),
+                "line": source.get("start_line"),
+                "score": source.get("score"),
+            }
+        )
+
+    return {
+        "answer": str(response),
+        "confidence": confidence,
+        "sources": compact_sources,
     }
 
 
