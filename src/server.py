@@ -26,6 +26,8 @@ from src.indexer import (
 )
 from src.ingestor import resolve_source, CACHE_DIR
 from src.cli_utils import extract_sources, to_agent_response, to_agent_response_compact
+from src.task_registry import run_task
+# Backwards-compatible re-exports for tests and external patching
 from src.tasks import (
     analyze_structure,
     tech_stack,
@@ -269,6 +271,8 @@ def _resolve_task_source(raw_path: Optional[str], source_roots: List[Path]) -> O
     return str(candidate)
 
 
+
+
 def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     """Create a FastAPI app configured with Architext settings."""
 
@@ -320,6 +324,27 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         if not _is_within_any(candidate, source_roots):
             raise HTTPException(status_code=400, detail="output_dir must be within allowed roots")
         return str(candidate)
+
+    def _run_analysis_task(
+        task_name: str,
+        payload: TaskRequest,
+        progress_update=None,
+    ) -> Dict[str, Any]:
+        if task_name == "impact-analysis" and not payload.module:
+            raise ValueError("module is required for impact analysis")
+
+        storage_path = _resolve_storage_path(payload.storage)
+        source_path = _resolve_task_source(payload.source, source_roots)
+        return run_task(
+            task_name,
+            storage_path=storage_path if not payload.source else None,
+            source_path=source_path,
+            output_format=payload.output_format,
+            depth=payload.depth or "shallow",
+            module=payload.module,
+            output_dir=_resolve_output_dir(payload.output_dir),
+            progress_callback=progress_update,
+        )
 
     def _validate_source_dir(path: Path) -> None:
         if not path.exists():
@@ -405,95 +430,8 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 _update_task(task_id, {"progress": info})
 
             _update_task(task_id, {"status": "running"})
-            storage_path = _resolve_storage_path(payload.storage)
             try:
-                if task_name == "analyze-structure":
-                    result = analyze_structure(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        depth=payload.depth or "shallow",
-                        output_format=payload.output_format,
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "tech-stack":
-                    result = tech_stack(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        output_format=payload.output_format,
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "detect-anti-patterns":
-                    result = detect_anti_patterns(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "health-score":
-                    result = health_score(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "impact-analysis":
-                    if not payload.module:
-                        raise ValueError("module is required for impact analysis")
-                    result = impact_analysis(
-                        module=payload.module,
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "refactoring-recommendations":
-                    result = refactoring_recommendations(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "generate-docs":
-                    result = generate_docs(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        output_dir=_resolve_output_dir(payload.output_dir),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "detect-vulnerabilities":
-                    result = detect_vulnerabilities(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "logic-gap-analysis":
-                    result = logic_gap_analysis(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "identify-silent-failures":
-                    result = identify_silent_failures(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "security-heuristics":
-                    result = security_heuristics(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "code-knowledge-graph":
-                    result = code_knowledge_graph(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                elif task_name == "synthesis-roadmap":
-                    result = synthesis_roadmap(
-                        storage_path=storage_path if not payload.source else None,
-                        source_path=_resolve_task_source(payload.source, source_roots),
-                        progress_callback=progress_update,
-                    )
-                else:
-                    raise ValueError("Unknown task")
+                result = _run_analysis_task(task_name, payload, progress_update=progress_update)
 
                 _update_task(task_id, {"status": "completed", "result": result})
             except Exception as exc:  # pylint: disable=broad-except
@@ -594,13 +532,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        storage_path = _resolve_storage_path(request.storage) if not request.source else None
-        result = analyze_structure(
-            storage_path=storage_path,
-            source_path=_resolve_task_source(request.source, source_roots),
-            depth=request.depth or "shallow",
-            output_format=request.output_format,
-        )
+        result = _run_analysis_task("analyze-structure", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "analyze-structure"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -611,12 +543,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        storage_path = _resolve_storage_path(request.storage) if not request.source else None
-        result = tech_stack(
-            storage_path=storage_path,
-            source_path=_resolve_task_source(request.source, source_roots),
-            output_format=request.output_format,
-        )
+        result = _run_analysis_task("tech-stack", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "tech-stack"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -627,10 +554,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = detect_anti_patterns(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("detect-anti-patterns", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "detect-anti-patterns"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -641,10 +565,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = health_score(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("health-score", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "health-score"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -658,11 +579,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             raise HTTPException(status_code=400, detail="module is required")
 
         task_id = str(uuid4())
-        result = impact_analysis(
-            module=request.module,
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("impact-analysis", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "impact-analysis"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -673,10 +590,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = refactoring_recommendations(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("refactoring-recommendations", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "refactoring-recommendations"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -687,11 +601,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = generate_docs(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-            output_dir=_resolve_output_dir(request.output_dir),
-        )
+        result = _run_analysis_task("generate-docs", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "generate-docs"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -702,11 +612,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = dependency_graph_export(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-            output_format=request.output_format,
-        )
+        result = _run_analysis_task("dependency-graph", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "dependency-graph"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -717,10 +623,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = test_coverage_analysis(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("test-coverage", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "test-coverage"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -731,10 +634,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = architecture_pattern_detection(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("detect-patterns", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "detect-patterns"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -745,10 +645,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = diff_architecture_review(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("diff-architecture", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "diff-architecture"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -759,10 +656,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = onboarding_guide(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("onboarding-guide", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "onboarding-guide"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -773,10 +667,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = detect_vulnerabilities(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("detect-vulnerabilities", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "detect-vulnerabilities"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -787,10 +678,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = logic_gap_analysis(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("logic-gap-analysis", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "logic-gap-analysis"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -801,10 +689,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = identify_silent_failures(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("identify-silent-failures", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "identify-silent-failures"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -815,10 +700,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = security_heuristics(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("security-heuristics", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "security-heuristics"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -829,10 +711,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = code_knowledge_graph(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("code-knowledge-graph", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "code-knowledge-graph"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -843,10 +722,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             return {"task_id": task_id, "status": "queued"}
 
         task_id = str(uuid4())
-        result = synthesis_roadmap(
-            storage_path=_resolve_storage_path(request.storage) if not request.source else None,
-            source_path=_resolve_task_source(request.source, source_roots),
-        )
+        result = _run_analysis_task("synthesis-roadmap", request)
         _update_task(task_id, {"status": "completed", "result": result, "task": "synthesis-roadmap"})
         return {"task_id": task_id, "status": "completed", "result": result}
 
@@ -957,104 +833,10 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 background=False,
             )
 
-            if task_name == "analyze-structure":
-                result = analyze_structure(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    depth=payload.depth or "shallow",
-                    output_format=payload.output_format,
-                )
-            elif task_name == "tech-stack":
-                result = tech_stack(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    output_format=payload.output_format,
-                )
-            elif task_name == "detect-anti-patterns":
-                result = detect_anti_patterns(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "health-score":
-                result = health_score(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "impact-analysis":
-                result = impact_analysis(
-                    module=payload.module or "",
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "refactoring-recommendations":
-                result = refactoring_recommendations(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "generate-docs":
-                result = generate_docs(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    output_dir=_resolve_output_dir(payload.output_dir),
-                )
-            elif task_name == "dependency-graph":
-                result = dependency_graph_export(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                    output_format=payload.output_format,
-                )
-            elif task_name == "test-coverage":
-                result = test_coverage_analysis(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "detect-patterns":
-                result = architecture_pattern_detection(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "diff-architecture":
-                result = diff_architecture_review(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "onboarding-guide":
-                result = onboarding_guide(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "detect-vulnerabilities":
-                result = detect_vulnerabilities(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "logic-gap-analysis":
-                result = logic_gap_analysis(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "identify-silent-failures":
-                result = identify_silent_failures(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "security-heuristics":
-                result = security_heuristics(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "code-knowledge-graph":
-                result = code_knowledge_graph(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            elif task_name == "synthesis-roadmap":
-                result = synthesis_roadmap(
-                    storage_path=_resolve_storage_path(payload.storage) if not payload.source else None,
-                    source_path=_resolve_task_source(payload.source, source_roots),
-                )
-            else:
-                raise HTTPException(status_code=400, detail="Unknown task")
+            try:
+                result = _run_analysis_task(task_name, payload)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
             return {"task": task_name, "result": result}
 

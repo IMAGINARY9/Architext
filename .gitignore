@@ -19,10 +19,21 @@ models_cache/
 models_cache/**
 *.db
 *.sqlite
+
 # Test artifacts
 .pytest_cache/
 tests/__pycache__/
 *.log
+test-task-store.json
+test_results.txt
+test-storage/
+
+# Generated docs/reports (task outputs, not source docs)
+docs/*.json
+docs/anti-patterns.json
+docs/health.json
+docs/structure.md
+docs/tech-stack.md
 # Local index snapshots
 .architext/
 .architext/cache/
