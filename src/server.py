@@ -25,6 +25,7 @@ from src.indexer import (
     query_index,
 )
 from src.ingestor import resolve_source, CACHE_DIR
+from src.api.mcp import build_mcp_router
 from src.cli_utils import extract_sources, to_agent_response, to_agent_response_compact
 from src.task_registry import run_task
 # Backwards-compatible re-exports for tests and external patching
@@ -804,43 +805,18 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         payload["hybrid_enabled"] = bool(request_settings.enable_hybrid)
         return payload
 
-    @app.get("/mcp/tools")
-    async def mcp_tools() -> Dict[str, Any]:
-        return {"tools": _mcp_tools_schema()}
-
-    @app.post("/mcp/run")
-    async def mcp_run(request: MCPRunRequest) -> Dict[str, Any]:
-        tool = request.tool
-        args = request.arguments or {}
-
-        if tool == "architext.query":
-            payload = QueryRequest(**args)
-            return await run_query(payload)
-
-        if tool == "architext.ask":
-            payload = AskRequest(**args)
-            return await run_ask(payload)
-
-        if tool == "architext.task":
-            task_name = args.get("task")
-            payload = TaskRequest(
-                storage=args.get("storage"),
-                source=args.get("source"),
-                output_format=args.get("output_format", "json"),
-                depth=args.get("depth"),
-                module=args.get("module"),
-                output_dir=args.get("output_dir"),
-                background=False,
-            )
-
-            try:
-                result = _run_analysis_task(task_name, payload)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-            return {"task": task_name, "result": result}
-
-        raise HTTPException(status_code=400, detail="Unknown MCP tool")
+    app.include_router(
+        build_mcp_router(
+            _mcp_tools_schema,
+            run_query,
+            run_ask,
+            _run_analysis_task,
+            QueryRequest,
+            AskRequest,
+            TaskRequest,
+            MCPRunRequest,
+        )
+    )
 
     @app.post("/query/diagnostics")
     async def query_diagnostics(request: QueryRequest) -> Dict[str, Any]:
