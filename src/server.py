@@ -27,8 +27,13 @@ from src.indexer import (
 from src.ingestor import resolve_source, CACHE_DIR
 from src.api.mcp import build_mcp_router
 from src.api.tasks import build_tasks_router
+from src.api.tasks_service import (
+    AnalysisTaskService,
+    load_task_store,
+    persist_task_store,
+    resolve_task_store_path,
+)
 from src.cli_utils import extract_sources, to_agent_response, to_agent_response_compact
-from src.task_registry import run_task
 # Backwards-compatible re-exports for tests and external patching
 from src.tasks import (
     analyze_structure,
@@ -157,24 +162,6 @@ def _parse_allowed_roots(raw: Optional[str], defaults: List[Path]) -> List[Path]
     return defaults
 
 
-def _resolve_task_store_path(raw_path: Optional[str]) -> Path:
-    candidate = Path(raw_path or "~/.architext/task_store.json").expanduser().resolve()
-    candidate.parent.mkdir(parents=True, exist_ok=True)
-    return candidate
-
-
-def _sanitize_task_store(store: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
-    sanitized: Dict[str, Dict[str, Any]] = {}
-    for task_id, payload in store.items():
-        data = {}
-        for key, value in payload.items():
-            if key == "future":
-                continue
-            data[key] = value
-        sanitized[task_id] = data
-    return sanitized
-
-
 def _mcp_tools_schema() -> List[Dict[str, Any]]:
     return [
         {
@@ -234,46 +221,6 @@ def _mcp_tools_schema() -> List[Dict[str, Any]]:
     ]
 
 
-def _load_task_store(path: Path) -> Dict[str, Dict[str, Any]]:
-    if not path.exists():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-    if not isinstance(data, dict):
-        return {}
-
-    for payload in data.values():
-        if payload.get("status") in {"queued", "running"}:
-            payload["status"] = "stale"
-            payload["note"] = "Server restarted before completion"
-    return data
-
-
-def _persist_task_store(path: Path, store: Dict[str, Dict[str, Any]]) -> None:
-    try:
-        sanitized = _sanitize_task_store(store)
-        path.write_text(json.dumps(sanitized, indent=2, default=str), encoding="utf-8")
-    except Exception:
-        return
-
-
-def _resolve_task_source(raw_path: Optional[str], source_roots: List[Path]) -> Optional[str]:
-    if not raw_path:
-        return None
-    candidate = Path(raw_path).expanduser().resolve()
-    if not candidate.exists():
-        raise HTTPException(status_code=400, detail="source path does not exist")
-    if not candidate.is_dir():
-        raise HTTPException(status_code=400, detail="source path must be a directory")
-    if not _is_within_any(candidate, source_roots):
-        raise HTTPException(status_code=400, detail="source path must be within allowed roots")
-    return str(candidate)
-
-
-
 
 def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     """Create a FastAPI app configured with Architext settings."""
@@ -281,8 +228,8 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     base_settings = settings or load_settings()
     initialize_settings(base_settings)
 
-    task_store_path = _resolve_task_store_path(getattr(base_settings, "task_store_path", None))
-    task_store: Dict[str, Dict[str, Any]] = _load_task_store(task_store_path)
+    task_store_path = resolve_task_store_path(getattr(base_settings, "task_store_path", None))
+    task_store: Dict[str, Dict[str, Any]] = load_task_store(task_store_path)
     lock = threading.Lock()
     executor = ThreadPoolExecutor(max_workers=2)
 
@@ -295,13 +242,15 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         [Path.cwd().resolve(), CACHE_DIR.resolve()],
     )
 
-    def _update_task(task_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        with lock:
-            existing = task_store.get(task_id, {})
-            existing.update(payload)
-            task_store[task_id] = existing
-            _persist_task_store(task_store_path, task_store)
-            return dict(existing)
+    task_service = AnalysisTaskService(
+        task_store=task_store,
+        task_store_path=task_store_path,
+        lock=lock,
+        executor=executor,
+        storage_roots=storage_roots,
+        source_roots=source_roots,
+        base_settings=base_settings,
+    )
 
     def _settings_with_overrides(req: IndexRequest) -> ArchitextSettings:
         overrides = {}
@@ -319,35 +268,6 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             raise HTTPException(status_code=400, detail="storage must be within allowed roots")
         return str(candidate)
 
-    def _resolve_output_dir(raw_path: Optional[str]) -> Optional[str]:
-        if not raw_path:
-            return None
-        candidate = Path(raw_path).expanduser().resolve()
-        if not _is_within_any(candidate, source_roots):
-            raise HTTPException(status_code=400, detail="output_dir must be within allowed roots")
-        return str(candidate)
-
-    def _run_analysis_task(
-        task_name: str,
-        payload: TaskRequest,
-        progress_update=None,
-    ) -> Dict[str, Any]:
-        if task_name == "impact-analysis" and not payload.module:
-            raise ValueError("module is required for impact analysis")
-
-        storage_path = _resolve_storage_path(payload.storage)
-        source_path = _resolve_task_source(payload.source, source_roots)
-        return run_task(
-            task_name,
-            storage_path=storage_path if not payload.source else None,
-            source_path=source_path,
-            output_format=payload.output_format,
-            depth=payload.depth or "shallow",
-            module=payload.module,
-            output_dir=_resolve_output_dir(payload.output_dir),
-            progress_callback=progress_update,
-        )
-
     def _validate_source_dir(path: Path) -> None:
         if not path.exists():
             raise HTTPException(status_code=400, detail="source path does not exist")
@@ -358,9 +278,9 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
 
     def _run_index(task_id: str, req: IndexRequest, storage_path: str):
         def progress_update(info: Dict[str, Any]):
-            _update_task(task_id, {"progress": info})
+            task_service.update_task(task_id, {"progress": info})
         
-        _update_task(task_id, {"status": "running", "storage_path": storage_path})
+        task_service.update_task(task_id, {"status": "running", "storage_path": storage_path})
         try:
             task_settings = _settings_with_overrides(req)
             initialize_settings(task_settings)
@@ -371,7 +291,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             file_paths = gather_index_files(str(source_path), progress_callback=progress_update)
 
             if req.dry_run:
-                _update_task(
+                task_service.update_task(
                     task_id,
                     {
                         "status": "completed",
@@ -388,7 +308,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 progress_callback=progress_update,
                 settings=task_settings,
             )
-            _update_task(
+            task_service.update_task(
                 task_id,
                 {
                     "status": "completed",
@@ -397,7 +317,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 },
             )
         except Exception as exc:  # pylint: disable=broad-except
-            _update_task(
+            task_service.update_task(
                 task_id,
                 {
                     "status": "failed",
@@ -409,7 +329,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
 
     def _submit_task(req: IndexRequest, storage_path: str) -> str:
         task_id = str(uuid4())
-        _update_task(task_id, {"status": "queued", "storage_path": storage_path})
+        task_service.update_task(task_id, {"status": "queued", "storage_path": storage_path})
 
         future = executor.submit(_run_index, task_id, req, storage_path)
 
@@ -420,32 +340,12 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 pass
 
         future.add_done_callback(_finalize)
-        _update_task(task_id, {"future": future})
+        task_service.update_task(task_id, {"future": future})
         return task_id
 
     def _submit_analysis_task(task_name: str, payload: TaskRequest) -> str:
         task_id = str(uuid4())
-        _update_task(task_id, {"status": "queued", "task": task_name})
-
-        def _run():
-            def progress_update(info: Dict[str, Any]):
-                _update_task(task_id, {"progress": info})
-
-            _update_task(task_id, {"status": "running"})
-            try:
-                result = _run_analysis_task(task_name, payload, progress_update=progress_update)
-
-                _update_task(task_id, {"status": "completed", "result": result})
-            except Exception as exc:  # pylint: disable=broad-except
-                _update_task(
-                    task_id,
-                    {"status": "failed", "error": str(exc), "traceback": traceback.format_exc()},
-                )
-
-        future = executor.submit(_run)
-        future.add_done_callback(lambda fut: fut.result() if not fut.cancelled() else None)
-        _update_task(task_id, {"future": future})
-        return task_id
+        return task_service.submit_analysis_task(task_name, payload, task_id)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -460,7 +360,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                     if payload.get("status") in {"queued", "running"}:
                         payload["status"] = "stale"
                         payload["note"] = "Server shutdown before completion"
-                _persist_task_store(task_store_path, task_store)
+                persist_task_store(task_store_path, task_store)
 
     app = FastAPI(title="Architext API", version="0.2.0", lifespan=lifespan)
     app.state.task_store = task_store
@@ -530,8 +430,8 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     app.include_router(
         build_tasks_router(
             _submit_analysis_task,
-            _run_analysis_task,
-            _update_task,
+            task_service.run_analysis_task,
+            task_service.update_task,
             TaskRequest,
             lambda: str(uuid4()),
         )
@@ -620,7 +520,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             _mcp_tools_schema,
             run_query,
             run_ask,
-            _run_analysis_task,
+            task_service.run_analysis_task,
             QueryRequest,
             AskRequest,
             TaskRequest,

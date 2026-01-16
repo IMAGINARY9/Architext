@@ -1802,5 +1802,174 @@
       "root_files": []
     },
     "task": "onboarding-guide"
+  },
+  "31b4588d-f4e0-4722-98b6-5c47133b9f1f": {
+    "status": "completed",
+    "storage_path": "C:\\Users\\tusik\\AppData\\Local\\Temp\\pytest-of-tusik\\pytest-67\\test_index_endpoint_inline0",
+    "progress": {
+      "stage": "resolving",
+      "message": "Resolving source..."
+    },
+    "documents": 1
+  },
+  "fa67584b-d9dd-4a23-8b65-2b7ab92d3476": {
+    "status": "completed",
+    "result": {
+      "format": "json",
+      "summary": {
+        "total_files": 0,
+        "total_extensions": 0,
+        "languages": {},
+        "top_extensions": {},
+        "import_clusters": {}
+      },
+      "tree": {}
+    },
+    "task": "analyze-structure"
+  },
+  "43132ef8-1b05-4bfe-8f0d-3e12be6d8efe": {
+    "status": "completed",
+    "result": {
+      "format": "json",
+      "data": {
+        "languages": {},
+        "extensions": {},
+        "frameworks": {},
+        "examples": {}
+      }
+    },
+    "task": "tech-stack"
+  },
+  "62a98079-7fae-4859-a3f4-47d5ca7a5099": {
+    "status": "completed",
+    "result": {
+      "issues": [
+        {
+          "type": "missing_tests",
+          "severity": "medium",
+          "details": "No test files detected (filenames containing 'test')"
+        },
+        {
+          "type": "missing_docs",
+          "severity": "low",
+          "details": "No documentation files detected (.md/.rst)"
+        }
+      ],
+      "counts": {
+        "missing_tests": 1,
+        "missing_docs": 1
+      },
+      "severity_counts": {
+        "medium": 1,
+        "low": 1
+      },
+      "metrics": {
+        "total_files": 0,
+        "doc_files": 0,
+        "test_files": 0,
+        "doc_ratio": 0.0,
+        "test_ratio": 0.0,
+        "avg_files_per_dir": 0.0,
+        "avg_dependencies": 0.0
+      }
+    },
+    "task": "detect-anti-patterns"
+  },
+  "24894167-f760-4105-ae37-d73a544d40b7": {
+    "status": "completed",
+    "result": {
+      "score": 0,
+      "details": {}
+    },
+    "task": "health-score"
+  },
+  "c1c1e462-c453-4972-83c8-4d3b541f749e": {
+    "status": "completed",
+    "result": {
+      "module": "module_x",
+      "affected": [],
+      "note": "Module not found"
+    },
+    "task": "impact-analysis"
+  },
+  "852e66f5-642d-4444-b766-fc6da250163f": {
+    "status": "completed",
+    "result": {
+      "recommendations": [],
+      "health": {
+        "score": 0,
+        "details": {}
+      }
+    },
+    "task": "refactoring-recommendations"
+  },
+  "825d386b-4a86-4f45-9ce9-6586310768ff": {
+    "status": "completed",
+    "result": {
+      "outputs": [
+        "structure.md",
+        "tech-stack.md",
+        "health.json",
+        "anti-patterns.json"
+      ],
+      "output_dir": "C:\\Users\\tusik\\Documents\\GitHub\\Architext\\docs",
+      "inline": {
+        "structure.md": "# Repository Structure\n\n## Summary\n{\n  \"total_files\": 0,\n  \"total_extensions\": 0,\n  \"languages\": {},\n  \"top_extensions\": {},\n  \"import_clusters\": {}\n}\n\n## Tree",
+        "tech-stack.md": "# Technology Stack\n\n## Languages\n{}\n\n## Frameworks\n{}",
+        "health.json": "{\n  \"score\": 0,\n  \"details\": {}\n}",
+        "anti-patterns.json": "{\n  \"issues\": [\n    {\n      \"type\": \"missing_tests\",\n      \"severity\": \"medium\",\n      \"details\": \"No test files detected (filenames containing 'test')\"\n    },\n    {\n      \"type\": \"missing_docs\",\n      \"severity\": \"low\",\n      \"details\": \"No documentation files detected (.md/.rst)\"\n    }\n  ],\n  \"counts\": {\n    \"missing_tests\": 1,\n    \"missing_docs\": 1\n  },\n  \"severity_counts\": {\n    \"medium\": 1,\n    \"low\": 1\n  },\n  \"metrics\": {\n    \"total_files\": 0,\n    \"doc_files\": 0,\n    \"test_files\": 0,\n    \"doc_ratio\": 0.0,\n    \"test_ratio\": 0.0,\n    \"avg_files_per_dir\": 0.0,\n    \"avg_dependencies\": 0.0\n  }\n}"
+      }
+    },
+    "task": "generate-docs"
+  },
+  "867bbe1e-9721-42e7-b9c9-e55e02173ca2": {
+    "status": "completed",
+    "result": {
+      "format": "mermaid",
+      "content": "graph TD",
+      "edge_count": 0
+    },
+    "task": "dependency-graph"
+  },
+  "289a523d-b4e6-4dbe-a567-6dfbb9d9cf10": {
+    "status": "completed",
+    "result": {
+      "total_sources": 0,
+      "total_tests": 0,
+      "coverage_ratio": 1.0,
+      "uncovered": [],
+      "mapping": {}
+    },
+    "task": "test-coverage"
+  },
+  "b5d2fc73-357d-4b87-9f34-27ec1201e75d": {
+    "status": "completed",
+    "result": {
+      "patterns": [],
+      "evidence": []
+    },
+    "task": "detect-patterns"
+  },
+  "578e67ad-505f-4afc-80ce-c95990e0dceb": {
+    "status": "completed",
+    "result": {
+      "added": [],
+      "removed": [],
+      "added_count": 0,
+      "removed_count": 0
+    },
+    "task": "diff-architecture"
+  },
+  "2771170b-fc58-4299-bcbb-dea9e4fe9556": {
+    "status": "completed",
+    "result": {
+      "entry_points": [],
+      "suggestions": [
+        "Start with README and configuration files",
+        "Review entry points and tests"
+      ],
+      "root_files": []
+    },
+    "task": "onboarding-guide"
   }
 }
