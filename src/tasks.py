@@ -6,6 +6,10 @@ import json
 import os
 import re
 import time
+import hashlib
+import io
+import keyword
+import tokenize
 from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
@@ -148,6 +152,21 @@ FRAMEWORK_PATTERNS = {
     "express": ["express"],
     "nestjs": ["@nestjs"],
     "spring": ["springframework", "spring-boot"],
+}
+
+
+IMPORT_CLUSTER_RULES = {
+    "http_api": {"fastapi", "flask", "django", "starlette"},
+    "mcp": {"mcp"},
+    "vector_store": {"chromadb", "qdrant", "pinecone", "weaviate"},
+    "llm": {"llama_index", "openai", "langchain", "transformers"},
+    "cli": {"typer", "click", "argparse"},
+    "database": {"sqlalchemy", "psycopg", "psycopg2", "sqlite3", "pymongo", "redis"},
+}
+
+
+FRAMEWORK_SETTINGS_IGNORES = {
+    "pydantic": {"model_config"},
 }
 
 
@@ -299,11 +318,21 @@ def analyze_structure(
     for ext, count in extensions.items():
         languages[DEFAULT_EXTENSIONS.get(ext, "Other")] += count
 
+    import_cluster_counts: Counter[str] = Counter()
+    for path in files:
+        text = _read_file_text(path)
+        if not text:
+            continue
+        imports = _extract_imports(path, text)
+        clusters = _classify_import_clusters(imports)
+        import_cluster_counts.update(clusters)
+
     summary = {
         "total_files": len(files),
         "total_extensions": len(extensions),
         "languages": dict(languages),
         "top_extensions": dict(extensions.most_common(10)),
+        "import_clusters": dict(import_cluster_counts),
     }
 
     if output_format == "markdown":
@@ -322,6 +351,13 @@ def analyze_structure(
 def _read_file_text(path: str, max_bytes: int = 200_000) -> str:
     try:
         data = Path(path).read_bytes()
+    except Exception:
+        return ""
+
+    if len(data) > max_bytes:
+        data = data[:max_bytes]
+    try:
+        return data.decode("utf-8", errors="ignore")
     except Exception:
         return ""
 
@@ -369,12 +405,140 @@ def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict
                     if len(findings) >= max_findings:
                         return findings
     return findings
-    if len(data) > max_bytes:
-        data = data[:max_bytes]
+
+
+def _scan_python_ast_security(path: str, content: str) -> List[Dict[str, Any]]:
+    findings: List[Dict[str, Any]] = []
     try:
-        return data.decode("utf-8", errors="ignore")
+        tree = ast.parse(content)
     except Exception:
-        return ""
+        return findings
+
+    class Visitor(ast.NodeVisitor):
+        def visit_Call(self, node: ast.Call):
+            name = None
+            if isinstance(node.func, ast.Name):
+                name = node.func.id
+            elif isinstance(node.func, ast.Attribute):
+                base = node.func.value
+                if isinstance(base, ast.Name):
+                    name = f"{base.id}.{node.func.attr}"
+                else:
+                    name = node.func.attr
+
+            if name in {"eval", "exec"}:
+                findings.append(
+                    {
+                        "rule_id": "py-ast-eval-exec",
+                        "severity": "high",
+                        "description": "Dynamic code execution detected (AST)",
+                        "file": path,
+                        "line": getattr(node, "lineno", 0),
+                        "snippet": name,
+                    }
+                )
+            if name in {"subprocess.run", "subprocess.Popen", "os.system"}:
+                findings.append(
+                    {
+                        "rule_id": "py-ast-command-exec",
+                        "severity": "high",
+                        "description": "Command execution detected (AST)",
+                        "file": path,
+                        "line": getattr(node, "lineno", 0),
+                        "snippet": name,
+                    }
+                )
+
+            self.generic_visit(node)
+
+    Visitor().visit(tree)
+    return findings
+
+
+def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]:
+    findings: List[Dict[str, Any]] = []
+    try:
+        tree = ast.parse(content)
+    except Exception:
+        return findings
+
+    source_keywords = {"request", "req", "user", "input", "query", "params", "path", "filename", "filepath", "body"}
+    sinks = {"open", "eval", "exec", "os.system", "subprocess.run", "subprocess.Popen", "Path", "read_text", "read_bytes"}
+
+    def is_tainted_name(name: str) -> bool:
+        lowered = name.lower()
+        return any(token in lowered for token in source_keywords)
+
+    def extract_name(node: ast.AST) -> Optional[str]:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            if isinstance(node.value, ast.Name):
+                return f"{node.value.id}.{node.attr}"
+            return node.attr
+        return None
+
+    class Visitor(ast.NodeVisitor):
+        def __init__(self):
+            self.tainted_stack: List[set[str]] = [set()]
+
+        def visit_FunctionDef(self, node: ast.FunctionDef):
+            tainted = set()
+            for arg in node.args.args:
+                if is_tainted_name(arg.arg):
+                    tainted.add(arg.arg)
+            self.tainted_stack.append(tainted)
+            self.generic_visit(node)
+            self.tainted_stack.pop()
+
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+            self.visit_FunctionDef(node)
+
+        def visit_Assign(self, node: ast.Assign):
+            current = self.tainted_stack[-1]
+            value_name = extract_name(node.value)
+            if value_name and is_tainted_name(value_name):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        current.add(target.id)
+            if isinstance(node.value, ast.Call):
+                call_name = extract_name(node.value.func) or ""
+                if call_name in {"input"}:
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            current.add(target.id)
+            self.generic_visit(node)
+
+        def visit_Call(self, node: ast.Call):
+            call_name = extract_name(node.func) or ""
+            current = self.tainted_stack[-1]
+
+            tainted_args = []
+            for arg in node.args:
+                if isinstance(arg, ast.Name) and arg.id in current:
+                    tainted_args.append(arg.id)
+                elif isinstance(arg, ast.Attribute):
+                    base = extract_name(arg)
+                    if base and any(name in base for name in current):
+                        tainted_args.append(base)
+
+            if call_name in sinks and tainted_args:
+                findings.append(
+                    {
+                        "rule_id": "py-ast-taint-flow",
+                        "severity": "high",
+                        "description": "Potential user input flows into sensitive sink",
+                        "file": path,
+                        "line": getattr(node, "lineno", 0),
+                        "snippet": call_name,
+                        "tainted_args": tainted_args,
+                    }
+                )
+
+            self.generic_visit(node)
+
+    Visitor().visit(tree)
+    return findings
 
 
 def tech_stack(
@@ -540,6 +704,21 @@ def _extract_imports(path: str, content: str) -> List[str]:
     return imports
 
 
+def _classify_import_clusters(imports: List[str]) -> List[str]:
+    clusters: set[str] = set()
+    for imported in imports:
+        if not imported:
+            continue
+        if imported.startswith(".") or ":" in imported:
+            continue
+        normalized = imported.replace("/", ".")
+        root = normalized.split(".")[0]
+        for cluster, tokens in IMPORT_CLUSTER_RULES.items():
+            if root in tokens or normalized in tokens:
+                clusters.add(cluster)
+    return sorted(clusters)
+
+
 def _build_import_graph(files: List[str]) -> Dict[str, List[str]]:
     graph: Dict[str, List[str]] = defaultdict(list)
     if not files:
@@ -691,6 +870,18 @@ def detect_anti_patterns(
                     "file": path,
                     "severity": "high",
                     "details": f"High function count: {function_count}",
+                }
+            )
+
+        imports = _extract_imports(path, text)
+        clusters = _classify_import_clusters(imports)
+        if len(clusters) >= 2 and (len(lines) > 200 or function_count > 20):
+            issues.append(
+                {
+                    "type": "mixed_responsibilities",
+                    "file": path,
+                    "severity": "medium",
+                    "details": f"Multiple import clusters detected: {', '.join(clusters)}",
                 }
             )
 
@@ -1294,6 +1485,8 @@ def synthesis_roadmap(
     silent = identify_silent_failures(storage_path, source_path)
     logic_gaps = logic_gap_analysis(storage_path, source_path)
     heuristics = security_heuristics(storage_path, source_path)
+    duplication = detect_duplicate_blocks(storage_path, source_path)
+    semantic_duplication = detect_duplicate_blocks_semantic(storage_path, source_path)
 
     opportunities: List[Dict[str, Any]] = []
 
@@ -1347,6 +1540,26 @@ def synthesis_roadmap(
             }
         )
 
+    if duplication.get("count", 0) > 0:
+        opportunities.append(
+            {
+                "title": "Reduce duplicated code blocks",
+                "priority": "medium",
+                "score": 0.65,
+                "evidence": duplication.get("findings", [])[:5],
+            }
+        )
+
+    if semantic_duplication.get("count", 0) > 0:
+        opportunities.append(
+            {
+                "title": "Consolidate semantically duplicated functions",
+                "priority": "medium",
+                "score": 0.68,
+                "evidence": semantic_duplication.get("findings", [])[:5],
+            }
+        )
+
     opportunities.sort(key=lambda item: item.get("score", 0), reverse=True)
 
     return {
@@ -1356,6 +1569,8 @@ def synthesis_roadmap(
             "security_findings": heuristics.get("counts", {}).get("total", 0),
             "silent_failures": silent.get("count", 0),
             "unused_settings": len(logic_gaps.get("unused_settings", [])),
+            "duplication_findings": duplication.get("count", 0),
+            "semantic_duplication_findings": semantic_duplication.get("count", 0),
         },
         "roadmap": opportunities,
     }
@@ -1372,6 +1587,14 @@ def security_heuristics(
     _progress(progress_callback, {"stage": "analyze", "message": "Scanning for heuristic matches"})
 
     findings = _scan_security_rules(files, max_findings=max_findings)
+    for path in files:
+        if Path(path).suffix.lower() != ".py":
+            continue
+        content = _read_file_text(path)
+        if not content:
+            continue
+        findings.extend(_scan_python_ast_security(path, content))
+        findings.extend(_scan_python_taint_security(path, content))
     severity_counts = Counter(item.get("severity", "unknown") for item in findings)
     rule_counts = Counter(item.get("rule_id", "unknown") for item in findings)
 
@@ -1440,6 +1663,7 @@ def logic_gap_analysis(
 
     config_file = None
     settings_fields: List[Tuple[str, int]] = []
+    is_pydantic_settings = False
     for path in files:
         if Path(path).name.lower() != "config.py":
             continue
@@ -1452,6 +1676,11 @@ def logic_gap_analysis(
             continue
         for node in tree.body:
             if isinstance(node, ast.ClassDef) and node.name == "ArchitextSettings":
+                for base in node.bases:
+                    if isinstance(base, ast.Name) and base.id == "BaseSettings":
+                        is_pydantic_settings = True
+                    elif isinstance(base, ast.Attribute) and base.attr == "BaseSettings":
+                        is_pydantic_settings = True
                 for item in node.body:
                     if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
                         settings_fields.append((item.target.id, item.lineno))
@@ -1482,10 +1711,14 @@ def logic_gap_analysis(
             if re.search(rf"\b{re.escape(field)}\b", content):
                 used.add(field)
 
+    ignored_settings = set()
+    if is_pydantic_settings:
+        ignored_settings.update(FRAMEWORK_SETTINGS_IGNORES.get("pydantic", set()))
+
     unused = [
         {"name": field, "defined_at": lineno}
         for field, lineno in settings_fields
-        if field not in used
+        if field not in used and field not in ignored_settings
     ]
 
     return {
@@ -1493,6 +1726,7 @@ def logic_gap_analysis(
         "settings_defined": len(settings_fields),
         "settings_used": len(used),
         "unused_settings": unused,
+        "ignored_settings": sorted(ignored_settings),
     }
 
 
@@ -1560,4 +1794,178 @@ def identify_silent_failures(
     return {
         "findings": findings,
         "count": len(findings),
+    }
+
+
+def _normalize_duplication_line(line: str, suffix: str) -> str:
+    stripped = line.strip()
+    if not stripped:
+        return ""
+    if suffix == ".py" and stripped.startswith("#"):
+        return ""
+    if suffix in {".js", ".ts", ".jsx", ".tsx"} and stripped.startswith("//"):
+        return ""
+    return stripped
+
+
+def _normalize_python_tokens(segment: str) -> str:
+    tokens: List[str] = []
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(segment).readline):
+            if tok.type in {tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT}:
+                continue
+            if tok.type == tokenize.COMMENT:
+                continue
+            if tok.type == tokenize.NAME:
+                if keyword.iskeyword(tok.string):
+                    tokens.append(tok.string)
+                else:
+                    tokens.append("_id")
+            elif tok.type == tokenize.STRING:
+                tokens.append("S")
+            elif tok.type == tokenize.NUMBER:
+                tokens.append("0")
+            else:
+                tokens.append(tok.string)
+    except Exception:
+        return ""
+    return " ".join(tokens)
+
+
+def detect_duplicate_blocks_semantic(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    min_tokens: int = 40,
+    max_findings: int = 50,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+
+    fingerprints: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    scanned_files = 0
+
+    _progress(progress_callback, {"stage": "analyze", "message": "Scanning for semantic duplication"})
+    for path in files:
+        if Path(path).suffix.lower() != ".py":
+            continue
+        content = _read_file_text(path)
+        if not content:
+            continue
+        try:
+            tree = ast.parse(content)
+        except Exception:
+            continue
+
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            segment = ast.get_source_segment(content, node) or ""
+            normalized = _normalize_python_tokens(segment)
+            if not normalized:
+                continue
+            token_count = len(normalized.split())
+            if token_count < min_tokens:
+                continue
+            digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()
+            fingerprints[digest].append(
+                {
+                    "file": path,
+                    "name": getattr(node, "name", "<anonymous>"),
+                    "line": getattr(node, "lineno", 0),
+                    "tokens": token_count,
+                }
+            )
+        scanned_files += 1
+
+    findings: List[Dict[str, Any]] = []
+    for digest, occ in fingerprints.items():
+        if len(occ) < 2:
+            continue
+        findings.append(
+            {
+                "fingerprint": digest,
+                "occurrence_count": len(occ),
+                "occurrences": occ[:10],
+            }
+        )
+
+    findings.sort(key=lambda item: item.get("occurrence_count", 0), reverse=True)
+
+    return {
+        "count": len(findings),
+        "scanned_files": scanned_files,
+        "min_tokens": min_tokens,
+        "findings": findings[:max_findings],
+    }
+
+
+def detect_duplicate_blocks(
+    storage_path: Optional[str] = None,
+    source_path: Optional[str] = None,
+    min_lines: int = 8,
+    max_findings: int = 50,
+    max_windows_per_file: int = 6000,
+    progress_callback=None,
+) -> Dict[str, Any]:
+    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
+    files = collect_file_paths(storage_path, source_path)
+
+    duplicates: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    scanned_files = 0
+
+    _progress(progress_callback, {"stage": "analyze", "message": "Scanning for duplicate blocks"})
+    for path in files:
+        suffix = Path(path).suffix.lower()
+        if suffix not in {".py", ".js", ".ts", ".jsx", ".tsx"}:
+            continue
+        content = _read_file_text(path)
+        if not content:
+            continue
+        raw_lines = content.splitlines()
+        if len(raw_lines) < min_lines:
+            continue
+
+        normalized = [_normalize_duplication_line(line, suffix) for line in raw_lines]
+        window_limit = min(max_windows_per_file, max(len(raw_lines) - min_lines + 1, 0))
+        windows_seen = 0
+        for idx in range(0, len(raw_lines) - min_lines + 1):
+            if windows_seen >= window_limit:
+                break
+            window = normalized[idx : idx + min_lines]
+            if not any(window):
+                continue
+            key = "\n".join(window)
+            if len(key) < 20:
+                continue
+            duplicates[key].append(
+                {
+                    "file": path,
+                    "start_line": idx + 1,
+                    "end_line": idx + min_lines,
+                }
+            )
+            windows_seen += 1
+        scanned_files += 1
+
+    findings: List[Dict[str, Any]] = []
+    for key, occ in duplicates.items():
+        if len(occ) < 2:
+            continue
+        findings.append(
+            {
+                "line_count": min_lines,
+                "occurrences": occ[:10],
+                "occurrence_count": len(occ),
+                "snippet": "\n".join(key.splitlines()[:min_lines])[:500],
+            }
+        )
+
+    findings.sort(key=lambda item: item.get("occurrence_count", 0), reverse=True)
+
+    return {
+        "count": len(findings),
+        "scanned_files": scanned_files,
+        "min_lines": min_lines,
+        "findings": findings[:max_findings],
     }

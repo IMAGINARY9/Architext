@@ -2,6 +2,8 @@ import argparse
 import sys
 import os
 import json
+from datetime import date
+from pathlib import Path
 
 # Ensure src can be imported if resolving paths is tricky, though running as module (python -m src.cli) usually handles this.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -34,6 +36,8 @@ from src.tasks import (
     security_heuristics,
     code_knowledge_graph,
     synthesis_roadmap,
+    detect_duplicate_blocks,
+    detect_duplicate_blocks_semantic,
 )
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import (
@@ -287,6 +291,58 @@ def _build_parser():
     roadmap_parser.add_argument("--storage", help="Path to load the vector DB from")
     roadmap_parser.add_argument("--source", help="Source repo path (if not using storage)")
 
+    dup_parser = subparsers.add_parser("detect-duplication", help="Detect duplicated code blocks")
+    dup_parser.add_argument("--storage", help="Path to load the vector DB from")
+    dup_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    dup_parser.add_argument("--min-lines", type=int, default=8, help="Minimum lines per block")
+    dup_parser.add_argument("--max-findings", type=int, default=50, help="Maximum findings to return")
+
+    dup_sem_parser = subparsers.add_parser(
+        "detect-duplication-semantic",
+        help="Detect semantically duplicated Python functions/classes",
+    )
+    dup_sem_parser.add_argument("--storage", help="Path to load the vector DB from")
+    dup_sem_parser.add_argument("--source", help="Source repo path (if not using storage)")
+    dup_sem_parser.add_argument("--min-tokens", type=int, default=40, help="Minimum tokens per block")
+    dup_sem_parser.add_argument("--max-findings", type=int, default=50, help="Maximum findings to return")
+
+    audit_parser = subparsers.add_parser(
+        "audit",
+        help="Run a headless analysis suite and export JSON/mermaid outputs",
+    )
+    audit_parser.add_argument(
+        "--source",
+        default=".",
+        help="Source repo path (default: .)",
+    )
+    audit_parser.add_argument(
+        "--output",
+        help="Output directory (default: storage-refactor-data-YYYY-MM-DD under source)",
+    )
+    audit_parser.add_argument(
+        "--min-dup-lines",
+        type=int,
+        default=8,
+        help="Minimum lines per duplicated block",
+    )
+    audit_parser.add_argument(
+        "--max-dup-findings",
+        type=int,
+        default=50,
+        help="Maximum duplication findings to save",
+    )
+    audit_parser.add_argument("--ci", action="store_true", help="Enable CI mode (exit non-zero on thresholds)")
+    audit_parser.add_argument("--min-health-score", type=float, help="Fail if health score below this")
+    audit_parser.add_argument("--max-anti-patterns", type=int, help="Fail if anti-pattern count above this")
+    audit_parser.add_argument("--max-silent-failures", type=int, help="Fail if silent failures above this")
+    audit_parser.add_argument("--max-duplication", type=int, help="Fail if duplication findings above this")
+    audit_parser.add_argument(
+        "--max-semantic-duplication",
+        type=int,
+        help="Fail if semantic duplication findings above this",
+    )
+    audit_parser.add_argument("--max-security-findings", type=int, help="Fail if security findings above this")
+
     return parser
 
 
@@ -360,7 +416,129 @@ def main():
         "security-heuristics",
         "code-knowledge-graph",
         "synthesis-roadmap",
+        "detect-duplication",
+        "detect-duplication-semantic",
+        "audit",
     }:
+        if args.command == "audit":
+            source_path = args.source or "."
+            source_root = Path(source_path).resolve()
+            out_dir = Path(args.output) if args.output else source_root / f"storage-refactor-data-{date.today().isoformat()}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            results = {}
+            results["analyze_structure_json"] = analyze_structure(
+                source_path=source_path,
+                depth="exhaustive",
+                output_format="json",
+            )
+            results["analyze_structure_mermaid"] = analyze_structure(
+                source_path=source_path,
+                depth="detailed",
+                output_format="mermaid",
+            )
+            results["tech_stack"] = tech_stack(source_path=source_path, output_format="json")
+            results["anti_patterns"] = detect_anti_patterns(source_path=source_path)
+            results["health_score"] = health_score(source_path=source_path)
+            results["refactoring_recommendations"] = refactoring_recommendations(source_path=source_path)
+            results["dependency_graph_mermaid"] = dependency_graph_export(
+                source_path=source_path,
+                output_format="mermaid",
+            )
+            results["test_coverage"] = test_coverage_analysis(source_path=source_path)
+            results["logic_gap_analysis"] = logic_gap_analysis(source_path=source_path)
+            results["silent_failures"] = identify_silent_failures(source_path=source_path)
+            results["security_heuristics"] = security_heuristics(source_path=source_path)
+            results["code_knowledge_graph"] = code_knowledge_graph(source_path=source_path)
+            results["onboarding_guide"] = onboarding_guide(source_path=source_path)
+            results["synthesis_roadmap"] = synthesis_roadmap(source_path=source_path)
+            results["duplication"] = detect_duplicate_blocks(
+                source_path=source_path,
+                min_lines=args.min_dup_lines,
+                max_findings=args.max_dup_findings,
+            )
+            results["duplication_semantic"] = detect_duplicate_blocks_semantic(
+                source_path=source_path,
+            )
+
+            _write_json(out_dir / "analyze-structure.json", results["analyze_structure_json"])
+            (out_dir / "structure.mmd").write_text(
+                results["analyze_structure_mermaid"]["content"],
+                encoding="utf-8",
+            )
+            _write_json(out_dir / "tech-stack.json", results["tech_stack"])
+            _write_json(out_dir / "anti-patterns.json", results["anti_patterns"])
+            _write_json(out_dir / "health-score.json", results["health_score"])
+            _write_json(out_dir / "refactoring-recommendations.json", results["refactoring_recommendations"])
+            (out_dir / "dependency-graph.mmd").write_text(
+                results["dependency_graph_mermaid"].get("content", ""),
+                encoding="utf-8",
+            )
+            _write_json(out_dir / "test-coverage.json", results["test_coverage"])
+            _write_json(out_dir / "logic-gap-analysis.json", results["logic_gap_analysis"])
+            _write_json(out_dir / "silent-failures.json", results["silent_failures"])
+            _write_json(out_dir / "security-heuristics.json", results["security_heuristics"])
+            _write_json(out_dir / "code-knowledge-graph.json", results["code_knowledge_graph"])
+            _write_json(out_dir / "onboarding-guide.json", results["onboarding_guide"])
+            _write_json(out_dir / "synthesis-roadmap.json", results["synthesis_roadmap"])
+            _write_json(out_dir / "duplication.json", results["duplication"])
+            _write_json(out_dir / "duplication-semantic.json", results["duplication_semantic"])
+
+            summary = {
+                "health_score": results["health_score"].get("score"),
+                "anti_pattern_count": len(results["anti_patterns"].get("issues", [])),
+                "silent_failures": results["silent_failures"].get("count", 0),
+                "duplication_findings": results["duplication"].get("count", 0),
+                "semantic_duplication_findings": results["duplication_semantic"].get("count", 0),
+                "security_findings": results["security_heuristics"].get("counts", {}).get("total", 0),
+            }
+            _write_json(out_dir / "summary.json", summary)
+            _write_json(
+                out_dir / "_meta.json",
+                {
+                    "date": date.today().isoformat(),
+                    "repo_root": str(source_root),
+                    "notes": [
+                        "Generated via architext audit command",
+                        "Uses Architext tasks in src/tasks.py (static + heuristic; no vector store required).",
+                    ],
+                },
+            )
+
+            thresholds = {
+                "min_health_score": args.min_health_score,
+                "max_anti_patterns": args.max_anti_patterns,
+                "max_silent_failures": args.max_silent_failures,
+                "max_duplication": args.max_duplication,
+                "max_semantic_duplication": args.max_semantic_duplication,
+                "max_security_findings": args.max_security_findings,
+            }
+            failures = []
+            if thresholds["min_health_score"] is not None and summary["health_score"] is not None:
+                if summary["health_score"] < thresholds["min_health_score"]:
+                    failures.append("health_score")
+            if thresholds["max_anti_patterns"] is not None:
+                if summary["anti_pattern_count"] > thresholds["max_anti_patterns"]:
+                    failures.append("anti_pattern_count")
+            if thresholds["max_silent_failures"] is not None:
+                if summary["silent_failures"] > thresholds["max_silent_failures"]:
+                    failures.append("silent_failures")
+            if thresholds["max_duplication"] is not None:
+                if summary["duplication_findings"] > thresholds["max_duplication"]:
+                    failures.append("duplication_findings")
+            if thresholds["max_semantic_duplication"] is not None:
+                if summary["semantic_duplication_findings"] > thresholds["max_semantic_duplication"]:
+                    failures.append("semantic_duplication_findings")
+            if thresholds["max_security_findings"] is not None:
+                if summary["security_findings"] > thresholds["max_security_findings"]:
+                    failures.append("security_findings")
+
+            print(f"Wrote refactor data to: {out_dir}")
+            if failures and (args.ci or any(value is not None for value in thresholds.values())):
+                print(f"Audit failed thresholds: {', '.join(failures)}")
+                sys.exit(2)
+            return
+
         settings = load_settings(env_file=args.env_file)
         storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
 
@@ -540,6 +718,26 @@ def main():
             _print_task_result(result)
             return
 
+        if args.command == "detect-duplication":
+            result = detect_duplicate_blocks(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                min_lines=args.min_lines,
+                max_findings=args.max_findings,
+            )
+            _print_task_result(result)
+            return
+
+        if args.command == "detect-duplication-semantic":
+            result = detect_duplicate_blocks_semantic(
+                storage_path=storage_path if not args.source else None,
+                source_path=args.source,
+                min_tokens=args.min_tokens,
+                max_findings=args.max_findings,
+            )
+            _print_task_result(result)
+            return
+
     # All other commands need settings and LLM init
     try:
         settings = load_settings(env_file=args.env_file)
@@ -659,6 +857,10 @@ def _print_task_result(result):
         print(result.get("content", ""))
     else:
         print(json.dumps(result, indent=2))
+
+
+def _write_json(path: Path, payload):
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
 
 if __name__ == "__main__":
     main()
