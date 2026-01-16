@@ -26,6 +26,7 @@ from src.indexer import (
 )
 from src.ingestor import resolve_source, CACHE_DIR
 from src.api.mcp import build_mcp_router
+from src.api.tasks import build_tasks_router
 from src.cli_utils import extract_sources, to_agent_response, to_agent_response_compact
 from src.task_registry import run_task
 # Backwards-compatible re-exports for tests and external patching
@@ -526,206 +527,15 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             _update_task(task_id, {"status": "cancelled"})
         return {"task_id": task_id, "cancelled": cancelled}
 
-    @app.post("/tasks/analyze-structure", status_code=202)
-    async def analyze_structure_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("analyze-structure", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("analyze-structure", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "analyze-structure"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/tech-stack", status_code=202)
-    async def tech_stack_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("tech-stack", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("tech-stack", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "tech-stack"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/detect-anti-patterns", status_code=202)
-    async def detect_anti_patterns_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("detect-anti-patterns", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("detect-anti-patterns", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "detect-anti-patterns"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/health-score", status_code=202)
-    async def health_score_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("health-score", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("health-score", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "health-score"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/impact-analysis", status_code=202)
-    async def impact_analysis_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("impact-analysis", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        if not request.module:
-            raise HTTPException(status_code=400, detail="module is required")
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("impact-analysis", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "impact-analysis"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/refactoring-recommendations", status_code=202)
-    async def refactoring_recommendations_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("refactoring-recommendations", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("refactoring-recommendations", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "refactoring-recommendations"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/generate-docs", status_code=202)
-    async def generate_docs_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("generate-docs", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("generate-docs", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "generate-docs"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/dependency-graph", status_code=202)
-    async def dependency_graph_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("dependency-graph", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("dependency-graph", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "dependency-graph"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/test-coverage", status_code=202)
-    async def test_coverage_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("test-coverage", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("test-coverage", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "test-coverage"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/detect-patterns", status_code=202)
-    async def detect_patterns_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("detect-patterns", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("detect-patterns", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "detect-patterns"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/diff-architecture", status_code=202)
-    async def diff_architecture_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("diff-architecture", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("diff-architecture", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "diff-architecture"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/onboarding-guide", status_code=202)
-    async def onboarding_guide_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("onboarding-guide", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("onboarding-guide", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "onboarding-guide"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/detect-vulnerabilities", status_code=202)
-    async def detect_vulnerabilities_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("detect-vulnerabilities", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("detect-vulnerabilities", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "detect-vulnerabilities"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/logic-gap-analysis", status_code=202)
-    async def logic_gap_analysis_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("logic-gap-analysis", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("logic-gap-analysis", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "logic-gap-analysis"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/identify-silent-failures", status_code=202)
-    async def identify_silent_failures_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("identify-silent-failures", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("identify-silent-failures", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "identify-silent-failures"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/security-heuristics", status_code=202)
-    async def security_heuristics_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("security-heuristics", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("security-heuristics", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "security-heuristics"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/code-knowledge-graph", status_code=202)
-    async def code_knowledge_graph_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("code-knowledge-graph", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("code-knowledge-graph", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "code-knowledge-graph"})
-        return {"task_id": task_id, "status": "completed", "result": result}
-
-    @app.post("/tasks/synthesis-roadmap", status_code=202)
-    async def synthesis_roadmap_task(request: TaskRequest) -> Dict[str, Any]:
-        if request.background:
-            task_id = _submit_analysis_task("synthesis-roadmap", request)
-            return {"task_id": task_id, "status": "queued"}
-
-        task_id = str(uuid4())
-        result = _run_analysis_task("synthesis-roadmap", request)
-        _update_task(task_id, {"status": "completed", "result": result, "task": "synthesis-roadmap"})
-        return {"task_id": task_id, "status": "completed", "result": result}
+    app.include_router(
+        build_tasks_router(
+            _submit_analysis_task,
+            _run_analysis_task,
+            _update_task,
+            TaskRequest,
+            lambda: str(uuid4()),
+        )
+    )
 
     @app.post("/query")
     async def run_query(request: QueryRequest) -> Dict[str, Any]:
