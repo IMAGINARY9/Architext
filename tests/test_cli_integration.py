@@ -182,7 +182,7 @@ def test_cli_cache_cleanup(mocker, capsys):
 def test_cli_analyze_structure(mocker, capsys):
     """Analyze-structure command runs without LLM init."""
     mock_load_settings = mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.analyze_structure", return_value={"format": "json", "summary": {}})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"format": "json", "summary": {}})
 
     sys.argv = ["cli.py", "analyze-structure", "--storage", "./storage", "--depth", "shallow"]
 
@@ -194,6 +194,7 @@ def test_cli_analyze_structure(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "analyze-structure"
     captured = capsys.readouterr()
     assert "summary" in captured.out
 
@@ -201,7 +202,7 @@ def test_cli_analyze_structure(mocker, capsys):
 def test_cli_tech_stack(mocker, capsys):
     """Tech-stack command runs without LLM init."""
     mock_load_settings = mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.tech_stack", return_value={"format": "json", "data": {}})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"format": "json", "data": {}})
 
     sys.argv = ["cli.py", "tech-stack", "--storage", "./storage"]
 
@@ -213,6 +214,7 @@ def test_cli_tech_stack(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "tech-stack"
     captured = capsys.readouterr()
     assert "data" in captured.out
 
@@ -220,7 +222,7 @@ def test_cli_tech_stack(mocker, capsys):
 def test_cli_detect_anti_patterns(mocker, capsys):
     """Detect-anti-patterns command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.detect_anti_patterns", return_value={"issues": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"issues": []})
 
     sys.argv = ["cli.py", "detect-anti-patterns", "--storage", "./storage"]
 
@@ -232,6 +234,7 @@ def test_cli_detect_anti_patterns(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "detect-anti-patterns"
     captured = capsys.readouterr()
     assert "issues" in captured.out
 
@@ -239,7 +242,7 @@ def test_cli_detect_anti_patterns(mocker, capsys):
 def test_cli_health_score(mocker, capsys):
     """Health-score command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.health_score", return_value={"score": 75})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"score": 75})
 
     sys.argv = ["cli.py", "health-score", "--storage", "./storage"]
 
@@ -251,6 +254,7 @@ def test_cli_health_score(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "health-score"
     captured = capsys.readouterr()
     assert "score" in captured.out
 
@@ -258,7 +262,7 @@ def test_cli_health_score(mocker, capsys):
 def test_cli_impact_analysis(mocker, capsys):
     """Impact-analysis command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.impact_analysis", return_value={"affected": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"affected": []})
 
     sys.argv = ["cli.py", "impact-analysis", "module_x", "--storage", "./storage"]
 
@@ -270,6 +274,7 @@ def test_cli_impact_analysis(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "impact-analysis"
     captured = capsys.readouterr()
     assert "affected" in captured.out
 
@@ -277,7 +282,7 @@ def test_cli_impact_analysis(mocker, capsys):
 def test_cli_refactoring_recommendations(mocker, capsys):
     """Refactoring-recommendations command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.refactoring_recommendations", return_value={"recommendations": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"recommendations": []})
 
     sys.argv = ["cli.py", "refactoring-recommendations", "--storage", "./storage"]
 
@@ -289,6 +294,7 @@ def test_cli_refactoring_recommendations(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "refactoring-recommendations"
     captured = capsys.readouterr()
     assert "recommendations" in captured.out
 
@@ -296,7 +302,7 @@ def test_cli_refactoring_recommendations(mocker, capsys):
 def test_cli_generate_docs(mocker, capsys):
     """Generate-docs command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.generate_docs", return_value={"outputs": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"outputs": []})
 
     sys.argv = ["cli.py", "generate-docs", "--storage", "./storage", "--output", "./docs"]
 
@@ -308,6 +314,7 @@ def test_cli_generate_docs(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "generate-docs"
     captured = capsys.readouterr()
     assert "outputs" in captured.out
 
@@ -316,7 +323,7 @@ def test_cli_dependency_graph(mocker, capsys):
     """Dependency-graph command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
     mock_task = mocker.patch(
-        "src.cli.dependency_graph_export",
+        "src.cli.run_task",
         return_value={"format": "mermaid", "content": "graph TD"},
     )
 
@@ -330,6 +337,7 @@ def test_cli_dependency_graph(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "dependency-graph"
     captured = capsys.readouterr()
     assert "graph TD" in captured.out
 
@@ -337,7 +345,7 @@ def test_cli_dependency_graph(mocker, capsys):
 def test_cli_test_coverage(mocker, capsys):
     """Test-coverage command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.test_coverage_analysis", return_value={"coverage_ratio": 0.5})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"coverage_ratio": 0.5})
 
     sys.argv = ["cli.py", "test-coverage", "--storage", "./storage"]
 
@@ -349,6 +357,7 @@ def test_cli_test_coverage(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "test-coverage"
     captured = capsys.readouterr()
     assert "coverage_ratio" in captured.out
 
@@ -356,7 +365,7 @@ def test_cli_test_coverage(mocker, capsys):
 def test_cli_detect_patterns(mocker, capsys):
     """Detect-patterns command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.architecture_pattern_detection", return_value={"patterns": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"patterns": []})
 
     sys.argv = ["cli.py", "detect-patterns", "--storage", "./storage"]
 
@@ -368,6 +377,7 @@ def test_cli_detect_patterns(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "detect-patterns"
     captured = capsys.readouterr()
     assert "patterns" in captured.out
 
@@ -375,7 +385,7 @@ def test_cli_detect_patterns(mocker, capsys):
 def test_cli_diff_architecture(mocker, capsys):
     """Diff-architecture command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.diff_architecture_review", return_value={"added": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"added": []})
 
     sys.argv = ["cli.py", "diff-architecture", "--storage", "./storage"]
 
@@ -387,6 +397,7 @@ def test_cli_diff_architecture(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "diff-architecture"
     captured = capsys.readouterr()
     assert "added" in captured.out
 
@@ -394,7 +405,7 @@ def test_cli_diff_architecture(mocker, capsys):
 def test_cli_onboarding_guide(mocker, capsys):
     """Onboarding-guide command runs without LLM init."""
     mocker.patch("src.cli.load_settings", return_value=ArchitextSettings())
-    mock_task = mocker.patch("src.cli.onboarding_guide", return_value={"entry_points": []})
+    mock_task = mocker.patch("src.cli.run_task", return_value={"entry_points": []})
 
     sys.argv = ["cli.py", "onboarding-guide", "--storage", "./storage"]
 
@@ -406,5 +417,6 @@ def test_cli_onboarding_guide(mocker, capsys):
         assert e.code is None or e.code == 0
 
     mock_task.assert_called_once()
+    assert mock_task.call_args[0][0] == "onboarding-guide"
     captured = capsys.readouterr()
     assert "entry_points" in captured.out

@@ -16,29 +16,8 @@ from src.indexer import (
     load_existing_index,
     query_index,
 )
-from src.tasks import (
-    analyze_structure,
-    tech_stack,
-    query_diagnostics,
-    detect_anti_patterns,
-    health_score,
-    impact_analysis,
-    refactoring_recommendations,
-    generate_docs,
-    dependency_graph_export,
-    test_coverage_analysis,
-    architecture_pattern_detection,
-    diff_architecture_review,
-    onboarding_guide,
-    detect_vulnerabilities,
-    logic_gap_analysis,
-    identify_silent_failures,
-    security_heuristics,
-    code_knowledge_graph,
-    synthesis_roadmap,
-    detect_duplicate_blocks,
-    detect_duplicate_blocks_semantic,
-)
+from src.tasks import query_diagnostics
+from src.task_registry import run_task
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import (
     VerboseLogger,
@@ -542,22 +521,25 @@ def main():
         settings = load_settings(env_file=args.env_file)
         storage_path = _resolve_storage(getattr(args, "storage", None), settings.storage_path)
 
-        if args.command == "analyze-structure":
-            result = analyze_structure(
+        def _run_task_cli(task_name: str, **extra_kwargs):
+            return run_task(
+                task_name,
                 storage_path=storage_path if not args.source else None,
                 source_path=args.source,
-                depth=args.depth,
-                output_format=args.output_format,
+                output_format=getattr(args, "output_format", None),
+                depth=getattr(args, "depth", None),
+                module=getattr(args, "module", None),
+                output_dir=getattr(args, "output", None),
+                **extra_kwargs,
             )
+
+        if args.command == "analyze-structure":
+            result = _run_task_cli("analyze-structure")
             _print_task_result(result)
             return
 
         if args.command == "tech-stack":
-            result = tech_stack(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-                output_format=args.output_format,
-            )
+            result = _run_task_cli("tech-stack")
             _print_task_result(result)
             return
 
@@ -575,69 +557,42 @@ def main():
             return
 
         if args.command == "detect-anti-patterns":
-            result = detect_anti_patterns(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("detect-anti-patterns")
             _print_task_result(result)
             return
 
         if args.command == "health-score":
-            result = health_score(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("health-score")
             _print_task_result(result)
             return
 
         if args.command == "impact-analysis":
-            result = impact_analysis(
-                module=args.module,
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("impact-analysis")
             _print_task_result(result)
             return
 
         if args.command == "refactoring-recommendations":
-            result = refactoring_recommendations(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("refactoring-recommendations")
             _print_task_result(result)
             return
 
         if args.command == "generate-docs":
-            result = generate_docs(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-                output_dir=args.output,
-            )
+            result = _run_task_cli("generate-docs")
             _print_task_result(result)
             return
 
         if args.command == "dependency-graph":
-            result = dependency_graph_export(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-                output_format=args.output_format,
-            )
+            result = _run_task_cli("dependency-graph")
             _print_task_result(result)
             return
 
         if args.command == "test-coverage":
-            result = test_coverage_analysis(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("test-coverage")
             _print_task_result(result)
             return
 
         if args.command == "detect-patterns":
-            result = architecture_pattern_detection(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("detect-patterns")
             _print_task_result(result)
             return
 
@@ -654,74 +609,48 @@ def main():
                 except Exception as exc:
                     print(f"Failed to read baseline JSON: {exc}")
                     sys.exit(1)
-            result = diff_architecture_review(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-                baseline_files=baseline_files,
-            )
+            result = _run_task_cli("diff-architecture", baseline_files=baseline_files)
             _print_task_result(result)
             return
 
         if args.command == "onboarding-guide":
-            result = onboarding_guide(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("onboarding-guide")
             _print_task_result(result)
             return
 
         if args.command == "detect-vulnerabilities":
-            result = detect_vulnerabilities(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("detect-vulnerabilities")
             _print_task_result(result)
             return
 
         if args.command == "logic-gap-analysis":
-            result = logic_gap_analysis(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("logic-gap-analysis")
             _print_task_result(result)
             return
 
         if args.command == "identify-silent-failures":
-            result = identify_silent_failures(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("identify-silent-failures")
             _print_task_result(result)
             return
 
         if args.command == "security-heuristics":
-            result = security_heuristics(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("security-heuristics")
             _print_task_result(result)
             return
 
         if args.command == "code-knowledge-graph":
-            result = code_knowledge_graph(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("code-knowledge-graph")
             _print_task_result(result)
             return
 
         if args.command == "synthesis-roadmap":
-            result = synthesis_roadmap(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
-            )
+            result = _run_task_cli("synthesis-roadmap")
             _print_task_result(result)
             return
 
         if args.command == "detect-duplication":
-            result = detect_duplicate_blocks(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
+            result = _run_task_cli(
+                "detect-duplication",
                 min_lines=args.min_lines,
                 max_findings=args.max_findings,
             )
@@ -729,9 +658,8 @@ def main():
             return
 
         if args.command == "detect-duplication-semantic":
-            result = detect_duplicate_blocks_semantic(
-                storage_path=storage_path if not args.source else None,
-                source_path=args.source,
+            result = _run_task_cli(
+                "detect-duplication-semantic",
                 min_tokens=args.min_tokens,
                 max_findings=args.max_findings,
             )
