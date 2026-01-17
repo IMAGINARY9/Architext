@@ -1,45 +1,25 @@
 import os
-import re
 from pathlib import Path
 from typing import Optional, List, Dict, Iterable, Iterator, Tuple, TYPE_CHECKING
 
-import chromadb
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings, Document
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
-from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai_like import OpenAILike
 
 from src.config import ArchitextSettings, load_settings
 from src.file_filters import should_skip_path
+from src.indexer_components.factories import build_llm, build_vector_store
+from src.indexer_components.querying import _keyword_score, _tokenize
 
 if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
 
 
 def _build_llm(cfg: ArchitextSettings):
-    """Create the configured LLM client.
-
-    Currently supports local/OpenAI-compatible endpoints via OpenAILike.
-    """
-
-    provider = cfg.llm_provider.lower()
-    if provider in {"local", "openai"}:
-        llm_kwargs = {
-            "model": cfg.llm_model,
-            "api_base": cfg.openai_api_base,
-            "api_key": cfg.openai_api_key,
-            "temperature": cfg.llm_temperature,
-            "is_chat_model": True,
-        }
-        if cfg.llm_max_tokens is not None:
-            llm_kwargs["max_tokens"] = cfg.llm_max_tokens
-        return OpenAILike(**llm_kwargs)
-
-    raise ValueError(f"Unsupported LLM provider: {cfg.llm_provider}")
+    return build_llm(cfg)
 
 
 def _build_embedding(cfg: ArchitextSettings):
@@ -79,65 +59,8 @@ def initialize_settings(settings: Optional[ArchitextSettings] = None) -> Archite
     return cfg
 
 
-def _resolve_collection_name(cfg: ArchitextSettings) -> str:
-    return cfg.vector_store_collection or "architext_db"
-
-
 def _build_vector_store(cfg: ArchitextSettings, storage_path: str):
-    provider = cfg.vector_store_provider
-    collection = _resolve_collection_name(cfg)
-
-    if provider == "chroma":
-        db = chromadb.PersistentClient(path=storage_path)
-        chroma_collection = db.get_or_create_collection(collection)
-        return ChromaVectorStore(chroma_collection=chroma_collection)
-
-    if provider == "qdrant":
-        try:
-            from qdrant_client import QdrantClient  # type: ignore[import-not-found]
-            from llama_index.vector_stores.qdrant import QdrantVectorStore  # type: ignore[import-not-found]
-        except Exception as exc:  # pylint: disable=broad-except
-            raise RuntimeError(
-                "Qdrant adapter requires qdrant-client and llama-index-vector-stores-qdrant"
-            ) from exc
-        if not cfg.qdrant_url:
-            raise ValueError("QDRANT_URL is required for qdrant vector store")
-        client = QdrantClient(url=cfg.qdrant_url, api_key=cfg.qdrant_api_key)
-        return QdrantVectorStore(client=client, collection_name=collection)
-
-    if provider == "pinecone":
-        try:
-            from pinecone import Pinecone  # type: ignore[import-not-found]
-            from llama_index.vector_stores.pinecone import PineconeVectorStore  # type: ignore[import-not-found]
-        except Exception as exc:  # pylint: disable=broad-except
-            raise RuntimeError(
-                "Pinecone adapter requires pinecone-client and llama-index-vector-stores-pinecone"
-            ) from exc
-        if not cfg.pinecone_api_key or not cfg.pinecone_index_name:
-            raise ValueError("PINECONE_API_KEY and PINECONE_INDEX_NAME are required")
-        client = Pinecone(api_key=cfg.pinecone_api_key)
-        index = client.Index(cfg.pinecone_index_name)
-        return PineconeVectorStore(pinecone_index=index)
-
-    if provider == "weaviate":
-        try:
-            import weaviate  # type: ignore[import-not-found]
-            from llama_index.vector_stores.weaviate import WeaviateVectorStore  # type: ignore[import-not-found]
-        except Exception as exc:  # pylint: disable=broad-except
-            raise RuntimeError(
-                "Weaviate adapter requires weaviate-client and llama-index-vector-stores-weaviate"
-            ) from exc
-        if not cfg.weaviate_url:
-            raise ValueError("WEAVIATE_URL is required for weaviate vector store")
-        client = weaviate.Client(
-            url=cfg.weaviate_url,
-            auth_client_secret=weaviate.AuthApiKey(cfg.weaviate_api_key)
-            if cfg.weaviate_api_key
-            else None,
-        )
-        return WeaviateVectorStore(weaviate_client=client, index_name=collection)
-
-    raise ValueError(f"Unsupported vector store provider: {cfg.vector_store_provider}")
+    return build_vector_store(cfg, storage_path)
 
 INDEXABLE_EXTENSIONS = {
     ".py",
@@ -465,18 +388,6 @@ def _build_query_engine(index: VectorStoreIndex, settings: ArchitextSettings):
         return RetrieverQueryEngine.from_args(retriever=hybrid_retriever)
 
     return index.as_query_engine(similarity_top_k=settings.top_k)
-
-
-def _tokenize(text: str) -> List[str]:
-    return re.findall(r"[a-zA-Z0-9_]+", text.lower())
-
-
-def _keyword_score(query: str, document: str) -> float:
-    query_terms = set(_tokenize(query))
-    if not query_terms:
-        return 0.0
-    doc_terms = set(_tokenize(document))
-    return len(query_terms & doc_terms) / len(query_terms)
 
 
 class HybridRerankRetriever(BaseRetriever):
