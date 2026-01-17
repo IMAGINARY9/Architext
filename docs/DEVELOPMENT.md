@@ -7,8 +7,11 @@ src/
   config.py      # Configuration management (Pydantic + .env)
   ingestor.py    # Repo resolution, cloning, and caching
   indexer.py     # LlamaIndex pipeline, ChromaDB, Reranking
-  tasks.py       # Analysis tasks (Phase 2.5 suite)
-  server.py      # FastAPI application & Async task manager
+  task_registry.py  # Task registry (single source of truth)
+  tasks/         # Analysis tasks (split by domain)
+  indexer_components/  # LLM, embeddings, vector store factories
+  api/           # FastAPI routers and services
+  server.py      # FastAPI application & task wiring
   cli.py         # CLI entry point and command registration
   cli_utils.py   # Logging, formatting, model helpers
 
@@ -43,7 +46,7 @@ index = create_index(docs, storage_path="./storage")
 ```
 
 ### Server / API
-The project exposes a FastAPI server.
+The project exposes a FastAPI server with centralized task handling.
 *   `POST /index`: Async indexing task.
 *   `POST /query`: Semantic search query.
 *   `GET /tasks/{id}`: Check status of async tasks.
@@ -75,9 +78,23 @@ pytest tests/ -v
 *   Integration tests for ingestion and indexing.
 *   Operational tests for the API server.
 
-## 5. Developing New Features
-1.  **Add a Task:** Create a function in `src/tasks.py`, register it in `src/server.py` and `src/cli.py`.
-2.  **Add a Provider:** Update `src/config.py` Enum and `src/indexer.py` factory logic.
+## 5. Tooling
+
+Run linting and type checks:
+```bash
+python -m ruff check .
+python -m mypy src
+```
+
+Enable pre-commit hooks:
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+## 6. Developing New Features
+1.  **Add a Task:** Create a function in `src/tasks/<module>.py`, export it via `src/tasks/__init__.py`, register it in `src/task_registry.py`, and wire CLI support in `src/cli.py` if needed.
+2.  **Add a Provider:** Update `src/config.py` Enum and `src/indexer_components/factories.py`.
 3.  **Update Deps:** `pip freeze > requirements.txt`.
 
 ---

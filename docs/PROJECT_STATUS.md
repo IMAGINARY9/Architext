@@ -1,14 +1,16 @@
 # Architext: Project Status Report
 
-**Last Updated:** January 16, 2026
+**Last Updated:** January 17, 2026
 **Overall Status:** ✅ **Production-Ready & Feature Complete** (Phases 1, 2, 2.9, 3 delivered)
-**Test Coverage:** 84/84 Passing (`pytest tests/`), 86/86 Passing (`pytest`)
+**Test Coverage:** 92/92 Passing (`pytest`)
 
 ---
 
 ## Executive Summary
 
 Architext has successfully evolved from a local RAG prototype into a professional "Codebase Architect" agent tool. It now features a robust FastAPI server, comprehensive analysis tasks (Phase 2), critical security remediation (Phase 2.9), and semantic intelligence features (Phase 3).
+
+Recent refactors modularized tasks, centralized task dispatch, and extracted indexer factories to improve maintainability while keeping compatibility helpers in place.
 
 ## Phase Completion Breakdown
 
@@ -48,7 +50,7 @@ Architext has successfully evolved from a local RAG prototype into a professiona
 
 | Metric | Result | Notes |
 |--------|--------|-------|
-| **Test Pass Rate** | 100% (86/86) | High reliability on core paths |
+| **Test Pass Rate** | 100% (92/92) | High reliability on core paths |
 | **Indexing Speed** | ~3s (small) to ~45s (medium remote) | Efficient local caching |
 | **Query Latency** | 2-5s | Dependent on LLM provider |
 | **Security** | Hardened | Path traversal & input validation active |

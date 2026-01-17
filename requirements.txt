@@ -18,3 +18,8 @@ httpx
 sentence-transformers
 tree-sitter
 tree-sitter-languages
+ruff
+mypy
+black
+isort
+pre-commit

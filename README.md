@@ -5,8 +5,9 @@
 Architext is a production-ready RAG (Retrieval-Augmented Generation) tool designed to index repositories, understand their architecture, and answer high-level questions. It serves as a "Cortex" for software architecture, useful for both human developers and AI Orchestrators.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
-![Tests](https://img.shields.io/badge/Tests-86%2F86%20Passing-success)
+![Tests](https://img.shields.io/badge/Tests-92%2F92%20Passing-success)
 ![Phase](https://img.shields.io/badge/Phase-3%20Complete-blue)
+![Version](https://img.shields.io/badge/Version-0.5.0-informational)
 
 **[→ Read the Full Project Status Report](docs/PROJECT_STATUS.md)**
 
@@ -23,6 +24,8 @@ Architext is a production-ready RAG (Retrieval-Augmented Generation) tool design
 *   **[PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**: Detailed report on what has been delivered and tested.
 *   **[PROJECT_RETROSPECTIVE.md](docs/PROJECT_RETROSPECTIVE.md)**: Critical assessment, self-reflection, and "dogfooding" analysis.
 *   **[DEVELOPMENT.md](docs/DEVELOPMENT.md)**: Developer guide, API reference, and architecture roadmap.
+*   **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)**: Compatibility notes for the task and server refactor.
+*   **[RELEASE_NOTES.md](docs/RELEASE_NOTES.md)**: Highlights for the latest release.
 
 ## Getting Started
 
@@ -61,7 +64,7 @@ python -m src.cli detect-anti-patterns ./my-index
 **4. Run as a Server (API)**
 ```bash
 python -m src.cli serve
-# Swgger UI available at http://localhost:8000/docs
+# Swagger UI available at http://localhost:8000/docs
 ```
 
 ## Configuration
@@ -78,7 +81,7 @@ OPENAI_API_KEY=sk-...
 
 ## Testing
 
-Architext maintains a high standard of code quality with 100% test pass rate on core features.
+Architext maintains a high standard of code quality with the full test suite green.
 
 ```bash
 pytest tests/ -v
