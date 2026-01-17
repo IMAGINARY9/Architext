@@ -86,6 +86,3 @@ Architext maintains a high standard of code quality with the full test suite gre
 ```bash
 pytest tests/ -v
 ```
-
----
-*Architext is a tool by [Your Name/Organization].*

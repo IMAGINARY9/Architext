@@ -424,7 +424,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
 
         cancelled = future.cancel()
         if cancelled:
-            _update_task(task_id, {"status": "cancelled"})
+            task_service.update_task(task_id, {"status": "cancelled"})
         return {"task_id": task_id, "cancelled": cancelled}
 
     app.include_router(

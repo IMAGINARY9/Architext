@@ -16,7 +16,24 @@ from src.indexer import (
     load_existing_index,
     query_index,
 )
-from src.tasks import query_diagnostics
+from src.tasks import (
+    analyze_structure,
+    tech_stack,
+    detect_anti_patterns,
+    health_score,
+    refactoring_recommendations,
+    dependency_graph_export,
+    test_coverage_analysis,
+    logic_gap_analysis,
+    identify_silent_failures,
+    security_heuristics,
+    code_knowledge_graph,
+    onboarding_guide,
+    synthesis_roadmap,
+    detect_duplicate_blocks,
+    detect_duplicate_blocks_semantic,
+    query_diagnostics,
+)
 from src.task_registry import run_task
 from src.ingestor import resolve_source, cleanup_cache
 from src.cli_utils import (

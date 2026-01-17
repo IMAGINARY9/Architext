@@ -1,4 +1,5 @@
 import os
+import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Iterable, Iterator, Tuple, TYPE_CHECKING
 
@@ -459,8 +460,6 @@ def _apply_cross_encoder_rerank(
     candidates.sort(key=lambda item: item.score or 0.0, reverse=True)
     return candidates + nodes[rerank_limit:]
 
-
-import threading
 
 _CROSS_ENCODER_CACHE: Dict[str, "CrossEncoder"] = {}
 _CROSS_ENCODER_LOCK = threading.RLock()
