@@ -53,7 +53,7 @@ def build_mcp_router(
                 background=False,
             )
             try:
-                result = task_runner(task_name, task_payload)
+                result = task_runner(str(task_name), task_payload)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
 

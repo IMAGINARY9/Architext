@@ -35,7 +35,7 @@ def format_response(response: Any, format: str = "text") -> str:
         Formatted string.
     """
     if format == "json":
-        output = {
+        output: dict = {
             "response": str(response),
             "type": type(response).__name__,
         }
@@ -141,7 +141,7 @@ class DryRunIndexer:
     def __init__(self, logger: VerboseLogger):
         self.logger = logger
         self.document_count = 0
-        self.file_types = {}
+        self.file_types: dict[str, int] = {}
 
     def preview(self, source: str) -> Dict[str, Any]:
         """Preview what would be indexed.

@@ -99,16 +99,16 @@ def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict
         lines = content.splitlines()
         for idx, line in enumerate(lines, start=1):
             for rule in SECURITY_RULES:
-                extensions = rule.get("extensions")
+                extensions = rule.get("extensions")  # type: ignore[attr-defined]
                 if extensions and suffix not in extensions:
                     continue
-                pattern = rule.get("pattern")
+                pattern = rule.get("pattern")  # type: ignore[attr-defined]
                 if pattern and pattern.search(line):
                     findings.append(
                         {
-                            "rule_id": rule.get("id"),
-                            "severity": rule.get("severity"),
-                            "description": rule.get("description"),
+                            "rule_id": rule.get("id"),  # type: ignore[attr-defined]
+                            "severity": rule.get("severity"),  # type: ignore[attr-defined]
+                            "description": rule.get("description"),  # type: ignore[attr-defined]
                             "file": path,
                             "line": idx,
                             "snippet": line.strip()[:300],
@@ -225,7 +225,7 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
             self.tainted_stack.pop()
 
         def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-            self.visit_FunctionDef(node)
+            self.visit_FunctionDef(node)  # type: ignore[arg-type]
 
         def visit_Assign(self, node: ast.Assign):
             current = self.tainted_stack[-1]

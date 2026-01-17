@@ -253,7 +253,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     )
 
     def _settings_with_overrides(req: IndexRequest) -> ArchitextSettings:
-        overrides = {}
+        overrides: Dict[str, Any] = {}
         if req.llm_provider:
             overrides["llm_provider"] = req.llm_provider
         if req.embedding_provider:
@@ -441,7 +441,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     async def run_query(request: QueryRequest) -> Dict[str, Any]:
         storage_path = _resolve_storage_path(request.storage)
 
-        overrides = {}
+        overrides: Dict[str, Any] = {}
         if request.enable_hybrid is not None:
             overrides["enable_hybrid"] = request.enable_hybrid
         if request.hybrid_alpha is not None:
@@ -486,7 +486,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     async def run_ask(request: AskRequest) -> Dict[str, Any]:
         storage_path = _resolve_storage_path(request.storage)
 
-        overrides = {}
+        overrides: Dict[str, Any] = {}
         if request.enable_hybrid is not None:
             overrides["enable_hybrid"] = request.enable_hybrid
         if request.hybrid_alpha is not None:
@@ -534,7 +534,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         
         storage_path = _resolve_storage_path(request.storage)
 
-        overrides = {}
+        overrides: Dict[str, Any] = {}
         if request.enable_hybrid is not None:
             overrides["enable_hybrid"] = request.enable_hybrid
         if request.hybrid_alpha is not None:

@@ -230,7 +230,7 @@ def identify_silent_failures(
                 content,
                 re.IGNORECASE | re.DOTALL,
             ):
-                line = _line_number_from_index(content, match.start())
+                line = str(_line_number_from_index(content, match.start()))
                 findings.append(
                     {
                         "file": path,

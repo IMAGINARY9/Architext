@@ -70,5 +70,5 @@ class ArchitextSettings(BaseSettings):
 
 def load_settings(env_file: Optional[str] = None) -> ArchitextSettings:
     """Load settings from env/.env with sensible defaults."""
-    init_kwargs = {"_env_file": env_file} if env_file else {}
+    init_kwargs: dict = {"_env_file": env_file} if env_file else {}
     return ArchitextSettings(**init_kwargs)

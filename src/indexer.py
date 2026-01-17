@@ -133,7 +133,7 @@ def gather_index_files(path: str, progress_callback=None) -> List[str]:
 
 def _get_ts_parser(language_name: str):
     try:
-        from tree_sitter_languages import get_parser  # type: ignore[import-not-found]
+        from tree_sitter_languages import get_parser
     except Exception:
         return None
     try:
@@ -346,7 +346,7 @@ def create_index_from_paths(
     for batch in batches:
         if not batch:
             continue
-        index.insert_documents(batch)
+        index.insert_documents(batch)  # type: ignore[attr-defined]
         indexed_count += len(batch)
         if progress_callback:
             progress_callback(

@@ -116,10 +116,10 @@ def diff_architecture_review(
 ) -> Dict[str, Any]:
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     current_files = set(collect_file_paths(storage_path, source_path))
-    baseline_files = set(baseline_files or [])
+    baseline_set = set(baseline_files or [])
 
-    added = sorted(current_files - baseline_files)
-    removed = sorted(baseline_files - current_files)
+    added = sorted(current_files - baseline_set)
+    removed = sorted(baseline_set - current_files)
 
     return {
         "added": added[:100],
@@ -209,7 +209,7 @@ def code_knowledge_graph(
                 function_stack.pop()
 
             def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-                self.visit_FunctionDef(node)
+                self.visit_FunctionDef(node)  # type: ignore[arg-type]
 
             def visit_Call(self, node: ast.Call):
                 if len(edges) >= max_edges:

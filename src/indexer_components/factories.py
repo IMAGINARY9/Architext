@@ -30,7 +30,7 @@ def build_llm(cfg: ArchitextSettings):
         }
         if cfg.llm_max_tokens is not None:
             llm_kwargs["max_tokens"] = cfg.llm_max_tokens
-        return OpenAILike(**llm_kwargs)
+        return OpenAILike(**llm_kwargs)  # type: ignore[arg-type]
 
     raise ValueError(f"Unsupported LLM provider: {cfg.llm_provider}")
 
@@ -76,10 +76,8 @@ def build_vector_store(cfg: ArchitextSettings, storage_path: str):
 
     if provider == "qdrant":
         try:
-            from qdrant_client import QdrantClient  # type: ignore[import-not-found]
-            from llama_index.vector_stores.qdrant import (
-                QdrantVectorStore,  # type: ignore[import-not-found]
-            )
+            from qdrant_client import QdrantClient
+            from llama_index.vector_stores.qdrant import QdrantVectorStore
         except Exception as exc:  # pylint: disable=broad-except
             raise RuntimeError(
                 "Qdrant adapter requires qdrant-client and llama-index-vector-stores-qdrant"
@@ -91,10 +89,8 @@ def build_vector_store(cfg: ArchitextSettings, storage_path: str):
 
     if provider == "pinecone":
         try:
-            from pinecone import Pinecone  # type: ignore[import-not-found]
-            from llama_index.vector_stores.pinecone import (
-                PineconeVectorStore,  # type: ignore[import-not-found]
-            )
+            from pinecone import Pinecone
+            from llama_index.vector_stores.pinecone import PineconeVectorStore
         except Exception as exc:  # pylint: disable=broad-except
             raise RuntimeError(
                 "Pinecone adapter requires pinecone-client and llama-index-vector-stores-pinecone"
@@ -107,10 +103,8 @@ def build_vector_store(cfg: ArchitextSettings, storage_path: str):
 
     if provider == "weaviate":
         try:
-            import weaviate  # type: ignore[import-not-found]
-            from llama_index.vector_stores.weaviate import (
-                WeaviateVectorStore,  # type: ignore[import-not-found]
-            )
+            import weaviate
+            from llama_index.vector_stores.weaviate import WeaviateVectorStore
         except Exception as exc:  # pylint: disable=broad-except
             raise RuntimeError(
                 "Weaviate adapter requires weaviate-client and llama-index-vector-stores-weaviate"

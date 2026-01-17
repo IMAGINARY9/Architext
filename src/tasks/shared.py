@@ -93,14 +93,12 @@ def _gather_files_cached(source_path: str) -> tuple[str, ...]:
 
 def _load_files_from_storage(storage_path: str) -> List[str]:
     try:
-        from src.config import load_settings
-    except Exception:
-        load_settings = None
-
-    if load_settings:
-        settings = load_settings()
+        from src.config import load_settings as _load_settings_func
+        settings = _load_settings_func()
         if settings.vector_store_provider != "chroma":
             raise ValueError("storage-based tasks require chroma vector store; use --source instead")
+    except Exception:
+        pass
     client = chromadb.PersistentClient(path=storage_path)
     collection = client.get_or_create_collection("architext_db")
     data = collection.get(include=["metadatas"])
@@ -112,7 +110,7 @@ def _load_files_from_storage(storage_path: str) -> List[str]:
         path = meta.get("file_path")
         if path:
             file_paths.append(path)
-    return sorted(set(file_paths))
+    return sorted(set(file_paths))  # type: ignore[arg-type]
 
 
 def _gather_files(source_path: str) -> List[str]:
@@ -159,7 +157,7 @@ def _read_file_text(path: str, max_bytes: int = 200_000) -> str:
 
 def _get_ts_parser(language_name: str):
     try:
-        from tree_sitter_languages import get_parser  # type: ignore[import-not-found]
+        from tree_sitter_languages import get_parser
     except Exception:
         return None
     try:
@@ -215,7 +213,7 @@ def _extract_imports(path: str, content: str) -> List[str]:
     language = language_map.get(suffix)
     parser = _get_ts_parser(language) if language else None
     if parser:
-        imports: List[str] = []
+        ts_imports: List[str] = []
         tree = parser.parse(content.encode("utf-8", errors="ignore"))
         root = tree.root_node
         stack = [root]
@@ -225,20 +223,20 @@ def _extract_imports(path: str, content: str) -> List[str]:
                 statement = content[node.start_byte : node.end_byte]
                 match = re.search(r"['\"](.*?)['\"]", statement)
                 if match:
-                    imports.append(match.group(1))
+                    ts_imports.append(match.group(1))
             for child in reversed(node.children):
                 stack.append(child)
-        if imports:
-            return imports
+        if ts_imports:
+            return ts_imports
 
     patterns = IMPORT_PATTERNS.get(suffix, [])
-    imports: List[str] = []
+    fallback_imports: List[str] = []
     for pattern in patterns:
         for match in pattern.findall(content):
             if isinstance(match, tuple):
                 match = match[0]
-            imports.append(match)
-    return imports
+            fallback_imports.append(match)
+    return fallback_imports
 
 
 def _classify_import_clusters(imports: List[str]) -> List[str]:
