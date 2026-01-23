@@ -37,9 +37,14 @@ def test_index_endpoint_inline(mocker, tmp_path, patched_settings):
 def test_query_endpoint_agent_mode(mocker, patched_settings):
     mock_response = Mock()
     mock_response.__str__ = Mock(return_value="answer")
-    node = Mock()
-    node.metadata = {"file_path": "app.py"}
-    node.score = 0.9
+    mock_response.confidence = 0.9
+    # Create a mock node with proper structure
+    class MockNode:
+        def __init__(self):
+            self.metadata = {"file_path": "app.py"}
+            self.score = 0.9
+    
+    node = MockNode()
     mock_response.source_nodes = [node]
 
     mocker.patch("src.server.load_existing_index", return_value=Mock())

@@ -33,7 +33,7 @@ from src.api.tasks_service import (
     persist_task_store,
     resolve_task_store_path,
 )
-from src.cli_utils import extract_sources, to_agent_response, to_agent_response_compact
+from src.api_utils import extract_sources, to_agent_response, to_agent_response_compact, DryRunIndexer
 # Backwards-compatible re-exports for tests and external patching
 from src.tasks import (
     analyze_structure,
@@ -526,25 +526,29 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         reranked = bool(request_settings.enable_rerank)
         hybrid_enabled = bool(request_settings.enable_hybrid)
 
-        if request.mode == "agent":
-            payload = (
-                to_agent_response_compact(response)
-                if request.compact
-                else to_agent_response(response)
+        if request.mode == "human":
+            sources = extract_sources(response)
+            return QueryResponse(
+                answer=str(response),
+                sources=[QuerySource(**s) for s in sources],
+                reranked=reranked,
+                hybrid_enabled=hybrid_enabled,
             )
+
+        # Agent mode response — return explicit Pydantic models so FastAPI selects the
+        # correct response schema rather than coercing to the first Union option.
+        if request.compact:
+            payload = to_agent_response_compact(response, request.text)
             payload["reranked"] = reranked
             payload["hybrid_enabled"] = hybrid_enabled
-            # Return as dict for now, but schema is defined
-            return payload
+            return CompactAgentQueryResponse(**payload)
 
-        # Human mode response
-        sources = extract_sources(response)
-        return QueryResponse(
-            answer=str(response),
-            sources=[QuerySource(**s) for s in sources],
-            reranked=reranked,
-            hybrid_enabled=hybrid_enabled,
-        )
+        payload = to_agent_response(response, request.text)
+        # Ensure Agent response has the required 'type' field
+        payload["type"] = payload.get("type", "agent")
+        payload["reranked"] = reranked
+        payload["hybrid_enabled"] = hybrid_enabled
+        return AgentQueryResponse(**payload)
 
     @app.post("/ask")
     async def run_ask(request: AskRequest) -> Union[AgentQueryResponse, CompactAgentQueryResponse]:
@@ -571,9 +575,9 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         payload = (
-            to_agent_response_compact(response)
+            to_agent_response_compact(response, request.text)
             if request.compact
-            else to_agent_response(response)
+            else to_agent_response(response, request.text)
         )
         payload["reranked"] = bool(request_settings.enable_rerank)
         payload["hybrid_enabled"] = bool(request_settings.enable_hybrid)

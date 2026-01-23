@@ -12,8 +12,7 @@ src/
   indexer_components/  # LLM, embeddings, vector store factories
   api/           # FastAPI routers and services
   server.py      # FastAPI application & task wiring
-  cli.py         # CLI entry point and command registration
-  cli_utils.py   # Logging, formatting, model helpers
+  api_utils.py   # Shared utilities for API responses and source extraction
 
 tests/           # Pytest suite (see individual test modules)
 storage/         # Default location for local vector indices
@@ -60,7 +59,7 @@ Architext provides stable JSON schemas for agent integration. All responses foll
 
 ## Advanced / Static Defaults via Config
 
-To reduce CLI noise, advanced or static defaults can be put into `architext.config.json` in the project root (or `~/.architext/config.json`). Architext will automatically load this file if present and merge its values on top of `.env`/environment variables.
+Advanced or static defaults can be put into `architext.config.json` in the project root (or `~/.architext/config.json`). Architext will automatically load this file if present and merge its values on top of `.env`/environment variables.
 
 Example file (see `docs/advanced-config.json.example`):
 

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.0 - 2026-01-23
+
+### Breaking Changes
+- Removed direct CLI calls. The tool now focuses exclusively on the server API. Use `python -m src.server` to start the server and interact via HTTP endpoints.
+- Removed `src/cli.py` and `src/cli_utils.py`.
+- Removed console script entry point.
+
+### Added
+- Config file validation with friendly error messages for unknown keys.
+
+### Changed
+- Simplified project scope to server-only operation.
+
 ## 0.5.0 - 2026-01-17
 
 ### Added

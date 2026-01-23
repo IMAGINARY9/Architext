@@ -35,11 +35,23 @@ def build_mcp_router(
 
         if tool == "architext.query":
             query_payload = query_request_type(**args)
-            return await query_handler(query_payload)
+            result = await query_handler(query_payload)
+            # Convert Pydantic model results into plain dicts for MCP transport
+            if not isinstance(result, dict):
+                if hasattr(result, "model_dump"):
+                    return result.model_dump()
+                # Fallback: try to coerce to dict
+                return dict(result)
+            return result
 
         if tool == "architext.ask":
             ask_payload = ask_request_type(**args)
-            return await ask_handler(ask_payload)
+            result = await ask_handler(ask_payload)
+            if not isinstance(result, dict):
+                if hasattr(result, "model_dump"):
+                    return result.model_dump()
+                return dict(result)
+            return result
 
         if tool == "architext.task":
             task_name = args.get("task")

@@ -36,42 +36,42 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Quick Commands
+### Quick Start
 
-A compact reference to the most-used commands. Some subcommands and analysis tasks are considered **advanced / experimental** and their flags may change — run `python -m src.cli <command> --help` for the latest options.
+Start the server and use the HTTP API for all operations. Swagger UI: `http://localhost:8000/docs`.
 
-#### Core (stable) commands
+```bash
+# Start the server
+python -m src.server --host 127.0.0.1 --port 8000
+```
 
-- **Index a repository** — Creates a vector DB from a local path or remote git URL. If `--storage` is omitted, auto-generates a path like `./storage/<repo-name>-<hash>`. Use `--preview` to see a JSON plan before indexing.
+#### Core API Endpoints
+
+- **Index a repository** — Creates a vector DB from a local path or remote git URL.
 
 ```bash
 # Preview plan (recommended first step)
-python -m src.cli index ./src --preview
+curl -X POST http://localhost:8000/index/preview \
+  -H "Content-Type: application/json" \
+  -d '{"source": "./src"}'
 
 # Index with auto storage
-python -m src.cli index ./src
+curl -X POST http://localhost:8000/index \
+  -H "Content-Type: application/json" \
+  -d '{"source": "./src"}'
 
 # Index with custom storage
-python -m src.cli index ./src --storage ./my-index
-
-# Remote (private repos: add --ssh-key)
-python -m src.cli index https://github.com/psf/requests
+curl -X POST http://localhost:8000/index \
+  -H "Content-Type: application/json" \
+  -d '{"source": "./src", "storage": "./my-index"}'
 ```
 
-Key flags: `--preview` (JSON plan), `--storage` (custom path), `--no-cache`, `--ssh-key`, `--llm-provider`, `--embedding-provider` (see `--help` for grouped options). Advanced/static defaults may be placed in `architext.config.json` in your repo root (no CLI flags required) to avoid repeating long flag lists.
-
-- **Query an index** — Ask a question against an existing index. Use `--storage` to point to the index and `--format json` for machine-readable output.
+- **Query an index** — Ask a question against an existing index.
 
 ```bash
-python -m src.cli query "How is authentication handled?" --storage ./my-index --format json
-```
-
-Advanced query flags: `--enable-hybrid`, `--hybrid-alpha`, `--enable-rerank`, `--rerank-model`, `--rerank-top-n` (see `--help` for grouped options).
-
-- **Run as a server (API)** — Start the FastAPI server. Use `--host`, `--port`, and `--reload` (dev only). Swagger UI: `http://localhost:8000/docs`.
-
-```bash
-python -m src.cli serve --host 127.0.0.1 --port 8000
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"text": "How is authentication handled?", "storage": "./my-index", "format": "json"}'
 ```
 
 #### Analysis & task suite (advanced / experimental)
@@ -80,32 +80,36 @@ These commands run static/heuristic analysis and produce JSON/markdown outputs. 
 
 - Structure analysis (tree/mermaid/json):
 ```bash
-python -m src.cli analyze-structure --source ./src --output-format mermaid
+curl -X POST http://localhost:8000/tasks/structure \
+  -H "Content-Type: application/json" \
+  -d '{"source": "./src", "output_format": "mermaid"}'
 ```
 
 - Anti-pattern detection:
 ```bash
-python -m src.cli detect-anti-patterns --source ./src
+curl -X POST http://localhost:8000/tasks/anti-patterns \
+  -H "Content-Type: application/json" \
+  -d '{"source": "./src"}'
 ```
 
 - Full audit (exports multiple artefacts):
 ```bash
-python -m src.cli audit --source . --output ./architext-audit
+curl -X POST http://localhost:8000/tasks/audit \
+  -H "Content-Type: application/json" \
+  -d '{"source": ".", "output": "./architext-audit"}'
 ```
 
-For a full list of tasks and detailed usage, see `docs/DEVELOPMENT.md` and run `python -m src.cli <task> --help` before using in CI.
+For a full list of tasks and detailed usage, see `docs/DEVELOPMENT.md`.
 
-> Note: Environment variables like `LLM_PROVIDER`, `OPENAI_API_KEY`, or local LLM endpoints should be set before running commands that require an LLM. See **Configuration** below for examples. 🔒
+> Note: Environment variables like `LLM_PROVIDER`, `OPENAI_API_KEY`, or local LLM endpoints should be set before starting the server. See **Configuration** below for examples. 🔒
 
-**Preview Plan Schema** (for `--preview`):
+**Preview Plan Schema** (for index preview):
 ```json
 {
-  "plan_id": "plan-123456",
   "source": "./src",
   "resolved_path": "/path/to/src",
-  "file_count": 36,
-  "doc_estimate": 36,
-  "suggested_storage": "./storage/src-abc123",
+  "documents": 36,
+  "file_types": {".py": 30, ".md": 5},
   "warnings": ["Remote repository will be cloned/cached locally"]
 }
 ```

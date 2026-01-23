@@ -325,7 +325,7 @@ def detect_vulnerabilities(
         try:
             from src.indexer import load_existing_index, query_index, initialize_settings
             from src.config import load_settings
-            from src.cli_utils import extract_sources
+            from src.api_utils import extract_sources
 
             initialize_settings(load_settings())
             index = load_existing_index(storage_path)
