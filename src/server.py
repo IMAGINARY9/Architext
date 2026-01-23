@@ -8,7 +8,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 from uuid import uuid4
 
 from concurrent.futures import ThreadPoolExecutor
@@ -112,6 +112,53 @@ class TaskRequest(BaseModel):
 class MCPRunRequest(BaseModel):
     tool: str
     arguments: Dict[str, Any] = Field(default_factory=dict)
+
+
+class IndexPreviewResponse(BaseModel):
+    """Stable JSON schema for index preview responses."""
+    source: str
+    resolved_path: str
+    documents: int
+    file_types: Dict[str, int]
+    warnings: List[str]
+    would_index: bool
+    error: Optional[str] = None
+
+
+class QuerySource(BaseModel):
+    """Schema for a single source in query responses."""
+    file: str
+    score: Optional[float] = None
+    start_line: Optional[int] = None
+    end_line: Optional[int] = None
+
+
+class QueryResponse(BaseModel):
+    """Stable JSON schema for human-mode query responses."""
+    answer: str
+    sources: List[QuerySource]
+    mode: str = "human"
+    reranked: bool = False
+    hybrid_enabled: bool = False
+
+
+class AgentQueryResponse(BaseModel):
+    """Stable JSON schema for agent-mode query responses."""
+    answer: str
+    confidence: Optional[float] = None
+    sources: List[QuerySource]
+    type: str
+    reranked: bool = False
+    hybrid_enabled: bool = False
+
+
+class CompactAgentQueryResponse(BaseModel):
+    """Compact schema for agent context windows."""
+    answer: str
+    confidence: Optional[float] = None
+    sources: List[Dict[str, Any]]  # Simplified source format
+    reranked: bool = False
+    hybrid_enabled: bool = False
 
 
 class _RateLimiter:
@@ -401,6 +448,21 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         _run_index(task_id, request, storage_path)
         return {"task_id": task_id, **task_store.get(task_id, {})}
 
+    @app.post("/index/preview")
+    async def preview_index(request: IndexRequest) -> IndexPreviewResponse:
+        """Preview what would be indexed without actually creating the index."""
+        from src.cli_utils import DryRunIndexer
+        from src.ingestor import resolve_source
+
+        try:
+            resolved_path = resolve_source(request.source, use_cache=not request.no_cache)
+            indexer = DryRunIndexer(None)  # No logger needed for preview
+            result = indexer.preview(str(resolved_path))
+            
+            return IndexPreviewResponse(**result)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/status/{task_id}")
     async def get_status(task_id: str) -> Dict[str, Any]:
         task = task_store.get(task_id)
@@ -438,7 +500,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     )
 
     @app.post("/query")
-    async def run_query(request: QueryRequest) -> Dict[str, Any]:
+    async def run_query(request: QueryRequest) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
         storage_path = _resolve_storage_path(request.storage)
 
         overrides: Dict[str, Any] = {}
@@ -472,18 +534,20 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             )
             payload["reranked"] = reranked
             payload["hybrid_enabled"] = hybrid_enabled
+            # Return as dict for now, but schema is defined
             return payload
 
-        return {
-            "answer": str(response),
-            "sources": extract_sources(response),
-            "mode": "human",
-            "reranked": reranked,
-            "hybrid_enabled": hybrid_enabled,
-        }
+        # Human mode response
+        sources = extract_sources(response)
+        return QueryResponse(
+            answer=str(response),
+            sources=[QuerySource(**s) for s in sources],
+            reranked=reranked,
+            hybrid_enabled=hybrid_enabled,
+        )
 
     @app.post("/ask")
-    async def run_ask(request: AskRequest) -> Dict[str, Any]:
+    async def run_ask(request: AskRequest) -> Union[AgentQueryResponse, CompactAgentQueryResponse]:
         storage_path = _resolve_storage_path(request.storage)
 
         overrides: Dict[str, Any] = {}
@@ -513,6 +577,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         )
         payload["reranked"] = bool(request_settings.enable_rerank)
         payload["hybrid_enabled"] = bool(request_settings.enable_hybrid)
+        # Return as dict for now, but schema is defined
         return payload
 
     app.include_router(

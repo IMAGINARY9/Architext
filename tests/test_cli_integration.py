@@ -15,6 +15,9 @@ def test_cli_index_command_success(temp_repo_path, mocker, capsys):
     mock_load_settings = mocker.patch("src.cli.load_settings")
     mock_resolve_source = mocker.patch("src.cli.resolve_source", return_value=temp_repo_path)
 
+    # Mock auto storage to return the expected path
+    mock_compute_auto = mocker.patch("src.cli._compute_auto_storage", return_value="./config_storage")
+    
     # Provide config so storage defaults are predictable
     cfg = ArchitextSettings(storage_path="./config_storage")
     mock_load_settings.return_value = cfg

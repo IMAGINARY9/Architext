@@ -48,9 +48,79 @@ index = create_index(docs, storage_path="./storage")
 ### Server / API
 The project exposes a FastAPI server with centralized task handling.
 *   `POST /index`: Async indexing task.
+*   `POST /index/preview`: Preview indexing plan (stable JSON schema).
 *   `POST /query`: Semantic search query.
+*   `POST /ask`: Agent-optimized query (compact schemas).
 *   `GET /tasks/{id}`: Check status of async tasks.
 *   `GET /mcp/tools`: Discover available tools (MCP-style).
+
+### Stable JSON Schemas
+
+Architext provides stable JSON schemas for agent integration. All responses follow these Pydantic models:
+
+#### Index Preview Schema
+```json
+{
+  "source": "https://github.com/user/repo",
+  "resolved_path": "/cache/repo-hash",
+  "documents": 42,
+  "file_types": {".py": 30, ".md": 5, ".txt": 7},
+  "warnings": ["Remote repository will be cloned/cached locally"],
+  "would_index": true
+}
+```
+
+#### Query Response Schemas
+
+**Human Mode** (`POST /query` with `mode=human`):
+```json
+{
+  "answer": "The authentication is handled in auth.py...",
+  "sources": [
+    {
+      "file": "src/auth.py",
+      "score": 0.85,
+      "start_line": 10,
+      "end_line": 25
+    }
+  ],
+  "mode": "human",
+  "reranked": false,
+  "hybrid_enabled": true
+}
+```
+
+**Agent Mode** (`POST /query` with `mode=agent`):
+```json
+{
+  "answer": "Authentication uses JWT tokens...",
+  "confidence": 0.85,
+  "sources": [
+    {
+      "file": "src/auth.py", 
+      "score": 0.85,
+      "start_line": 10,
+      "end_line": 25
+    }
+  ],
+  "type": "Response",
+  "reranked": false,
+  "hybrid_enabled": true
+}
+```
+
+**Compact Agent Mode** (`POST /ask` or `POST /query` with `compact=true`):
+```json
+{
+  "answer": "JWT authentication...",
+  "confidence": 0.85,
+  "sources": [
+    {"file": "src/auth.py", "line": 10, "score": 0.85}
+  ],
+  "reranked": false,
+  "hybrid_enabled": true
+}
+```
 
 ## 3. roadmap & Implementation Status
 

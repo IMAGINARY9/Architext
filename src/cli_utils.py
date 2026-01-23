@@ -167,11 +167,17 @@ class DryRunIndexer:
                 ext = Path(file_path).suffix or "no-extension"
                 self.file_types[ext] = self.file_types.get(ext, 0) + 1
 
+            warnings = []
+            if source.startswith("http") or source.startswith("git@"):
+                warnings.append("Remote repository will be cloned/cached locally")
+            # Add more warnings as needed, e.g., for billable providers
+
             return {
                 "source": str(source),
                 "resolved_path": str(repo_path),
                 "documents": self.document_count,
                 "file_types": self.file_types,
+                "warnings": warnings,
                 "would_index": True,
             }
         except Exception as e:
@@ -179,5 +185,6 @@ class DryRunIndexer:
             return {
                 "source": str(source),
                 "error": str(e),
+                "warnings": ["Preview failed, check source path or network"],
                 "would_index": False,
             }

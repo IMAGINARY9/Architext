@@ -45,6 +45,35 @@ from src.cli_utils import (
     to_agent_response_compact,
 )
 
+def _compute_auto_storage(source: str, default_storage: str) -> str:
+    """Compute auto storage path if not provided."""
+    import hashlib
+    from urllib.parse import urlparse
+
+    # Extract repo name
+    if source.startswith("http") or source.startswith("git@"):
+        parsed = urlparse(source)
+        repo_name = Path(parsed.path).stem  # e.g., 'requests' from '/psf/requests.git'
+    else:
+        repo_name = Path(source).resolve().name
+
+def _compute_auto_storage(source: str, default_storage: str) -> str:
+    """Compute auto storage path if not provided."""
+    import hashlib
+    from urllib.parse import urlparse
+
+    # Extract repo name
+    if source.startswith("http") or source.startswith("git@"):
+        parsed = urlparse(source)
+        repo_name = Path(parsed.path).stem  # e.g., 'requests' from '/psf/requests.git'
+    else:
+        repo_name = Path(source).resolve().name
+
+    # Hash the full source for uniqueness
+    source_hash = hashlib.sha256(source.encode()).hexdigest()[:8]
+    return os.path.join(default_storage, f"{repo_name}-{source_hash}")
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(description="Architext CLI: Local Codebase RAG")
     parser.add_argument(
@@ -67,95 +96,118 @@ def _build_parser():
         "source",
         help="Local path or remote git URL (GitHub/GitLab/Gitea)",
     )
-    index_parser.add_argument("--storage", help="Path to save the vector DB (overrides config)")
-    index_parser.add_argument(
+    
+    # Basic options
+    basic_group = index_parser.add_argument_group('basic options')
+    basic_group.add_argument("--storage", help="Path to save the vector DB (auto-generated if omitted)")
+    basic_group.add_argument(
+        "--preview",
+        action="store_true",
+        help="Preview indexing plan in JSON format",
+    )
+    basic_group.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview indexing without persisting (human-readable)",
+    )
+    
+    # Advanced options
+    advanced_group = index_parser.add_argument_group('advanced options')
+    advanced_group.add_argument(
         "--no-cache",
         action="store_true",
-        help="Disable remote repo caching (local paths only)",
+        help="Disable remote repo caching",
     )
-    index_parser.add_argument(
+    advanced_group.add_argument(
         "--ssh-key",
         help="Path to SSH private key for cloning private repos",
     )
-    index_parser.add_argument(
+    advanced_group.add_argument(
         "--llm-provider",
         choices=["local", "openai"],
         help="Override LLM provider from config",
     )
-    index_parser.add_argument(
+    advanced_group.add_argument(
         "--embedding-provider",
         choices=["huggingface", "openai"],
         help="Override embedding provider from config",
     )
-    index_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview indexing without persisting (shows file counts, etc)",
-    )
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Ask a question about the indexed code")
-    query_parser.add_argument("text", help="The question/query string")
-    query_parser.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
-    query_parser.add_argument(
+    
+    # Basic options
+    query_basic = query_parser.add_argument_group('basic options')
+    query_basic.add_argument("text", help="The question/query string")
+    query_basic.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
+    query_basic.add_argument(
         "--format",
         choices=["text", "json"],
         default="text",
         help="Output format for the response",
     )
-    query_parser.add_argument(
+    
+    # Advanced options
+    query_advanced = query_parser.add_argument_group('advanced options')
+    query_advanced.add_argument(
         "--enable-hybrid",
         action="store_true",
-        help="Enable hybrid keyword+vector scoring for this query",
+        help="Enable hybrid keyword+vector scoring",
     )
-    query_parser.add_argument(
+    query_advanced.add_argument(
         "--hybrid-alpha",
         type=float,
-        help="Hybrid weight for vector score (0-1). Higher favors vectors",
+        help="Hybrid weight for vector score (0-1)",
     )
-    query_parser.add_argument(
+    query_advanced.add_argument(
         "--enable-rerank",
         action="store_true",
-        help="Enable cross-encoder reranking for this query",
+        help="Enable cross-encoder reranking",
     )
-    query_parser.add_argument(
+    query_advanced.add_argument(
         "--rerank-model",
         help="Cross-encoder model name for reranking",
     )
-    query_parser.add_argument(
+    query_advanced.add_argument(
         "--rerank-top-n",
         type=int,
         help="Number of top results to rerank",
     )
 
     ask_parser = subparsers.add_parser("ask", help="Agent-optimized query")
-    ask_parser.add_argument("text", help="The question/query string")
-    ask_parser.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
-    ask_parser.add_argument(
+    
+    # Basic options
+    ask_basic = ask_parser.add_argument_group('basic options')
+    ask_basic.add_argument("text", help="The question/query string")
+    ask_basic.add_argument("--storage", help="Path to load the vector DB from (overrides config)")
+    ask_basic.add_argument(
         "--compact",
         action="store_true",
         help="Return compact agent schema output",
     )
-    ask_parser.add_argument(
+    
+    # Advanced options
+    ask_advanced = ask_parser.add_argument_group('advanced options')
+    ask_advanced.add_argument(
         "--enable-hybrid",
         action="store_true",
-        help="Enable hybrid keyword+vector scoring for this query",
+        help="Enable hybrid keyword+vector scoring",
     )
-    ask_parser.add_argument(
+    ask_advanced.add_argument(
         "--hybrid-alpha",
         type=float,
-        help="Hybrid weight for vector score (0-1). Higher favors vectors",
+        help="Hybrid weight for vector score (0-1)",
     )
-    ask_parser.add_argument(
+    ask_advanced.add_argument(
         "--enable-rerank",
         action="store_true",
-        help="Enable cross-encoder reranking for this query",
+        help="Enable cross-encoder reranking",
     )
-    ask_parser.add_argument(
+    ask_advanced.add_argument(
         "--rerank-model",
         help="Cross-encoder model name for reranking",
     )
-    ask_parser.add_argument(
+    ask_advanced.add_argument(
         "--rerank-top-n",
         type=int,
         help="Number of top results to rerank",
@@ -703,26 +755,45 @@ def main():
         sys.exit(1)
 
     if args.command == "index":
-        storage_path = _resolve_storage(args.storage, settings.storage_path)
+        # Compute storage path (auto if not provided)
+        if args.storage:
+            storage_path = _resolve_storage(args.storage, settings.storage_path)
+        else:
+            storage_path = _compute_auto_storage(args.source, settings.storage_path)
+            logger.info(f"Using auto storage path: {storage_path}")
 
-        # Handle dry-run mode
-        if args.dry_run:
-            logger.info("Running in DRY-RUN mode (no indexing)")
+        # Handle preview/dry-run mode
+        if args.preview or args.dry_run:
+            logger.info("Running in PREVIEW mode (no indexing)")
             indexer = DryRunIndexer(logger)
             preview = indexer.preview(args.source)
-            print("\n" + "="*60)
-            print("DRY-RUN PREVIEW")
-            print("="*60)
-            print(f"Source: {preview.get('source')}")
-            print(f"Resolved: {preview.get('resolved_path')}")
-            print(f"Documents: {preview.get('documents', 'N/A')}")
-            if "file_types" in preview:
-                print("\nFile types:")
-                for ext, count in preview["file_types"].items():
-                    print(f"  {ext}: {count}")
-            if "error" in preview:
-                print(f"Error: {preview['error']}")
-            print("="*60 + "\n")
+            if args.preview:
+                # Output structured JSON plan
+                plan = {
+                    "plan_id": f"plan-{hash(args.source) % 1000000}",  # Simple ID
+                    "source": args.source,
+                    "resolved_path": str(preview.get("resolved_path", "")),
+                    "file_count": preview.get("documents", 0),
+                    "doc_estimate": preview.get("documents", 0),  # Placeholder
+                    "suggested_storage": storage_path,
+                    "warnings": preview.get("warnings", []),
+                }
+                print(json.dumps(plan, indent=2))
+            else:
+                # Legacy dry-run output
+                print("\n" + "="*60)
+                print("DRY-RUN PREVIEW")
+                print("="*60)
+                print(f"Source: {preview.get('source')}")
+                print(f"Resolved: {preview.get('resolved_path')}")
+                print(f"Documents: {preview.get('documents', 'N/A')}")
+                if "file_types" in preview:
+                    print("\nFile types:")
+                    for ext, count in preview["file_types"].items():
+                        print(f"  {ext}: {count}")
+                if "error" in preview:
+                    print(f"Error: {preview['error']}")
+                print("="*60 + "\n")
             return
 
         try:
