@@ -5,7 +5,7 @@ BaseSettings so we can support .env files and type-safe defaults.
 """
 from typing import Optional, Literal
 
-from pydantic import Field
+from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,10 +65,67 @@ class ArchitextSettings(BaseSettings):
     allowed_storage_roots: Optional[str] = Field(default=None, alias="ALLOWED_STORAGE_ROOTS")
     task_store_path: str = Field(default="~/.architext/task_store.json", alias="TASK_STORE_PATH")
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", populate_by_name=True)
+    # Advanced / operational defaults
+    cache_enabled: bool = Field(default=True, alias="CACHE_ENABLED")
+    ssh_key: Optional[str] = Field(default=None, alias="SSH_KEY_PATH")
+
+    model_config = SettingsConfigDict(env_file=".env", extra="forbid", populate_by_name=True)
 
 
-def load_settings(env_file: Optional[str] = None) -> ArchitextSettings:
-    """Load settings from env/.env with sensible defaults."""
+def load_settings(env_file: Optional[str] = None, config_file: Optional[str] = None) -> ArchitextSettings:
+    """Load settings from env/.env and auto-detect a JSON config file in standard locations.
+
+    Behavior:
+    - Loads env/.env (when provided via --env-file or default .env).
+    - If `config_file` is provided it will be loaded. Otherwise, tries these locations in order:
+      1) `./architext.config.json` (current working directory)
+      2) `~/.architext/config.json` (user config dir)
+
+    This allows users to specify advanced/static defaults without adding CLI flags.
+    """
+    import json
+    from pathlib import Path
+
     init_kwargs: dict = {"_env_file": env_file} if env_file else {}
-    return ArchitextSettings(**init_kwargs)
+    settings = ArchitextSettings(**init_kwargs)
+
+    # Determine config file path
+    candidate = None
+    if config_file:
+        candidate = Path(config_file)
+    else:
+        cwd_candidate = Path("./architext.config.json").resolve()
+        home_candidate = Path.home() / ".architext" / "config.json"
+        if cwd_candidate.exists():
+            candidate = cwd_candidate
+        elif home_candidate.exists():
+            candidate = home_candidate
+
+    if candidate:
+        try:
+            with open(candidate, "r", encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            # Create a temporary settings object to validate the config
+            temp_settings = ArchitextSettings(**cfg)
+            # If validation passes, merge with the main settings
+            settings = settings.model_copy(update=cfg)
+        except ValidationError as exc:
+            # Extract unknown field names from the validation error
+            unknown_fields = []
+            for error in exc.errors():
+                if error.get("type") == "extra_forbidden":
+                    field_name = error.get("loc", ["unknown"])[0]
+                    unknown_fields.append(field_name)
+            
+            if unknown_fields:
+                known_fields = [field.alias or field_name for field_name, field in ArchitextSettings.model_fields.items()]
+                raise RuntimeError(
+                    f"Config file '{candidate}' contains unknown settings: {', '.join(unknown_fields)}. "
+                    f"Valid settings are: {', '.join(sorted(known_fields))}"
+                ) from exc
+            else:
+                raise RuntimeError(f"Invalid config file '{candidate}': {exc}") from exc
+        except Exception as exc:  # pragma: no cover - defensive
+            raise RuntimeError(f"Failed to read config file {candidate}: {exc}") from exc
+
+    return settings

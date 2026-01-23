@@ -164,6 +164,36 @@ def test_cli_index_with_storage_param(temp_repo_path, mocker, capsys):
     assert call_args[0][1] == custom_storage
 
 
+def test_cli_index_config_defaults(temp_repo_path, tmp_path, mocker, capsys, monkeypatch):
+    """Test that index honors auto-detected config file defaults when CLI flags are absent."""
+    mock_initialize = mocker.patch("src.cli.initialize_settings")
+    mocker.patch("src.cli.gather_index_files", return_value=[os.path.join(temp_repo_path, "main.py")])
+    mock_create_index = mocker.patch("src.cli.create_index_from_paths")
+    mock_resolve_source = mocker.patch("src.cli.resolve_source", return_value=temp_repo_path)
+
+    # Create architext.config.json in a temporary working directory
+    cfg = tmp_path / "architext.config.json"
+    cfg.write_text('{"cache_enabled": false, "ssh_key": "~/.ssh/id_rsa"}', encoding="utf-8")
+
+    # Run CLI with cwd set to tmp_path so auto-detection picks up the file
+    monkeypatch.chdir(tmp_path)
+
+    sys.argv = ["cli.py", "index", temp_repo_path]
+
+    from src.cli import main
+
+    try:
+        main()
+    except SystemExit as e:
+        assert e.code is None or e.code == 0
+
+    # Confirm resolve_source was called with use_cache False (from config) and ssh_key set
+    mock_resolve_source.assert_called_once()
+    called_args, called_kwargs = mock_resolve_source.call_args
+    assert called_kwargs.get("use_cache") is False
+    assert called_kwargs.get("ssh_key") == "~/.ssh/id_rsa"
+
+
 def test_cli_cache_cleanup(mocker, capsys):
     """Test that 'cache-cleanup' command works without LLM init."""
     mock_cleanup = mocker.patch("src.cli.cleanup_cache", return_value=3)

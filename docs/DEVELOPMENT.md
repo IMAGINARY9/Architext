@@ -58,6 +58,26 @@ The project exposes a FastAPI server with centralized task handling.
 
 Architext provides stable JSON schemas for agent integration. All responses follow these Pydantic models:
 
+## Advanced / Static Defaults via Config
+
+To reduce CLI noise, advanced or static defaults can be put into `architext.config.json` in the project root (or `~/.architext/config.json`). Architext will automatically load this file if present and merge its values on top of `.env`/environment variables.
+
+Example file (see `docs/advanced-config.json.example`):
+
+```json
+{
+  "cache_enabled": false,
+  "ssh_key": "~/.ssh/id_rsa",
+  "enable_rerank": true,
+  "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "rerank_top_n": 20,
+  "enable_hybrid": true,
+  "hybrid_alpha": 0.6
+}
+```
+
+Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache_enabled`, `ssh_key`, rerank/hybrid defaults, and other operational knobs.
+
 #### Index Preview Schema
 ```json
 {

@@ -58,7 +58,7 @@ python -m src.cli index ./src --storage ./my-index
 python -m src.cli index https://github.com/psf/requests
 ```
 
-Key flags: `--preview` (JSON plan), `--storage` (custom path), `--no-cache`, `--ssh-key`, `--llm-provider`, `--embedding-provider` (see `--help` for grouped options).
+Key flags: `--preview` (JSON plan), `--storage` (custom path), `--no-cache`, `--ssh-key`, `--llm-provider`, `--embedding-provider` (see `--help` for grouped options). Advanced/static defaults may be placed in `architext.config.json` in your repo root (no CLI flags required) to avoid repeating long flag lists.
 
 - **Query an index** — Ask a question against an existing index. Use `--storage` to point to the index and `--format json` for machine-readable output.
 
@@ -123,6 +123,16 @@ OPENAI_API_KEY=sk-...
 # Or use local:
 # LLM_PROVIDER=local
 # OPENAI_API_BASE=http://localhost:5000/v1
+```
+
+**Optional JSON Config:** Create `architext.config.json` in your project root or `~/.architext/config.json` for advanced settings. Architext auto-detects and loads this file without CLI flags. Example:
+
+```json
+{
+  "llm_provider": "openai",
+  "embedding_provider": "openai",
+  "enable_rerank": true
+}
 ```
 
 ## API Schemas (for Agents)

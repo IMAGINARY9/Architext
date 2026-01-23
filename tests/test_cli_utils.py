@@ -245,7 +245,7 @@ class TestCLIWithNewFeatures:
         assert "{" in captured.out and "}" in captured.out
 
     def test_cli_llm_provider_override(self, mocker):
-        """CLI can override LLM provider."""
+        """CLI no longer supports provider overrides via flags; config/env should be used."""
         cfg = ArchitextSettings()
         mock_load_settings = mocker.patch("src.cli.load_settings", return_value=cfg)
         mock_initialize = mocker.patch("src.cli.initialize_settings")
@@ -255,8 +255,9 @@ class TestCLIWithNewFeatures:
         
         from src.cli import main
         
+        # argparse should fail for unknown flag
         with pytest.raises(SystemExit):
             main()
         
-        # Verify settings were updated
-        assert cfg.llm_provider == "openai"
+        # Provider should remain unchanged (default in settings)
+        assert cfg.llm_provider == "local"

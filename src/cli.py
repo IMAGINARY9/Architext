@@ -111,27 +111,7 @@ def _build_parser():
         help="Preview indexing without persisting (human-readable)",
     )
     
-    # Advanced options
-    advanced_group = index_parser.add_argument_group('advanced options')
-    advanced_group.add_argument(
-        "--no-cache",
-        action="store_true",
-        help="Disable remote repo caching",
-    )
-    advanced_group.add_argument(
-        "--ssh-key",
-        help="Path to SSH private key for cloning private repos",
-    )
-    advanced_group.add_argument(
-        "--llm-provider",
-        choices=["local", "openai"],
-        help="Override LLM provider from config",
-    )
-    advanced_group.add_argument(
-        "--embedding-provider",
-        choices=["huggingface", "openai"],
-        help="Override embedding provider from config",
-    )
+
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Ask a question about the indexed code")
@@ -147,32 +127,7 @@ def _build_parser():
         help="Output format for the response",
     )
     
-    # Advanced options
-    query_advanced = query_parser.add_argument_group('advanced options')
-    query_advanced.add_argument(
-        "--enable-hybrid",
-        action="store_true",
-        help="Enable hybrid keyword+vector scoring",
-    )
-    query_advanced.add_argument(
-        "--hybrid-alpha",
-        type=float,
-        help="Hybrid weight for vector score (0-1)",
-    )
-    query_advanced.add_argument(
-        "--enable-rerank",
-        action="store_true",
-        help="Enable cross-encoder reranking",
-    )
-    query_advanced.add_argument(
-        "--rerank-model",
-        help="Cross-encoder model name for reranking",
-    )
-    query_advanced.add_argument(
-        "--rerank-top-n",
-        type=int,
-        help="Number of top results to rerank",
-    )
+
 
     ask_parser = subparsers.add_parser("ask", help="Agent-optimized query")
     
@@ -186,32 +141,7 @@ def _build_parser():
         help="Return compact agent schema output",
     )
     
-    # Advanced options
-    ask_advanced = ask_parser.add_argument_group('advanced options')
-    ask_advanced.add_argument(
-        "--enable-hybrid",
-        action="store_true",
-        help="Enable hybrid keyword+vector scoring",
-    )
-    ask_advanced.add_argument(
-        "--hybrid-alpha",
-        type=float,
-        help="Hybrid weight for vector score (0-1)",
-    )
-    ask_advanced.add_argument(
-        "--enable-rerank",
-        action="store_true",
-        help="Enable cross-encoder reranking",
-    )
-    ask_advanced.add_argument(
-        "--rerank-model",
-        help="Cross-encoder model name for reranking",
-    )
-    ask_advanced.add_argument(
-        "--rerank-top-n",
-        type=int,
-        help="Number of top results to rerank",
-    )
+
 
     # List models command
     list_parser = subparsers.add_parser("list-models", help="Show available LLM and embedding models")
@@ -739,14 +669,7 @@ def main():
     try:
         settings = load_settings(env_file=args.env_file)
 
-        # Override providers if specified
-        if hasattr(args, "llm_provider") and args.llm_provider:
-            settings.llm_provider = args.llm_provider
-            logger.debug(f"Overriding LLM provider: {args.llm_provider}")
-        if hasattr(args, "embedding_provider") and args.embedding_provider:
-            settings.embedding_provider = args.embedding_provider
-            logger.debug(f"Overriding embedding provider: {args.embedding_provider}")
-
+        # Provider choices should be configured via .env or config file (no CLI overrides)
         logger.info("Initializing AI models...")
         initialize_settings(settings)
     except Exception as e:
@@ -798,10 +721,11 @@ def main():
 
         try:
             logger.info(f"Resolving source: {args.source}")
+            # Use operational defaults from settings (no CLI flags for these)
             source_path = resolve_source(
                 args.source,
-                use_cache=not args.no_cache,
-                ssh_key=args.ssh_key,
+                use_cache=settings.cache_enabled,
+                ssh_key=settings.ssh_key,
             )
             logger.info(f"Starting indexing for: {source_path}")
             file_paths = gather_index_files(str(source_path))
@@ -814,16 +738,6 @@ def main():
 
     elif args.command == "query":
         storage_path = _resolve_storage(args.storage, settings.storage_path)
-        if args.enable_hybrid:
-            settings.enable_hybrid = True
-        if args.hybrid_alpha is not None:
-            settings.hybrid_alpha = args.hybrid_alpha
-        if args.enable_rerank:
-            settings.enable_rerank = True
-        if args.rerank_model:
-            settings.rerank_model = args.rerank_model
-        if args.rerank_top_n is not None:
-            settings.rerank_top_n = args.rerank_top_n
         try:
             logger.info(f"Loading index from: {storage_path}")
             index = load_existing_index(storage_path)
@@ -841,16 +755,6 @@ def main():
 
     elif args.command == "ask":
         storage_path = _resolve_storage(args.storage, settings.storage_path)
-        if args.enable_hybrid:
-            settings.enable_hybrid = True
-        if args.hybrid_alpha is not None:
-            settings.hybrid_alpha = args.hybrid_alpha
-        if args.enable_rerank:
-            settings.enable_rerank = True
-        if args.rerank_model:
-            settings.rerank_model = args.rerank_model
-        if args.rerank_top_n is not None:
-            settings.rerank_top_n = args.rerank_top_n
         try:
             logger.info(f"Loading index from: {storage_path}")
             index = load_existing_index(storage_path)
