@@ -38,34 +38,61 @@ pip install -r requirements.txt
 
 ### Quick Commands
 
-**1. Index a Repository**
+A compact reference to the most-used commands. Some subcommands and analysis tasks are considered **advanced / experimental** and their flags may change — run `python -m src.cli <command> --help` for the latest options.
+
+#### Core (stable) commands
+
+- **Index a repository** — Creates a vector DB from a local path or remote git URL. Use `--storage` to set where the index is saved. For remote URLs Architext will auto-clone and cache the repo (use `--no-cache` to disable caching).
+
 ```bash
-# Local
+# Local (recommended: run with --dry-run first to preview)
 python -m src.cli index ./src --storage ./my-index
 
-# Remote (Auto-clones and caches)
+# Remote (private repos: add --ssh-key)
 python -m src.cli index https://github.com/psf/requests --storage ./requests-index
 ```
 
-**2. Ask a Question**
+Key flags: `--dry-run` (preview files without persisting), `--no-cache`, `--ssh-key`, `--llm-provider`, `--embedding-provider`.
+
+- **Query an index** — Ask a question against an existing index. Use `--storage` to point to the index and `--format json` for machine-readable output.
+
 ```bash
-python -m src.cli query "How is authentication handled?" --storage ./my-index
+python -m src.cli query "How is authentication handled?" --storage ./my-index --format json
 ```
 
-**3. Run an Analysis Task**
-```bash
-# Generate a tree structure of the codebase
-python -m src.cli analyze-structure ./my-index
+Advanced query flags: `--enable-hybrid`, `--hybrid-alpha`, `--enable-rerank`, `--rerank-model`, `--rerank-top-n`.
 
-# Check for architectural anti-patterns
-python -m src.cli detect-anti-patterns ./my-index
+- **Run as a server (API)** — Start the FastAPI server. Use `--host`, `--port`, and `--reload` (dev only). Swagger UI: `http://localhost:8000/docs`.
+
+```bash
+python -m src.cli serve --host 127.0.0.1 --port 8000
 ```
 
-**4. Run as a Server (API)**
+#### Analysis & task suite (advanced / experimental)
+
+These commands run static/heuristic analysis and produce JSON/markdown outputs. They are powerful but some outputs/flags may evolve between releases.
+
+- Structure analysis (tree/mermaid/json):
 ```bash
-python -m src.cli serve
-# Swagger UI available at http://localhost:8000/docs
+python -m src.cli analyze-structure --source ./src --output-format mermaid
 ```
+
+- Anti-pattern detection:
+```bash
+python -m src.cli detect-anti-patterns --source ./src
+```
+
+- Full audit (exports multiple artefacts):
+```bash
+python -m src.cli audit --source . --output ./architext-audit
+```
+
+For a full list of tasks and detailed usage, see `docs/DEVELOPMENT.md` and run `python -m src.cli <task> --help` before using in CI.
+
+> Note: Environment variables like `LLM_PROVIDER`, `OPENAI_API_KEY`, or local LLM endpoints should be set before running commands that require an LLM. See **Configuration** below for examples. 🔒
+
+---
+
 
 ## Configuration
 
