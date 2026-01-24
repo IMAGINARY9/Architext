@@ -100,7 +100,7 @@ class QueryRequest(BaseModel):
     """
 
     text: str = Field(..., description="Query text to ask the index.")
-    storage: Optional[str] = Field(None, description="Storage path of the index to query. If omitted, uses configured storage_path.")
+    name: Optional[str] = Field(None, description="Name of the index to query (from /indices). If omitted, uses the default index.")
     mode: Literal["human", "agent"] = Field(default="human", description="Response mode: 'human' for free text, 'agent' for structured output.")
     enable_hybrid: Optional[bool] = Field(None, description="Override to enable/disable hybrid (keyword+vector) search.")
     hybrid_alpha: Optional[float] = Field(None, description="Blend factor for hybrid scoring when enabled.")
@@ -115,13 +115,13 @@ class QueryRequest(BaseModel):
                 {
                     "text": "How does auth work?",
                     "mode": "human",
-                    "storage": "./my-index",
+                    "name": "my-repo-index",
                 },
                 {
                     "text": "How does auth work?",
                     "mode": "agent",
                     "compact": True,
-                    "storage": "./my-index",
+                    "name": "my-repo-index",
                 },
             ]
         }
@@ -569,7 +569,7 @@ def _mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
                 "type": "object",
                 "properties": {
                     "text": {"type": "string", "description": "Query text to ask the index"},
-                    "storage": {"type": "string", "description": f"Storage path of the index. Available indices: {available}"},
+                    "name": {"type": "string", "description": f"Name of the index to query. Available indices: {available}"},
                     "mode": {"type": "string", "enum": ["human", "agent"], "description": "Response mode: 'human' for free text, 'agent' for structured output"},
                     "compact": {"type": "boolean", "description": "When true in agent mode, returns a compact agent schema"},
                     "enable_hybrid": {"type": "boolean", "description": "Enable hybrid (keyword+vector) search"},
@@ -704,6 +704,61 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 if not _is_within_any(candidate, storage_roots):
                     raise HTTPException(status_code=400, detail=f"Default storage path '{candidate}' is not within allowed roots")
                 return str(candidate)
+
+    def _find_index_path_by_name(name: str) -> str:
+        """Find the storage path for an index by its name."""
+        for root in storage_roots:
+            if not root.exists():
+                continue
+            # Check if root itself is the index
+            if root.name == name and (root / "chroma.sqlite3").exists():
+                return str(root)
+            # Check subdirectories
+            for item in root.iterdir():
+                if item.is_dir() and item.name == name and (item / "chroma.sqlite3").exists():
+                    return str(item)
+        raise HTTPException(status_code=404, detail=f"Index with name '{name}' not found")
+
+    def _list_available_indices() -> List[Dict[str, str]]:
+        """Return a list of available indices as dicts with name and path."""
+        found: List[Dict[str, str]] = []
+        for root in storage_roots:
+            if not root.exists():
+                continue
+            if (root / "chroma.sqlite3").exists():
+                found.append({"name": root.name, "path": str(root)})
+            for item in root.iterdir():
+                if item.is_dir() and (item / "chroma.sqlite3").exists():
+                    found.append({"name": item.name, "path": str(item)})
+        return found
+
+    def _resolve_index_storage(name: Optional[str]) -> str:
+        """Resolve the storage path for an index.
+
+        Behavior:
+        - If name provided, find the matching index by name (404 if not found).
+        - If name omitted:
+          * If exactly one index exists in all storage roots, return it.
+          * If none exist, raise 404 with helpful guidance.
+          * If multiple exist, raise 400 requiring the caller to specify `name` and list available indices.
+        """
+        if name:
+            return _find_index_path_by_name(name)
+
+        candidates = _list_available_indices()
+        if len(candidates) == 1:
+            return candidates[0]["path"]
+        if len(candidates) == 0:
+            raise HTTPException(status_code=404, detail="No indices available. Create one with the /index endpoint.")
+        # Multiple - present a clear error listing a subset of available names
+        names = ", ".join(c["name"] for c in candidates[:10])
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Multiple indices available ({len(candidates)}). Specify the 'name' field to select one. "
+                f"Available: {names}"
+            ),
+        )
 
     def _validate_source_dir(path: Path) -> None:
         if not path.exists():
@@ -1208,7 +1263,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
 
     @app.post("/query", tags=["querying"])
     async def run_query(request: QueryRequest) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
-        storage_path = _resolve_storage_path(request.storage)
+        storage_path = _resolve_index_storage(request.name)
         request_settings = _query_settings_from_request(request)
 
         try:
@@ -1266,7 +1321,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     async def query_diagnostics(request: QueryRequest) -> QueryDiagnosticsResponse:
         from src.indexer import _tokenize, _keyword_score
         
-        storage_path = _resolve_storage_path(request.storage)
+        storage_path = _resolve_index_storage(request.name)
         request_settings = _query_settings_from_request(request)
         
         try:

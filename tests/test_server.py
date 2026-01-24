@@ -94,7 +94,7 @@ def test_query_endpoint_agent_mode(mocker, patched_settings):
 
     response = client.post(
         "/query",
-        json={"text": "hello", "mode": "agent", "storage": "./test-storage"},
+        json={"text": "hello", "mode": "agent"},
     )
 
     assert response.status_code == 200
@@ -119,7 +119,6 @@ def test_query_endpoint_override_flags(mocker, patched_settings):
         "/query",
         json={
             "text": "hello",
-            "storage": "./test-storage",
             "enable_hybrid": True,
             "hybrid_alpha": 0.5,
             "enable_rerank": True,
@@ -163,10 +162,62 @@ def test_mcp_run_query_dispatch(mocker, patched_settings):
         "/mcp/run",
         json={
             "tool": "architext.query",
-            "arguments": {"text": "hello", "mode": "agent", "storage": "./test-storage"},
+            "arguments": {"text": "hello", "mode": "agent"},
         },
     )
 
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "answer"
+
+
+def test_query_requires_name_when_multiple_indices(tmp_path, patched_settings):
+    # Configure storage roots to a temp dir and create two index directories
+    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.allowed_source_roots = str(tmp_path)
+
+    idx1 = tmp_path / "idx1"
+    idx2 = tmp_path / "idx2"
+    idx1.mkdir()
+    idx2.mkdir()
+    # Touch chroma.sqlite3 to simulate indices
+    (idx1 / "chroma.sqlite3").write_text("")
+    (idx2 / "chroma.sqlite3").write_text("")
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    # Without 'name' we expect an error because multiple indices exist
+    response = client.post("/query", json={"text": "hello"})
+    assert response.status_code == 400
+    assert "Specify" in response.json().get("detail", "")
+
+
+def test_query_with_name_works_when_multiple_indices(mocker, tmp_path, patched_settings):
+    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.allowed_source_roots = str(tmp_path)
+
+    idx1 = tmp_path / "idx1"
+    idx2 = tmp_path / "idx2"
+    idx1.mkdir()
+    idx2.mkdir()
+    (idx1 / "chroma.sqlite3").write_text("")
+    (idx2 / "chroma.sqlite3").write_text("")
+
+    mock_response = Mock()
+    mock_response.__str__ = Mock(return_value="answer")
+    node = Mock()
+    node.metadata = {"file_path": "app.py", "start_line": 1, "end_line": 2}
+    node.score = 0.9
+    mock_response.source_nodes = [node]
+
+    mocker.patch("src.server.load_existing_index", return_value=Mock())
+    mocker.patch("src.server.query_index", return_value=mock_response)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post("/query", json={"text": "hello", "name": "idx1", "mode": "agent"})
     assert response.status_code == 200
     data = response.json()
     assert data["answer"] == "answer"
