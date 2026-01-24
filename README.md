@@ -41,13 +41,24 @@ pip install -r requirements.txt
 Start the server and use the HTTP API for all operations. Swagger UI: `http://localhost:8000/docs`.
 
 ```bash
-# Start the server
+# Start the server (production)
 python -m src.server --host 127.0.0.1 --port 8000
+
+# Start the server with auto-reload (development)
+uvicorn src.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
 #### Core API Endpoints
 
+- **Get available providers** — Discover supported LLM, embedding, and vector store providers.
+
+```bash
+curl http://localhost:8000/providers
+```
+
 - **Index a repository** — Creates a vector DB from a local path or remote git URL.
+
+**Note:** When using Swagger UI (`/docs`), use the "Examples" dropdown for proper request formats. Avoid using placeholder values like "string" from the schema - these will result in validation errors.
 
 ```bash
 # Preview plan (recommended first step)
@@ -55,7 +66,7 @@ curl -X POST http://localhost:8000/index/preview \
   -H "Content-Type: application/json" \
   -d '{"source": "./src"}'
 
-# Index with auto storage
+# Index with auto storage (uses server defaults)
 curl -X POST http://localhost:8000/index \
   -H "Content-Type: application/json" \
   -d '{"source": "./src"}'
@@ -64,6 +75,11 @@ curl -X POST http://localhost:8000/index \
 curl -X POST http://localhost:8000/index \
   -H "Content-Type: application/json" \
   -d '{"source": "./src", "storage": "./my-index"}'
+
+# Index private repository with SSH
+curl -X POST http://localhost:8000/index \
+  -H "Content-Type: application/json" \
+  -d '{"source": "git@github.com:user/private-repo.git", "ssh_key": "~/.ssh/id_rsa"}'
 ```
 
 - **Query an index** — Ask a question against an existing index.
@@ -186,6 +202,52 @@ curl -X POST http://localhost:8000/ask \
 ```
 
 All schemas include `confidence`, `sources`, `reranked`, and `hybrid_enabled` fields for consistent agent consumption.
+
+### Index Discovery
+
+**List All Indices:**
+```bash
+curl -X GET http://localhost:8000/indices
+```
+
+**Response:**
+```json
+{
+  "indices": [
+    {
+      "name": "my-project",
+      "path": "/path/to/storage/my-project",
+      "documents": 42,
+      "provider": "chroma",
+      "collection": "architext_db"
+    }
+  ]
+}
+```
+
+**Get Index Metadata:**
+```bash
+curl -X GET http://localhost:8000/indices/my-project
+```
+
+**Response:**
+```json
+{
+  "name": "my-project",
+  "path": "/path/to/storage/my-project",
+  "documents": 42,
+  "provider": "chroma",
+  "collection": "architext_db",
+  "status": "available"
+}
+```
+
+> Note: Request-level flags (e.g., `enable_rerank`, `enable_hybrid`, `llm_provider`) override equivalent values in your server configuration for that single request. Use request fields when you need a per-call override; update your `architext.config.json` or environment variables for global defaults.
+
+Want to inspect what indices are available? You can:
+- Use `GET /indices` to list all available indices with metadata
+- Use `GET /indices/{index_name}` to get detailed metadata for a specific index
+- Use `GET /tasks` and `GET /status/{task_id}` to find completed indexing tasks and their `storage_path` values (the server persists recent task metadata).
 
 ## Testing
 

@@ -30,7 +30,21 @@ def build_tasks_router(
         return {"task_id": task_id, "status": "completed", "result": result}
 
     @router.post("/tasks/analyze-structure", status_code=202)
-    async def analyze_structure_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    async def analyze_structure_task(
+        request: Dict[str, Any] = Body(
+            ...,
+            examples={
+                "inline": {
+                    "summary": "Run inline",
+                    "value": {"source": "./src", "output_format": "json", "background": False},
+                },
+                "background": {
+                    "summary": "Run as background task",
+                    "value": {"source": "./src", "output_format": "json", "background": True},
+                },
+            },
+        ),
+    ) -> Dict[str, Any]:
         payload = _parse_request(request)
         if payload.background:
             task_id = submit_task("analyze-structure", payload)
@@ -38,7 +52,15 @@ def build_tasks_router(
         return _inline_response("analyze-structure", payload)
 
     @router.post("/tasks/tech-stack", status_code=202)
-    async def tech_stack_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    async def tech_stack_task(
+        request: Dict[str, Any] = Body(
+            ...,
+            examples={
+                "inline": {"summary": "Inline tech stack", "value": {"source": "./src", "background": False}},
+                "background": {"summary": "Background", "value": {"source": "./src", "background": True}},
+            },
+        ),
+    ) -> Dict[str, Any]:
         payload = _parse_request(request)
         if payload.background:
             task_id = submit_task("tech-stack", payload)

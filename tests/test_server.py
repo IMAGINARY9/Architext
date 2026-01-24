@@ -34,6 +34,45 @@ def test_index_endpoint_inline(mocker, tmp_path, patched_settings):
     assert "documents" in data
 
 
+def test_index_endpoint_validation_failure(mocker, tmp_path, patched_settings):
+    mocker.patch("src.server.resolve_source", return_value=tmp_path)
+    mocker.patch("src.server.gather_index_files", return_value=[])  # Empty - no files to index
+    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.allowed_storage_roots = str(tmp_path)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/index",
+        json={"source": "repo", "background": False, "storage": str(tmp_path)},
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "Validation failed" in data["detail"]
+    assert "No indexable files found" in data["detail"]
+
+
+def test_providers_endpoint(patched_settings):
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.get("/providers")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "llm_providers" in data
+    assert "embedding_providers" in data
+    assert "vector_store_providers" in data
+    assert "default_llm_provider" in data
+    assert "default_embedding_provider" in data
+    assert "default_storage_path" in data
+    assert data["llm_providers"] == ["openai", "local"]
+    assert data["embedding_providers"] == ["huggingface", "openai"]
+    assert data["vector_store_providers"] == ["chroma", "qdrant", "pinecone", "weaviate"]
+
+
 def test_query_endpoint_agent_mode(mocker, patched_settings):
     mock_response = Mock()
     mock_response.__str__ = Mock(return_value="answer")

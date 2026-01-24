@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException
 
 from src.task_registry import run_task
+from src.ingestor import resolve_source
 
 
 def _is_within_any(candidate: Path, roots: List[Path]) -> bool:
@@ -109,7 +110,11 @@ class AnalysisTaskService:
     def resolve_task_source(self, raw_path: Optional[str]) -> Optional[str]:
         if not raw_path:
             return None
-        candidate = Path(raw_path).expanduser().resolve()
+        try:
+            candidate = resolve_source(raw_path, use_cache=True)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
         if not candidate.exists():
             raise HTTPException(status_code=400, detail="source path does not exist")
         if not candidate.is_dir():
