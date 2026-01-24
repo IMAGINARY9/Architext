@@ -16,10 +16,8 @@ ToolSchema = Callable[[], List[Dict[str, Any]]]
 def build_mcp_router(
     mcp_tools_schema: ToolSchema,
     query_handler: QueryHandler,
-    ask_handler: QueryHandler,
     task_runner: TaskRunner,
     query_request_type: Type[Any],
-    ask_request_type: Type[Any],
     task_request_type: Type[Any],
     mcp_run_request_type: Type[Any],
     storage_roots: List[Any] = None,
@@ -34,7 +32,6 @@ def build_mcp_router(
     @router.post("/mcp/run")
     async def mcp_run(request: Dict[str, Any] = Body(..., examples={
         "query": {"summary": "Run architext.query", "value": {"tool": "architext.query", "arguments": {"text": "How does auth work?", "mode": "agent", "storage": "./my-index"}}},
-        "ask": {"summary": "Run architext.ask", "value": {"tool": "architext.ask", "arguments": {"text": "How does auth work?", "compact": True}}},
         "task": {"summary": "Run architext.task inline", "value": {"tool": "architext.task", "arguments": {"task": "analyze-structure", "source": "./src", "output_format": "json", "background": False}}}
     })) -> Dict[str, Any]:
         payload = mcp_run_request_type.model_validate(request)
@@ -49,15 +46,6 @@ def build_mcp_router(
                 if hasattr(result, "model_dump"):
                     return result.model_dump()
                 # Fallback: try to coerce to dict
-                return dict(result)
-            return result
-
-        if tool == "architext.ask":
-            ask_payload = ask_request_type(**args)
-            result = await ask_handler(ask_payload)
-            if not isinstance(result, dict):
-                if hasattr(result, "model_dump"):
-                    return result.model_dump()
                 return dict(result)
             return result
 

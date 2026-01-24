@@ -128,29 +128,6 @@ class QueryRequest(BaseModel):
     }
 
 
-class AskRequest(BaseModel):
-    text: str = Field(..., description="Question text for the compact/agent ask endpoint.")
-    storage: Optional[str] = Field(None, description="Optional storage path to query; falls back to configured storage.")
-    compact: bool = Field(True, description="Return compact agent response by default.")
-    enable_hybrid: Optional[bool] = Field(None, description="Override to enable/disable hybrid retrieval for this request.")
-    hybrid_alpha: Optional[float] = Field(None, description="Hybrid blend factor override.")
-    enable_rerank: Optional[bool] = Field(None, description="Enable/disable rerank for this request.")
-    rerank_model: Optional[str] = Field(None, description="Rerank model override.")
-    rerank_top_n: Optional[int] = Field(None, description="Number of top documents to rerank.")
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "text": "Summarize the auth flow",
-                    "compact": True,
-                    "storage": "./my-index",
-                }
-            ]
-        }
-    }
-
-
 class TaskRequest(BaseModel):
     """Request payload for analysis tasks."""
 
@@ -605,24 +582,6 @@ def _mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
             },
         },
         {
-            "name": "architext.ask",
-            "description": "Agent-optimized query with compact response support.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "Question text for the compact/agent ask endpoint"},
-                    "storage": {"type": "string", "description": f"Optional storage path to query. Available indices: {available}"},
-                    "compact": {"type": "boolean", "description": "Return compact agent response by default"},
-                    "enable_hybrid": {"type": "boolean", "description": "Enable hybrid retrieval"},
-                    "hybrid_alpha": {"type": "number", "description": "Hybrid blend factor"},
-                    "enable_rerank": {"type": "boolean", "description": "Enable rerank"},
-                    "rerank_model": {"type": "string", "description": "Rerank model"},
-                    "rerank_top_n": {"type": "integer", "description": "Number of top documents to rerank"},
-                },
-                "required": ["text"],
-            },
-        },
-        {
             "name": "architext.task",
             "description": "Run an analysis task synchronously.",
             "input_schema": {
@@ -706,7 +665,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         return base_settings
 
     def _query_settings_from_request(
-        req: Union[QueryRequest, AskRequest]
+        req: QueryRequest
     ) -> ArchitextSettings:
         overrides: Dict[str, Any] = {}
         if req.enable_hybrid is not None:
@@ -879,7 +838,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         version="0.2.0",
         description=(
             "Index repositories and query them using vector/hybrid search. "
-            "Use /index or /index/preview to prepare data, then /query or /ask to retrieve answers."
+            "Use /index or /index/preview to prepare data, then /query to retrieve answers."
         ),
         lifespan=lifespan,
     )
@@ -1285,35 +1244,12 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         payload["hybrid_enabled"] = hybrid_enabled
         return AgentQueryResponse(**payload)
 
-    @app.post("/ask", tags=["querying"])
-    async def run_ask(request: AskRequest) -> Union[AgentQueryResponse, CompactAgentQueryResponse]:
-        storage_path = _resolve_storage_path(request.storage)
-        request_settings = _query_settings_from_request(request)
-
-        try:
-            index = load_existing_index(storage_path)
-            response = query_index(index, request.text, settings=request_settings)
-        except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-        payload = (
-            to_agent_response_compact(response, request.text)
-            if request.compact
-            else to_agent_response(response, request.text)
-        )
-        payload["reranked"] = bool(request_settings.enable_rerank)
-        payload["hybrid_enabled"] = bool(request_settings.enable_hybrid)
-        # Return as dict for now, but schema is defined
-        return payload
-
     app.include_router(
         build_mcp_router(
             lambda: _mcp_tools_schema(storage_roots),
             run_query,
-            run_ask,
             task_service.run_analysis_task,
             QueryRequest,
-            AskRequest,
             TaskRequest,
             MCPRunRequest,
             storage_roots,
