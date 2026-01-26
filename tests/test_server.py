@@ -104,6 +104,90 @@ def test_query_endpoint_agent_mode(mocker, patched_settings):
     assert data.get("confidence") == 0.9
 
 
+def test_query_cancels_on_disconnect(mocker, tmp_path, patched_settings):
+    # Simulate a client that disconnects immediately
+    async def always_disconnected(self):
+        return True
+
+    mocker.patch("starlette.requests.Request.is_disconnected", always_disconnected)
+
+    # Create a single index so the server will pick it automatically
+    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.allowed_source_roots = str(tmp_path)
+    idx = tmp_path / "idx"
+    idx.mkdir()
+    (idx / "chroma.sqlite3").write_text("")
+
+    # Make load_existing_index slow so cancellation has time to trigger
+    def slow_load(path):
+        import time
+        time.sleep(1)
+        return Mock()
+
+    mocker.patch("src.server.load_existing_index", side_effect=slow_load)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post("/query", json={"text": "hello"})
+    assert response.status_code == 499
+    assert "Client disconnected" in response.json().get("detail", "")
+
+
+def test_query_appends_sources_instruction_when_missing(mocker, tmp_path, patched_settings):
+    # Ensure that when user doesn't ask for sources, server appends instruction
+    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.allowed_source_roots = str(tmp_path)
+    idx = tmp_path / "idx"
+    idx.mkdir()
+    (idx / "chroma.sqlite3").write_text("")
+
+    captured = {}
+    def fake_query(index, text, settings=None):
+        captured['text'] = text
+        mock_response = Mock()
+        mock_response.__str__ = Mock(return_value="answer")
+        mock_response.source_nodes = []
+        return mock_response
+
+    mocker.patch("src.server.load_existing_index", return_value=Mock())
+    mocker.patch("src.server.query_index", side_effect=fake_query)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post("/query", json={"text": "Find auth flow"})
+    assert response.status_code == 200
+    assert 'Please include sources' in captured['text']
+
+
+def test_query_does_not_duplicate_instruction(mocker, tmp_path, patched_settings):
+    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.allowed_source_roots = str(tmp_path)
+    idx = tmp_path / "idx"
+    idx.mkdir()
+    (idx / "chroma.sqlite3").write_text("")
+
+    captured = {}
+    def fake_query(index, text, settings=None):
+        captured['text'] = text
+        mock_response = Mock()
+        mock_response.__str__ = Mock(return_value="answer")
+        mock_response.source_nodes = []
+        return mock_response
+
+    mocker.patch("src.server.load_existing_index", return_value=Mock())
+    mocker.patch("src.server.query_index", side_effect=fake_query)
+
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    input_text = "Find auth flow. Please include sources (file path and line ranges)."
+    response = client.post("/query", json={"text": input_text})
+    assert response.status_code == 200
+    assert captured['text'].strip().endswith("line ranges).")
+
+
 def test_query_endpoint_override_flags(mocker, patched_settings):
     mock_response = Mock()
     mock_response.__str__ = Mock(return_value="answer")

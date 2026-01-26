@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, List, Union, Literal
 from uuid import uuid4
 
 from concurrent.futures import ThreadPoolExecutor
+import asyncio
 from fastapi import FastAPI, HTTPException, Request
 from starlette.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -101,7 +102,7 @@ class QueryRequest(BaseModel):
 
     text: str = Field(..., description="Query text to ask the index.")
     name: Optional[str] = Field(None, description="Name of the index to query (from /indices). If omitted, uses the default index.")
-    mode: Literal["human", "agent"] = Field(default="human", description="Response mode: 'human' for free text, 'agent' for structured output.")
+    mode: Literal["rag", "agent"] = Field(default="rag", description="Response mode: 'rag' (retrieval-augmented generation) for free text synthesized from retrieved sources, or 'agent' for structured output.")
     enable_hybrid: Optional[bool] = Field(None, description="Override to enable/disable hybrid (keyword+vector) search.")
     hybrid_alpha: Optional[float] = Field(None, description="Blend factor for hybrid scoring when enabled.")
     enable_rerank: Optional[bool] = Field(None, description="Override to enable/disable re-ranking of retrieved results.")
@@ -114,7 +115,7 @@ class QueryRequest(BaseModel):
             "examples": [
                 {
                     "text": "How does auth work?",
-                    "mode": "human",
+                    "mode": "rag",
                     "name": "my-repo-index",
                 },
                 {
@@ -196,10 +197,10 @@ class QuerySource(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    """Stable JSON schema for human-mode query responses."""
+    """Stable JSON schema for RAG-mode query responses."""
     answer: str
     sources: List[QuerySource]
-    mode: str = "human"
+    mode: str = "rag"
     reranked: bool = False
     hybrid_enabled: bool = False
 
@@ -570,7 +571,7 @@ def _mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
                 "properties": {
                     "text": {"type": "string", "description": "Query text to ask the index"},
                     "name": {"type": "string", "description": f"Name of the index to query. Available indices: {available}"},
-                    "mode": {"type": "string", "enum": ["human", "agent"], "description": "Response mode: 'human' for free text, 'agent' for structured output"},
+                    "mode": {"type": "string", "enum": ["rag", "agent"], "description": "Response mode: 'rag' (retrieval-augmented generation) for free text, 'agent' for structured output"},
                     "compact": {"type": "boolean", "description": "When true in agent mode, returns a compact agent schema"},
                     "enable_hybrid": {"type": "boolean", "description": "Enable hybrid (keyword+vector) search"},
                     "hybrid_alpha": {"type": "number", "description": "Blend factor for hybrid scoring"},
@@ -679,6 +680,19 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         if req.rerank_top_n is not None:
             overrides["rerank_top_n"] = req.rerank_top_n
         return base_settings.model_copy(update=overrides) if overrides else base_settings
+
+    def _ensure_sources_instruction(text: str) -> str:
+        """Ensure queries explicitly request sources (file path and line ranges).
+
+        If the user's question already asks for sources, return unchanged; otherwise
+        append a short instruction that asks for file-level provenance.
+        """
+        lower = (text or "").lower()
+        keywords = ["show sources", "show source", "file path", "file:", "quote line", "quote lines", "line", "lines", "sources", "cite"]
+        if any(k in lower for k in keywords):
+            return text
+        instruction = "\n\nPlease include sources (file path and line ranges) for any code referenced, e.g., 'file.py:10-20'."
+        return text + instruction
 
     def _resolve_storage_path(raw_path: Optional[str], source: Optional[str] = None) -> str:
         if raw_path:
@@ -1261,21 +1275,41 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         )
     )
 
-    @app.post("/query", tags=["querying"])
-    async def run_query(request: QueryRequest) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
-        storage_path = _resolve_index_storage(request.name)
-        request_settings = _query_settings_from_request(request)
+    async def _run_query_impl(payload: QueryRequest, client_request: Any) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
+        """Internal implementation of query that accepts an optional Request to support cancellation."""
+        storage_path = _resolve_index_storage(payload.name)
+        request_settings = _query_settings_from_request(payload)
 
         try:
-            index = load_existing_index(storage_path)
-            response = query_index(index, request.text, settings=request_settings)
+            # Run blocking load and query in threads to avoid blocking the event loop.
+            load_task = asyncio.create_task(asyncio.to_thread(load_existing_index, storage_path))
+            # Poll for client disconnect while waiting for index to load
+            while not load_task.done():
+                if client_request and await client_request.is_disconnected():
+                    load_task.cancel()
+                    raise HTTPException(status_code=499, detail="Client disconnected")
+                await asyncio.sleep(0.05)
+            # Await completion (may raise)
+            index = await load_task
+
+            query_text = _ensure_sources_instruction(payload.text)
+            query_task = asyncio.create_task(asyncio.to_thread(lambda: query_index(index, query_text, settings=request_settings)))
+            while not query_task.done():
+                if client_request and await client_request.is_disconnected():
+                    query_task.cancel()
+                    raise HTTPException(status_code=499, detail="Client disconnected")
+                await asyncio.sleep(0.05)
+            response = await query_task
+
+        except HTTPException:
+            raise
         except Exception as exc:  # pylint: disable=broad-except
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         reranked = bool(request_settings.enable_rerank)
         hybrid_enabled = bool(request_settings.enable_hybrid)
 
-        if request.mode == "human":
+        if payload.mode == "rag":
             sources = extract_sources(response)
             return QueryResponse(
                 answer=str(response),
@@ -1286,23 +1320,31 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
 
         # Agent mode response — return explicit Pydantic models so FastAPI selects the
         # correct response schema rather than coercing to the first Union option.
-        if request.compact:
-            payload = to_agent_response_compact(response, request.text)
-            payload["reranked"] = reranked
-            payload["hybrid_enabled"] = hybrid_enabled
-            return CompactAgentQueryResponse(**payload)
+        if payload.compact:
+            result_payload = to_agent_response_compact(response, payload.text)
+            result_payload["reranked"] = reranked
+            result_payload["hybrid_enabled"] = hybrid_enabled
+            return CompactAgentQueryResponse(**result_payload)
 
-        payload = to_agent_response(response, request.text)
+        result_payload = to_agent_response(response, payload.text)
         # Ensure Agent response has the required 'type' field
-        payload["type"] = payload.get("type", "agent")
-        payload["reranked"] = reranked
-        payload["hybrid_enabled"] = hybrid_enabled
-        return AgentQueryResponse(**payload)
+        result_payload["type"] = result_payload.get("type", "agent")
+        result_payload["reranked"] = reranked
+        result_payload["hybrid_enabled"] = hybrid_enabled
+        return AgentQueryResponse(**result_payload)
+
+    @app.post("/query", tags=["querying"])
+    async def run_query(request: QueryRequest, req: Request) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
+        return await _run_query_impl(request, req)
+
+    async def run_query_for_mcp(request: QueryRequest) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
+        """MCP-invokable wrapper that does not have a Request available."""
+        return await _run_query_impl(request, None)
 
     app.include_router(
         build_mcp_router(
             lambda: _mcp_tools_schema(storage_roots),
-            run_query,
+            run_query_for_mcp,
             task_service.run_analysis_task,
             QueryRequest,
             TaskRequest,
@@ -1312,30 +1354,38 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         )
     )
 
-    @app.post(
-        "/query/diagnostics",
-        response_model=QueryDiagnosticsResponse,
-        response_model_exclude_none=True,
-        tags=["querying"],
-    )
-    async def query_diagnostics(request: QueryRequest) -> QueryDiagnosticsResponse:
+    async def _query_diagnostics_impl(payload: QueryRequest, client_request: Any) -> QueryDiagnosticsResponse:
         from src.indexer import _tokenize, _keyword_score
         
-        storage_path = _resolve_index_storage(request.name)
-        request_settings = _query_settings_from_request(request)
-        
+        storage_path = _resolve_index_storage(payload.name)
+        request_settings = _query_settings_from_request(payload)
         try:
-            index = load_existing_index(storage_path)
-            retriever = index.as_retriever(similarity_top_k=10)
+            load_task = asyncio.create_task(asyncio.to_thread(load_existing_index, storage_path))
+            while not load_task.done():
+                if client_request and await client_request.is_disconnected():
+                    load_task.cancel()
+                    raise HTTPException(status_code=499, detail="Client disconnected")
+                await asyncio.sleep(0.05)
+            index = await load_task
+
+            query_task = asyncio.create_task(asyncio.to_thread(lambda: index.as_retriever(similarity_top_k=10)))
+            while not query_task.done():
+                if client_request and await client_request.is_disconnected():
+                    query_task.cancel()
+                    raise HTTPException(status_code=499, detail="Client disconnected")
+                await asyncio.sleep(0.05)
+            retriever = await query_task
+
             from llama_index.core.schema import QueryBundle
-            nodes = retriever.retrieve(QueryBundle(query_str=request.text))
-            
+            query_text = _ensure_sources_instruction(payload.text)
+            nodes = retriever.retrieve(QueryBundle(query_str=query_text))
+
             diagnostics = []
             for node in nodes:
                 content = node.node.get_content()[:200]
-                keyword_score = _keyword_score(request.text, node.node.get_content())
+                keyword_score = _keyword_score(payload.text, node.node.get_content())
                 vector_score = node.score or 0.0
-                
+
                 diagnostics.append({
                     "file": node.metadata.get("file_path", "unknown"),
                     "content_preview": content,
@@ -1345,18 +1395,32 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                         (request_settings.hybrid_alpha or 0.5) * vector_score
                         + (1.0 - (request_settings.hybrid_alpha or 0.5)) * keyword_score
                     ),
-                    "query_tokens": _tokenize(request.text),
-                    "matched_tokens": list(set(_tokenize(request.text)) & set(_tokenize(node.node.get_content())))
+                    "query_tokens": _tokenize(payload.text),
+                    "matched_tokens": list(set(_tokenize(payload.text)) & set(_tokenize(node.node.get_content())))
                 })
-            
+
             return QueryDiagnosticsResponse(
-                query=request.text,
+                query=payload.text,
                 results=[QueryDiagnosticsResult(**entry) for entry in diagnostics],
                 hybrid_enabled=bool(request_settings.enable_hybrid),
                 rerank_enabled=bool(request_settings.enable_rerank),
             )
+        except HTTPException:
+            raise
         except Exception as exc:  # pylint: disable=broad-except
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post(
+        "/query/diagnostics",
+        response_model=QueryDiagnosticsResponse,
+        response_model_exclude_none=True,
+        tags=["querying"],
+    )
+    async def query_diagnostics(request: QueryRequest, req: Request) -> QueryDiagnosticsResponse:
+        return await _query_diagnostics_impl(request, req)
+
+    async def query_diagnostics_for_mcp(request: QueryRequest) -> QueryDiagnosticsResponse:
+        return await _query_diagnostics_impl(request, None)
 
     return app
 

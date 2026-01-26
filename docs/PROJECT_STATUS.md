@@ -19,7 +19,7 @@ Recent refactors modularized tasks, centralized task dispatch, and extracted ind
 *   **Outcome:** A stable CLI tool capable of indexing local and remote repositories with pluggable LLM backends.
 
 ### ✅ Phase 2: API & Operational Effectiveness
-*   **Deliverables:** fastAPI Server (`/index`, `/query`, `/tasks`), Hybrid Search, Cross-Encoder Reranking, Dual-mode responses (Human/JSON).
+*   **Deliverables:** fastAPI Server (`/index`, `/query`, `/tasks`), Hybrid Search, Cross-Encoder Reranking, Dual-mode responses (RAG/JSON).
 *   **Outcome:** Validated operationally with real repositories (`requests`, `flask`, etc.). Reranking significantly improved retrieval quality.
 
 ### ✅ Phase 2.5: Analysis Task Suite

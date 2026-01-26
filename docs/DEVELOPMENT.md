@@ -91,7 +91,7 @@ Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache
 
 #### Query Response Schemas
 
-**Human Mode** (`POST /query` with `mode=human`):
+**RAG Mode** (`POST /query` with `mode=rag`):
 ```json
 {
   "answer": "The authentication is handled in auth.py...",
@@ -103,7 +103,7 @@ Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache
       "end_line": 25
     }
   ],
-  "mode": "human",
+  "mode": "rag",
   "reranked": false,
   "hybrid_enabled": true
 }

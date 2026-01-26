@@ -180,11 +180,11 @@ curl -X POST http://localhost:8000/index/preview \
 
 ### Query Responses
 
-**Human Mode:**
+**RAG Mode:**
 ```bash
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
-  -d '{"text": "How does auth work?", "mode": "human"}'
+  -d '{"text": "How does auth work?", "mode": "rag"}'
 ```
 
 **Agent Mode (Structured):**
