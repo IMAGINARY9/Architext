@@ -43,7 +43,7 @@ class ArchitextSettings(BaseSettings):
         default="cross-encoder/ms-marco-MiniLM-L-6-v2", alias="RERANK_MODEL"
     )
     rerank_top_n: int = Field(default=10, alias="RERANK_TOP_N")
-    enable_hybrid: bool = Field(default=False, alias="ENABLE_HYBRID")
+    enable_hybrid: bool = Field(default=True, alias="ENABLE_HYBRID")  # Enabled by default for better retrieval
     hybrid_alpha: float = Field(default=0.7, alias="HYBRID_ALPHA")
 
     # Storage

@@ -4,6 +4,23 @@ from typing import Any, Dict, List, Optional
 import logging
 
 
+def _calculate_confidence(response: Any) -> float:
+    """Calculate confidence score from source node scores.
+    
+    Returns the average score of all source nodes with valid scores.
+    Returns 0.0 if no valid scores are available.
+    """
+    if hasattr(response, "source_nodes") and response.source_nodes:
+        scores = []
+        for node in response.source_nodes:
+            score = getattr(node, "score", None)
+            if isinstance(score, (int, float)):
+                scores.append(float(score))
+        if scores:
+            return sum(scores) / len(scores)
+    return 0.0
+
+
 def extract_sources(response: Any) -> List[Dict[str, Any]]:
     """Extract sources from a query response."""
     if hasattr(response, "source_nodes") and response.source_nodes:
@@ -34,28 +51,38 @@ def extract_sources(response: Any) -> List[Dict[str, Any]]:
             
             # Handle metadata which might be a dict or Mock
             file_path = ""
-            line_number = 0
+            start_line = None
+            end_line = None
             if isinstance(metadata, dict):
                 file_path = metadata.get("file_path", "")
-                line_number = metadata.get("line_number", 0)
+                start_line = metadata.get("start_line")
+                end_line = metadata.get("end_line")
             elif hasattr(metadata, "get"):
                 # Handle Mock or dict-like
                 file_path = metadata.get("file_path", "")
-                line_number = metadata.get("line_number", 0)
+                start_line = metadata.get("start_line")
+                end_line = metadata.get("end_line")
                 # If it's a Mock, values might be Mocks, so check types
                 if not isinstance(file_path, str):
                     file_path = ""
-                if not isinstance(line_number, int):
-                    line_number = 0
+                if start_line is not None and not isinstance(start_line, int):
+                    start_line = None
+                if end_line is not None and not isinstance(end_line, int):
+                    end_line = None
             else:
                 file_path = ""
-                line_number = 0
+                start_line = None
+                end_line = None
+            
+            # Normalize Windows paths to forward slashes for consistency
+            if file_path:
+                file_path = file_path.replace("\\", "/")
             
             sources.append({
                 "file": file_path,
-                "line": line_number,
-                "content": text[:200] + "..." if len(text) > 200 else text,
                 "score": score,
+                "start_line": start_line,
+                "end_line": end_line,
             })
         return sources
     return []
@@ -63,11 +90,7 @@ def extract_sources(response: Any) -> List[Dict[str, Any]]:
 
 def to_agent_response(response: Any, query: str) -> Dict[str, Any]:
     """Format a full agent response."""
-    confidence = 0.0
-    if hasattr(response, "confidence"):
-        conf_val = getattr(response, "confidence", 0.0)
-        if isinstance(conf_val, (int, float)):
-            confidence = float(conf_val)
+    confidence = _calculate_confidence(response)
     
     reranked = False
     if hasattr(response, "reranked"):
@@ -92,11 +115,7 @@ def to_agent_response(response: Any, query: str) -> Dict[str, Any]:
 
 def to_agent_response_compact(response: Any, query: str) -> Dict[str, Any]:
     """Format a compact agent response."""
-    confidence = 0.0
-    if hasattr(response, "confidence"):
-        conf_val = getattr(response, "confidence", 0.0)
-        if isinstance(conf_val, (int, float)):
-            confidence = float(conf_val)
+    confidence = _calculate_confidence(response)
 
     return {
         "answer": str(response),

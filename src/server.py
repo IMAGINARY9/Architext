@@ -413,6 +413,21 @@ class QueryDiagnosticsResponse(BaseModel):
     rerank_enabled: bool
 
 
+class FileInfo(BaseModel):
+    """Information about a file in an index."""
+    file: str = Field(..., description="File path (normalized to forward slashes)")
+    chunks: int = Field(..., description="Number of document chunks from this file")
+    has_line_info: bool = Field(default=False, description="Whether line number information is available")
+
+
+class IndexFilesResponse(BaseModel):
+    """Response for listing files in an index."""
+    index_name: str = Field(..., description="Name of the index")
+    total_files: int = Field(..., description="Total number of unique files in the index")
+    total_chunks: int = Field(..., description="Total number of document chunks")
+    files: List[FileInfo] = Field(..., description="List of files with their chunk counts")
+
+
 class _RateLimiter:
     """Simple in-memory token bucket per client IP."""
 
@@ -1138,6 +1153,79 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                         error=str(exc),
                     )
         raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+    @app.get("/indices/{index_name}/files", response_model=IndexFilesResponse, tags=["indices"])
+    async def list_index_files(index_name: str) -> IndexFilesResponse:
+        """List all files indexed in a specific index.
+        
+        Returns file paths with document chunk counts and metadata availability.
+        This endpoint is useful for understanding index contents without performing queries.
+        """
+        storage_path = _resolve_index_storage(index_name)
+        
+        try:
+            # Load the index to access its documents
+            index = await asyncio.to_thread(load_existing_index, storage_path)
+            
+            # Get vector store from index
+            vector_store = index.vector_store
+            
+            # Query all documents from ChromaDB
+            from llama_index.core.schema import QueryBundle
+            
+            # Direct ChromaDB access for better performance
+            metadatas = []
+            if hasattr(vector_store, '_collection'):
+                # Direct ChromaDB access
+                collection = vector_store._collection
+                result = collection.get(include=["metadatas"])
+                metadatas = result.get("metadatas", [])
+            else:
+                # Fallback: use retriever with broad query
+                retriever = index.as_retriever(similarity_top_k=10000)
+                nodes = retriever.retrieve(QueryBundle(query_str="*"))
+                metadatas = [node.node.metadata for node in nodes if hasattr(node, 'node')]
+            
+            # Aggregate file information
+            file_counts = {}
+            file_has_lines = {}
+            
+            for metadata in metadatas:
+                if not isinstance(metadata, dict):
+                    continue
+                    
+                file_path = metadata.get("file_path", "")
+                if not file_path:
+                    continue
+                
+                # Normalize path to forward slashes
+                file_path = file_path.replace("\\", "/")
+                
+                file_counts[file_path] = file_counts.get(file_path, 0) + 1
+                
+                # Check if this file has line information
+                if "start_line" in metadata or "end_line" in metadata:
+                    file_has_lines[file_path] = True
+            
+            # Build file info list
+            files = [
+                FileInfo(
+                    file=path,
+                    chunks=count,
+                    has_line_info=file_has_lines.get(path, False)
+                )
+                for path, count in sorted(file_counts.items())
+            ]
+            
+            return IndexFilesResponse(
+                index_name=index_name,
+                total_files=len(files),
+                total_chunks=sum(file_counts.values()),
+                files=files
+            )
+            
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to list files: {str(exc)}") from exc
 
     @app.post(
         "/index",
