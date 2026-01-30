@@ -83,72 +83,110 @@ def dependency_graph_export(
     return {"format": "json", "nodes": list(graph.keys()), "edges": edges}
 
 
+# Architecture pattern detection rules with confidence scoring
+PATTERN_RULES = {
+    "MVC": {
+        "required": [["controllers", "controller"], ["views", "view", "templates"]],
+        "optional": [["models", "model"]],
+        "min_confidence": 0.6,
+    },
+    "Service-Repository": {
+        "required": [["services", "service"], ["repositories", "repository", "repos"]],
+        "optional": [["entities", "entity", "models"]],
+        "min_confidence": 0.6,
+    },
+    "Layered Architecture": {
+        "required": [["domain", "core"], ["infrastructure", "adapters"]],
+        "optional": [["application", "usecases", "use_cases"]],
+        "min_confidence": 0.5,
+    },
+    "Hexagonal/Ports-Adapters": {
+        "required": [["ports"], ["adapters"]],
+        "optional": [["domain", "core"]],
+        "min_confidence": 0.7,
+    },
+    "CQRS": {
+        "required": [["commands", "command"], ["queries", "query"]],
+        "optional": [["handlers", "handler"]],
+        "min_confidence": 0.7,
+    },
+    "Plugin Architecture": {
+        "required": [["plugins", "plugin", "extensions", "extension"]],
+        "optional": [["hooks", "hook"]],
+        "min_confidence": 0.5,
+    },
+    "Event-Driven": {
+        "required": [["events", "event"], ["handlers", "handler", "listeners", "subscriber"]],
+        "optional": [["kafka", "rabbitmq", "pubsub"]],
+        "min_confidence": 0.6,
+    },
+    "Microservices": {
+        "required": [["docker-compose", "kubernetes", "k8s"]],
+        "optional": [["gateway", "api-gateway"], ["service-"]],
+        "min_confidence": 0.5,
+    },
+}
+
+
 def architecture_pattern_detection(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, Any]:
+    """Detect architectural patterns with confidence scoring and evidence."""
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
 
-    patterns = []
-    files_lower = [str(path).lower() for path in files]
+    detected_patterns: List[Dict[str, Any]] = []
+    files_lower = [str(path).replace("\\", "/").lower() for path in files]
 
-    if any("controllers" in path for path in files_lower) and any("views" in path for path in files_lower):
-        patterns.append("MVC")
-    if any("services" in path for path in files_lower) and any("repositories" in path for path in files_lower):
-        patterns.append("Service-Repository")
-    if any("microservice" in path for path in files_lower) or any("docker" in path for path in files_lower):
-        patterns.append("Microservices")
-    if any("plugins" in path for path in files_lower) or any("extensions" in path for path in files_lower):
-        patterns.append("Plugin Architecture")
-    if any("event" in path for path in files_lower) or any("kafka" in path for path in files_lower):
-        patterns.append("Event-Driven")
+    for pattern_name, rules in PATTERN_RULES.items():
+        required_matches = []
+        optional_matches = []
+        evidence = []
 
-    return {"patterns": patterns, "evidence": files_lower[:20]}
+        # Check required patterns (all must have at least one match)
+        for keywords in rules["required"]:
+            matching_files = [
+                f for f in files_lower
+                if any(kw in f for kw in keywords)
+            ]
+            if matching_files:
+                required_matches.append(keywords[0])
+                evidence.extend(matching_files[:3])
 
+        # Check optional patterns
+        for keywords in rules.get("optional", []):
+            matching_files = [
+                f for f in files_lower
+                if any(kw in f for kw in keywords)
+            ]
+            if matching_files:
+                optional_matches.append(keywords[0])
+                evidence.extend(matching_files[:2])
 
-def diff_architecture_review(
-    storage_path: Optional[str] = None,
-    source_path: Optional[str] = None,
-    baseline_files: Optional[List[str]] = None,
-    progress_callback=None,
-) -> Dict[str, Any]:
-    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
-    current_files = set(collect_file_paths(storage_path, source_path))
-    baseline_set = set(baseline_files or [])
+        # Calculate confidence
+        if len(required_matches) == len(rules["required"]):
+            base_confidence = 0.6
+            optional_bonus = 0.1 * len(optional_matches)
+            confidence = min(base_confidence + optional_bonus, 1.0)
 
-    added = sorted(current_files - baseline_set)
-    removed = sorted(baseline_set - current_files)
+            if confidence >= rules["min_confidence"]:
+                detected_patterns.append({
+                    "pattern": pattern_name,
+                    "confidence": round(confidence, 2),
+                    "required_signals": required_matches,
+                    "optional_signals": optional_matches,
+                    "evidence": list(set(evidence))[:5],
+                })
 
-    return {
-        "added": added[:100],
-        "removed": removed[:100],
-        "added_count": len(added),
-        "removed_count": len(removed),
-    }
-
-
-def onboarding_guide(
-    storage_path: Optional[str] = None,
-    source_path: Optional[str] = None,
-    progress_callback=None,
-) -> Dict[str, Any]:
-    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
-    files = collect_file_paths(storage_path, source_path)
-    root_files = [Path(path).name for path in files if len(Path(path).parts) <= 3]
-
-    entry_points = [
-        f
-        for f in root_files
-        if f.lower() in {"readme.md", "setup.py", "pyproject.toml", "package.json", "main.py"}
-    ]
-    suggestions = ["Start with README and configuration files", "Review entry points and tests"]
+    # Sort by confidence descending
+    detected_patterns.sort(key=lambda x: x["confidence"], reverse=True)
 
     return {
-        "entry_points": entry_points,
-        "suggestions": suggestions,
-        "root_files": root_files[:50],
+        "patterns": [p["pattern"] for p in detected_patterns],
+        "detailed": detected_patterns,
+        "files_analyzed": len(files),
     }
 
 

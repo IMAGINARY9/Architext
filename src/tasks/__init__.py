@@ -6,9 +6,7 @@ from src.tasks.architecture import (
 	architecture_pattern_detection,
 	code_knowledge_graph,
 	dependency_graph_export,
-	diff_architecture_review,
 	impact_analysis,
-	onboarding_guide,
 )
 from src.tasks.docs import generate_docs
 from src.tasks.duplication import detect_duplicate_blocks, detect_duplicate_blocks_semantic
@@ -36,8 +34,6 @@ __all__ = [
 	"dependency_graph_export",
 	"test_coverage_analysis",
 	"architecture_pattern_detection",
-	"diff_architecture_review",
-	"onboarding_guide",
 	"detect_vulnerabilities",
 	"logic_gap_analysis",
 	"identify_silent_failures",
