@@ -8,14 +8,11 @@ from src.tasks.architecture import (
 	dependency_graph_export,
 	impact_analysis,
 )
-from src.tasks.docs import generate_docs
 from src.tasks.duplication import detect_duplicate_blocks, detect_duplicate_blocks_semantic
 from src.tasks.health import health_score
 from src.tasks.quality import (
 	identify_silent_failures,
-	logic_gap_analysis,
-	refactoring_recommendations,
-	test_coverage_analysis,
+	test_mapping_analysis,
 )
 from src.tasks.query import query_diagnostics
 from src.tasks.roadmap import synthesis_roadmap
@@ -29,13 +26,10 @@ __all__ = [
 	"detect_anti_patterns",
 	"health_score",
 	"impact_analysis",
-	"refactoring_recommendations",
-	"generate_docs",
 	"dependency_graph_export",
-	"test_coverage_analysis",
+	"test_mapping_analysis",
 	"architecture_pattern_detection",
 	"detect_vulnerabilities",
-	"logic_gap_analysis",
 	"identify_silent_failures",
 	"security_heuristics",
 	"code_knowledge_graph",

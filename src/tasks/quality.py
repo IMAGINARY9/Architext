@@ -1,17 +1,13 @@
-"""Quality, coverage, and logic gap analysis tasks."""
+"""Quality analysis tasks: test mapping and silent failure detection."""
 from __future__ import annotations
 
-import ast
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from src.tasks.anti_patterns import detect_anti_patterns
-from src.tasks.health import health_score
 from src.tasks.shared import (
     DEFAULT_EXTENSIONS,
-    FRAMEWORK_SETTINGS_IGNORES,
     _line_number_from_index,
     _progress,
     _read_file_text,
@@ -19,164 +15,113 @@ from src.tasks.shared import (
 )
 
 
-def refactoring_recommendations(
+# Common test file naming patterns
+TEST_PATTERNS = [
+    r"^test_(.+)$",      # test_module.py
+    r"^(.+)_test$",      # module_test.py
+    r"^tests?$",         # test.py or tests.py (generic)
+    r"^(.+)\.test$",     # module.test.js
+    r"^(.+)\.spec$",     # module.spec.ts
+]
+
+
+def _extract_test_subject(test_filename: str) -> Optional[str]:
+    """Extract the subject module name from a test filename."""
+    stem = Path(test_filename).stem
+    
+    for pattern in TEST_PATTERNS:
+        match = re.match(pattern, stem, re.IGNORECASE)
+        if match and match.groups():
+            return match.group(1).lower()
+    return None
+
+
+def _is_test_file(path: str) -> bool:
+    """Check if a file is a test file based on path and name."""
+    path_lower = path.lower().replace("\\", "/")
+    name = Path(path).name.lower()
+    
+    # Check directory patterns
+    if "/tests/" in path_lower or "/test/" in path_lower or "/__tests__/" in path_lower:
+        return True
+    
+    # Check filename patterns
+    if name.startswith("test_") or name.endswith("_test.py"):
+        return True
+    if ".test." in name or ".spec." in name:
+        return True
+    if name in {"conftest.py", "fixtures.py"}:
+        return True
+        
+    return False
+
+
+def test_mapping_analysis(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, Any]:
-    anti_patterns = detect_anti_patterns(storage_path, source_path)
-    score = health_score(storage_path, source_path)
-
-    recommendations = []
-    for issue in anti_patterns.get("issues", []):
-        if issue["type"] == "god_object":
-            recommendations.append(
-                {
-                    "title": "Split large modules",
-                    "file": issue.get("file"),
-                    "effort": "medium",
-                    "benefit": "high",
-                    "rationale": issue.get("details"),
-                }
-            )
-        if issue["type"] == "circular_dependency":
-            recommendations.append(
-                {
-                    "title": "Break circular dependencies",
-                    "effort": "high",
-                    "benefit": "high",
-                    "rationale": issue.get("details"),
-                }
-            )
-
-    if score.get("details", {}).get("documentation", 100) < 40:
-        recommendations.append(
-            {
-                "title": "Improve documentation coverage",
-                "effort": "low",
-                "benefit": "medium",
-                "rationale": "Documentation coverage below 40%",
-            }
-        )
-
-    if score.get("details", {}).get("testing", 100) < 30:
-        recommendations.append(
-            {
-                "title": "Increase test coverage",
-                "effort": "medium",
-                "benefit": "high",
-                "rationale": "Test coverage below 30%",
-            }
-        )
-
-    return {"recommendations": recommendations, "health": score}
-
-
-def test_coverage_analysis(
-    storage_path: Optional[str] = None,
-    source_path: Optional[str] = None,
-    progress_callback=None,
-) -> Dict[str, Any]:
+    """
+    Analyze test file presence and map tests to source files.
+    
+    This is NOT actual code coverage - it maps test files to source files
+    based on naming conventions to identify potentially untested modules.
+    """
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
-    source_files = [path for path in files if Path(path).suffix in DEFAULT_EXTENSIONS]
-    test_files = [path for path in files if "test" in Path(path).name.lower()]
+    
+    # Separate source and test files
+    source_files: List[str] = []
+    test_files: List[str] = []
+    
+    for path in files:
+        suffix = Path(path).suffix.lower()
+        if suffix not in DEFAULT_EXTENSIONS:
+            continue
+        if _is_test_file(path):
+            test_files.append(path)
+        else:
+            source_files.append(path)
 
+    # Build mapping from source files to their tests
     mapping: Dict[str, List[str]] = defaultdict(list)
-    for src in source_files:
-        stem = Path(src).stem
-        for test in test_files:
-            if stem in Path(test).stem:
-                mapping[src].append(test)
+    source_stems = {Path(src).stem.lower(): src for src in source_files}
+    
+    _progress(progress_callback, {"stage": "analyze", "message": "Mapping tests to sources"})
+    
+    for test_path in test_files:
+        subject = _extract_test_subject(test_path)
+        if subject and subject in source_stems:
+            mapping[source_stems[subject]].append(test_path)
+            continue
+        
+        # Fallback: check if test filename contains source stem
+        test_stem = Path(test_path).stem.lower()
+        for src_stem, src_path in source_stems.items():
+            # Avoid matching generic names like "test", "utils", "helpers"
+            if len(src_stem) < 4:
+                continue
+            if src_stem in test_stem and src_path not in mapping:
+                mapping[src_path].append(test_path)
 
-    uncovered = [src for src in source_files if src not in mapping]
-    coverage_ratio = 1 - (len(uncovered) / max(len(source_files), 1))
+    # Find untested files (excluding __init__.py, conftest.py, etc.)
+    skip_names = {"__init__", "conftest", "__main__", "setup"}
+    testable_sources = [
+        src for src in source_files 
+        if Path(src).stem.lower() not in skip_names
+    ]
+    
+    untested = [src for src in testable_sources if src not in mapping]
+    tested_ratio = 1 - (len(untested) / max(len(testable_sources), 1))
 
     return {
         "total_sources": len(source_files),
+        "testable_sources": len(testable_sources),
         "total_tests": len(test_files),
-        "coverage_ratio": round(coverage_ratio, 2),
-        "uncovered": uncovered[:50],
-        "mapping": {k: v[:5] for k, v in mapping.items()},
-    }
-
-
-def logic_gap_analysis(
-    storage_path: Optional[str] = None,
-    source_path: Optional[str] = None,
-    progress_callback=None,
-) -> Dict[str, Any]:
-    _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
-    files = collect_file_paths(storage_path, source_path)
-
-    config_file = None
-    settings_fields: List[Tuple[str, int]] = []
-    is_pydantic_settings = False
-    for path in files:
-        if Path(path).name.lower() != "config.py":
-            continue
-        content = _read_file_text(path)
-        if "ArchitextSettings" not in content:
-            continue
-        try:
-            tree = ast.parse(content)
-        except Exception:
-            continue
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef) and node.name == "ArchitextSettings":
-                for base in node.bases:
-                    if isinstance(base, ast.Name) and base.id == "BaseSettings":
-                        is_pydantic_settings = True
-                    elif isinstance(base, ast.Attribute) and base.attr == "BaseSettings":
-                        is_pydantic_settings = True
-                for item in node.body:
-                    if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
-                        settings_fields.append((item.target.id, item.lineno))
-                    elif isinstance(item, ast.Assign):
-                        for target in item.targets:
-                            if isinstance(target, ast.Name):
-                                settings_fields.append((target.id, item.lineno))
-        if settings_fields:
-            config_file = path
-            break
-
-    if not settings_fields:
-        return {
-            "note": "No ArchitextSettings fields found",
-            "config_file": config_file,
-            "unused_settings": [],
-        }
-
-    used = set()
-    candidate_files = [
-        path for path in files if Path(path).suffix == ".py" and path != config_file
-    ]
-    for path in candidate_files:
-        content = _read_file_text(path)
-        if not content:
-            continue
-        for field, _lineno in settings_fields:
-            if field in used:
-                continue
-            if re.search(rf"\b{re.escape(field)}\b", content):
-                used.add(field)
-
-    ignored_settings = set()
-    if is_pydantic_settings:
-        ignored_settings.update(FRAMEWORK_SETTINGS_IGNORES.get("pydantic", set()))
-
-    unused = [
-        {"name": field, "defined_at": lineno}
-        for field, lineno in settings_fields
-        if field not in used and field not in ignored_settings
-    ]
-
-    return {
-        "config_file": config_file,
-        "settings_defined": len(settings_fields),
-        "settings_used": len(used),
-        "unused_settings": unused,
-        "ignored_settings": sorted(ignored_settings),
+        "tested_ratio": round(tested_ratio, 2),
+        "untested": untested[:50],
+        "mapping": {k: v[:5] for k, v in list(mapping.items())[:30]},
+        "note": "This analyzes test file presence, not actual code coverage.",
     }
 
 
@@ -185,6 +130,14 @@ def identify_silent_failures(
     source_path: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, Any]:
+    """
+    Find exception handlers that silently swallow errors.
+    
+    Detects patterns like:
+    - except: pass
+    - except Exception: continue
+    - catch(e) {} (empty JS/TS catch blocks)
+    """
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
     findings: List[Dict[str, Any]] = []
@@ -224,6 +177,7 @@ def identify_silent_failures(
                             }
                         )
                     break
+                    
         elif suffix in {".js", ".ts", ".jsx", ".tsx"}:
             for match in re.finditer(
                 r"catch\s*\([^\)]*\)\s*\{\s*(?:\/\*.*?\*\/\s*|\/\/.*?\n\s*)*\}",

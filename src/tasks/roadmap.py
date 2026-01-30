@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from src.tasks.anti_patterns import detect_anti_patterns
 from src.tasks.health import health_score
-from src.tasks.quality import identify_silent_failures, logic_gap_analysis
+from src.tasks.quality import identify_silent_failures
 from src.tasks.security import security_heuristics
 from src.tasks.duplication import detect_duplicate_blocks, detect_duplicate_blocks_semantic
 from src.tasks.shared import _progress
@@ -16,11 +16,15 @@ def synthesis_roadmap(
     source_path: Optional[str] = None,
     progress_callback=None,
 ) -> Dict[str, Any]:
+    """
+    Generate a prioritized improvement roadmap by aggregating findings from multiple analysis tasks.
+    
+    Combines: anti-patterns, health score, security heuristics, silent failures, and duplication.
+    """
     _progress(progress_callback, {"stage": "analyze", "message": "Gathering structural signals"})
     anti_patterns = detect_anti_patterns(storage_path, source_path)
     health = health_score(storage_path, source_path)
     silent = identify_silent_failures(storage_path, source_path)
-    logic_gaps = logic_gap_analysis(storage_path, source_path)
     heuristics = security_heuristics(storage_path, source_path)
     duplication = detect_duplicate_blocks(storage_path, source_path)
     semantic_duplication = detect_duplicate_blocks_semantic(storage_path, source_path)
@@ -67,16 +71,6 @@ def synthesis_roadmap(
             }
         )
 
-    if logic_gaps.get("unused_settings"):
-        opportunities.append(
-            {
-                "title": "Resolve unused configuration settings",
-                "priority": "medium",
-                "score": 0.6,
-                "evidence": logic_gaps.get("unused_settings", [])[:5],
-            }
-        )
-
     if duplication.get("count", 0) > 0:
         opportunities.append(
             {
@@ -105,7 +99,6 @@ def synthesis_roadmap(
             "anti_pattern_count": len(anti_patterns.get("issues", [])),
             "security_findings": heuristics.get("counts", {}).get("total", 0),
             "silent_failures": silent.get("count", 0),
-            "unused_settings": len(logic_gaps.get("unused_settings", [])),
             "duplication_findings": duplication.get("count", 0),
             "semantic_duplication_findings": semantic_duplication.get("count", 0),
         },

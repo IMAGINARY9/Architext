@@ -434,40 +434,6 @@ def test_impact_analysis_task_inline(mocker, patched_settings):
     assert "result" in data
 
 
-def test_refactoring_recommendations_task_inline(mocker, patched_settings):
-    mocker.patch("src.server.refactoring_recommendations", return_value={"recommendations": []})
-
-    app = create_app(settings=patched_settings)
-    client = TestClient(app)
-
-    response = client.post(
-        "/tasks/refactoring-recommendations",
-        json={"storage": "./test-storage", "background": False},
-    )
-
-    assert response.status_code == 202
-    data = response.json()
-    assert data["status"] == "completed"
-    assert "result" in data
-
-
-def test_generate_docs_task_inline(mocker, patched_settings):
-    mocker.patch("src.server.generate_docs", return_value={"outputs": []})
-
-    app = create_app(settings=patched_settings)
-    client = TestClient(app)
-
-    response = client.post(
-        "/tasks/generate-docs",
-        json={"storage": "./test-storage", "background": False, "output_dir": "./docs"},
-    )
-
-    assert response.status_code == 202
-    data = response.json()
-    assert data["status"] == "completed"
-    assert "result" in data
-
-
 def test_dependency_graph_task_inline(mocker, patched_settings):
     mocker.patch("src.server.dependency_graph_export", return_value={"format": "mermaid"})
 
@@ -485,14 +451,14 @@ def test_dependency_graph_task_inline(mocker, patched_settings):
     assert "result" in data
 
 
-def test_test_coverage_task_inline(mocker, patched_settings):
-    mocker.patch("src.server.test_coverage_analysis", return_value={"coverage_ratio": 0.5})
+def test_test_mapping_task_inline(mocker, patched_settings):
+    mocker.patch("src.server.test_mapping_analysis", return_value={"tested_ratio": 0.5})
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
 
     response = client.post(
-        "/tasks/test-coverage",
+        "/tasks/test-mapping",
         json={"storage": "./test-storage", "background": False},
     )
 
@@ -518,36 +484,3 @@ def test_detect_patterns_task_inline(mocker, patched_settings):
     assert data["status"] == "completed"
     assert "result" in data
 
-
-def test_diff_architecture_task_inline(mocker, patched_settings):
-    mocker.patch("src.server.diff_architecture_review", return_value={"added": [], "removed": []})
-
-    app = create_app(settings=patched_settings)
-    client = TestClient(app)
-
-    response = client.post(
-        "/tasks/diff-architecture",
-        json={"storage": "./test-storage", "background": False},
-    )
-
-    assert response.status_code == 202
-    data = response.json()
-    assert data["status"] == "completed"
-    assert "result" in data
-
-
-def test_onboarding_guide_task_inline(mocker, patched_settings):
-    mocker.patch("src.server.onboarding_guide", return_value={"entry_points": []})
-
-    app = create_app(settings=patched_settings)
-    client = TestClient(app)
-
-    response = client.post(
-        "/tasks/onboarding-guide",
-        json={"storage": "./test-storage", "background": False},
-    )
-
-    assert response.status_code == 202
-    data = response.json()
-    assert data["status"] == "completed"
-    assert "result" in data

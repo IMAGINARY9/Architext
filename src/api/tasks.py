@@ -93,22 +93,6 @@ def build_tasks_router(
             raise HTTPException(status_code=400, detail="module is required")
         return _inline_response("impact-analysis", payload)
 
-    @router.post("/tasks/refactoring-recommendations", status_code=202)
-    async def refactoring_recommendations_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-        payload = _parse_request(request)
-        if payload.background:
-            task_id = submit_task("refactoring-recommendations", payload)
-            return {"task_id": task_id, "status": "queued"}
-        return _inline_response("refactoring-recommendations", payload)
-
-    @router.post("/tasks/generate-docs", status_code=202)
-    async def generate_docs_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-        payload = _parse_request(request)
-        if payload.background:
-            task_id = submit_task("generate-docs", payload)
-            return {"task_id": task_id, "status": "queued"}
-        return _inline_response("generate-docs", payload)
-
     @router.post("/tasks/dependency-graph", status_code=202)
     async def dependency_graph_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         payload = _parse_request(request)
@@ -117,13 +101,13 @@ def build_tasks_router(
             return {"task_id": task_id, "status": "queued"}
         return _inline_response("dependency-graph", payload)
 
-    @router.post("/tasks/test-coverage", status_code=202)
-    async def test_coverage_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    @router.post("/tasks/test-mapping", status_code=202)
+    async def test_mapping_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         payload = _parse_request(request)
         if payload.background:
-            task_id = submit_task("test-coverage", payload)
+            task_id = submit_task("test-mapping", payload)
             return {"task_id": task_id, "status": "queued"}
-        return _inline_response("test-coverage", payload)
+        return _inline_response("test-mapping", payload)
 
     @router.post("/tasks/detect-patterns", status_code=202)
     async def detect_patterns_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
@@ -133,22 +117,6 @@ def build_tasks_router(
             return {"task_id": task_id, "status": "queued"}
         return _inline_response("detect-patterns", payload)
 
-    @router.post("/tasks/diff-architecture", status_code=202)
-    async def diff_architecture_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-        payload = _parse_request(request)
-        if payload.background:
-            task_id = submit_task("diff-architecture", payload)
-            return {"task_id": task_id, "status": "queued"}
-        return _inline_response("diff-architecture", payload)
-
-    @router.post("/tasks/onboarding-guide", status_code=202)
-    async def onboarding_guide_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-        payload = _parse_request(request)
-        if payload.background:
-            task_id = submit_task("onboarding-guide", payload)
-            return {"task_id": task_id, "status": "queued"}
-        return _inline_response("onboarding-guide", payload)
-
     @router.post("/tasks/detect-vulnerabilities", status_code=202)
     async def detect_vulnerabilities_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         payload = _parse_request(request)
@@ -156,14 +124,6 @@ def build_tasks_router(
             task_id = submit_task("detect-vulnerabilities", payload)
             return {"task_id": task_id, "status": "queued"}
         return _inline_response("detect-vulnerabilities", payload)
-
-    @router.post("/tasks/logic-gap-analysis", status_code=202)
-    async def logic_gap_analysis_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
-        payload = _parse_request(request)
-        if payload.background:
-            task_id = submit_task("logic-gap-analysis", payload)
-            return {"task_id": task_id, "status": "queued"}
-        return _inline_response("logic-gap-analysis", payload)
 
     @router.post("/tasks/identify-silent-failures", status_code=202)
     async def identify_silent_failures_task(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:

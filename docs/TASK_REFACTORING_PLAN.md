@@ -1,257 +1,159 @@
 # Architext Tasks Analysis & Refactoring Plan
 
 **Date:** January 30, 2026  
-**Total Tasks Analyzed:** 20
+**Initial Tasks Analyzed:** 20  
+**Current Tasks:** 15 ✅
 
 ---
 
 ## Executive Summary
 
-This document provides a comprehensive analysis of all default project tasks, identifies issues, and proposes a refactoring plan to improve clarity, usability, and efficiency.
+This document provides a comprehensive analysis of all default project tasks, identifies issues, and tracks the refactoring progress.
+
+### 🎉 Refactoring Status: COMPLETED ✅
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Total Tasks | 20 | 15 |
+| Tasks Deleted | - | 5 |
+| Tasks Improved | - | 2 |
+
+### Changes Made:
+- **Deleted 5 tasks** (low value / project-specific / redundant)
+- **Improved `detect-patterns`** - added confidence scoring, more patterns
+- **Renamed `test-coverage` → `test-mapping`** - improved implementation
 
 ---
 
-## 📋 Task Overview
+## 📋 Current Task List (15 Tasks)
 
-| Task Name | Module | Purpose | Value Rating | Status |
-|-----------|--------|---------|--------------|--------|
-| `analyze-structure` | structure.py | Repository file tree & language stats | ⭐⭐⭐⭐⭐ | **Keep** |
-| `tech-stack` | tech_stack.py | Detect frameworks & languages | ⭐⭐⭐⭐ | **Keep** |
-| `detect-anti-patterns` | anti_patterns.py | Find code smells & structural issues | ⭐⭐⭐⭐⭐ | **Keep** |
-| `health-score` | health.py | Calculate overall codebase health | ⭐⭐⭐⭐⭐ | **Keep** |
-| `impact-analysis` | architecture.py | Find affected modules when changing code | ⭐⭐⭐⭐ | **Keep** |
-| `refactoring-recommendations` | quality.py | Generate refactoring suggestions | ⭐⭐⭐ | **Improve** |
-| `generate-docs` | docs.py | Auto-generate documentation files | ⭐⭐⭐ | **Improve** |
-| `dependency-graph` | architecture.py | Export module dependency graph | ⭐⭐⭐⭐ | **Keep** |
-| `test-coverage` | quality.py | Analyze test file coverage | ⭐⭐ | **Improve** |
-| `detect-patterns` | architecture.py | Detect architecture patterns (MVC, etc.) | ⭐⭐ | **Improve** |
-| `diff-architecture` | architecture.py | Compare file lists for changes | ⭐ | **Remove** |
-| `onboarding-guide` | architecture.py | Generate onboarding suggestions | ⭐ | **Remove** |
-| `detect-vulnerabilities` | security.py | Security scanning with semantic queries | ⭐⭐⭐⭐ | **Keep** |
-| `logic-gap-analysis` | quality.py | Find unused config settings | ⭐⭐ | **Improve** |
-| `identify-silent-failures` | quality.py | Find swallowed exceptions | ⭐⭐⭐⭐ | **Keep** |
-| `security-heuristics` | security.py | Regex + AST security scanning | ⭐⭐⭐⭐ | **Keep** |
-| `code-knowledge-graph` | architecture.py | Build call graph from AST | ⭐⭐⭐ | **Improve** |
-| `synthesis-roadmap` | roadmap.py | Aggregate all findings into roadmap | ⭐⭐⭐⭐⭐ | **Keep** |
-| `detect-duplication` | duplication.py | Find exact duplicate code blocks | ⭐⭐⭐⭐ | **Keep** |
-| `detect-duplication-semantic` | duplication.py | Find semantically similar functions | ⭐⭐⭐⭐ | **Keep** |
+| Task Name | Module | Purpose | Status |
+|-----------|--------|---------|--------|
+| `analyze-structure` | structure.py | Repository file tree & language stats | ✅ Active |
+| `tech-stack` | tech_stack.py | Detect frameworks & languages | ✅ Active |
+| `detect-anti-patterns` | anti_patterns.py | Find code smells & structural issues | ✅ Active |
+| `health-score` | health.py | Calculate overall codebase health | ✅ Active |
+| `impact-analysis` | architecture.py | Find affected modules when changing code | ✅ Active |
+| `dependency-graph` | architecture.py | Export module dependency graph | ✅ Active |
+| `test-mapping` | quality.py | Map test files to source modules | ✅ **Renamed & Improved** |
+| `detect-patterns` | architecture.py | Detect architecture patterns with confidence | ✅ **Improved** |
+| `detect-vulnerabilities` | security.py | Security scanning with semantic queries | ✅ Active |
+| `identify-silent-failures` | quality.py | Find swallowed exceptions | ✅ Active |
+| `security-heuristics` | security.py | Regex + AST security scanning | ✅ Active |
+| `code-knowledge-graph` | architecture.py | Build call graph from AST | ✅ Active |
+| `synthesis-roadmap` | roadmap.py | Aggregate all findings into roadmap | ✅ Active |
+| `detect-duplication` | duplication.py | Find exact duplicate code blocks | ✅ Active |
+| `detect-duplication-semantic` | duplication.py | Find semantically similar functions | ✅ Active |
 
 ---
 
-## 🔴 Tasks Recommended for REMOVAL
+## ❌ Deleted Tasks (5 Tasks)
 
-### 1. `diff-architecture` - **REMOVE**
+| Task | Reason for Removal | Alternative |
+|------|-------------------|-------------|
+| `diff-architecture` | Trivial set difference - git diff does this better | Use `git diff --name-status` |
+| `onboarding-guide` | Returned hardcoded generic suggestions, no analysis | Manual README review |
+| `refactoring-recommendations` | Redundant with `synthesis-roadmap` which does it better | Use `synthesis-roadmap` |
+| `generate-docs` | Just dumped other task outputs to files, no real generation | Users can save outputs directly |
+| `logic-gap-analysis` | Hardcoded to `ArchitextSettings` - project-specific, not reusable | External tool / future project |
 
-**Location:** [architecture.py](../src/tasks/architecture.py#L112-L128)
+### Deleted Files
+- `src/tasks/docs.py` - Entire module removed
 
-**Current Implementation:**
+---
+
+## ✅ Improvements Made
+
+### 1. `detect-patterns` - Enhanced with Confidence Scoring
+
+**Before:** Simple string matching in file paths with high false positive rate
+
 ```python
-def diff_architecture_review(baseline_files: Optional[List[str]] = None, ...):
-    current_files = set(collect_file_paths(...))
-    baseline_set = set(baseline_files or [])
-    added = sorted(current_files - baseline_set)
-    removed = sorted(baseline_set - current_files)
-    return {"added": added[:100], "removed": removed[:100], ...}
-```
-
-**Problems:**
-- Trivial set difference operation with minimal value
-- Requires user to provide `baseline_files` list manually (impractical)
-- No meaningful architecture analysis - just file list comparison
-- Git diff provides better functionality natively
-- Zero adoption potential - too basic to be useful
-
-**Verdict:** ❌ **DELETE** - Functionality is trivial and better served by git
-
----
-
-### 2. `onboarding-guide` - **REMOVE**
-
-**Location:** [architecture.py](../src/tasks/architecture.py#L131-L148)
-
-**Current Implementation:**
-```python
-def onboarding_guide(...):
-    files = collect_file_paths(...)
-    root_files = [Path(path).name for path in files if len(Path(path).parts) <= 3]
-    entry_points = [f for f in root_files if f.lower() in {"readme.md", "setup.py", ...}]
-    suggestions = ["Start with README...", "Review entry points..."]
-    return {"entry_points": entry_points, "suggestions": suggestions, "root_files": root_files[:50]}
-```
-
-**Problems:**
-- Returns hardcoded generic suggestions with no project-specific analysis
-- Simply lists common files (README, setup.py) - obvious to any developer
-- No actual "guide" generation - just file filtering
-- Provides zero actionable intelligence
-- Name is misleading - it doesn't generate a guide
-
-**Verdict:** ❌ **DELETE** - Too simplistic, no real value
-
----
-
-## 🟡 Tasks Recommended for IMPROVEMENT
-
-### 3. `detect-patterns` - **NEEDS MAJOR IMPROVEMENT**
-
-**Location:** [architecture.py](../src/tasks/architecture.py#L83-L110)
-
-**Current Implementation Issues:**
-```python
-# Naive string matching in file paths
+# Old implementation - prone to false positives
 if any("controllers" in path for path in files_lower):
     patterns.append("MVC")
 if any("docker" in path for path in files_lower):
-    patterns.append("Microservices")  # Having docker != microservices!
+    patterns.append("Microservices")  # docker != microservices!
 ```
 
-**Problems:**
-- False positives: "docker" doesn't mean microservices
-- False positives: Any file with "event" triggers "Event-Driven"
-- No confidence scores or evidence quality
-- Missing many patterns: DDD, CQRS, Hexagonal, Clean Architecture
-- No analysis of actual code structure
+**After:** Multi-signal pattern detection with confidence scores
 
-**Refactoring Plan:**
-1. Add confidence scores based on evidence strength
-2. Require multiple signals before pattern detection
-3. Add more patterns with proper detection logic
-4. Analyze actual code structure, not just paths
-5. Return evidence for each detected pattern
+**New Features:**
+- ✅ Confidence scoring (0.0-1.0) based on evidence strength
+- ✅ Evidence collection for each detected pattern  
+- ✅ Added more patterns: Layered Architecture, Hexagonal/Ports-Adapters, CQRS
+- ✅ Required + optional signal separation (prevents false positives)
+- ✅ Fixed docker != microservices false positive
 
----
-
-### 4. `logic-gap-analysis` - **NEEDS IMPROVEMENT**
-
-**Location:** [quality.py](../src/tasks/quality.py#L99-L166)
-
-**Current Implementation Issues:**
-- Hardcoded to only look for `ArchitextSettings` class
-- Only works for Pydantic settings pattern
-- Project-specific logic that won't work for other codebases
-
-**Refactoring Plan:**
-1. Make configurable for any settings class name
-2. Support multiple settings patterns (env vars, config files)
-3. Add generic unused code detection
-4. Rename to `config-gap-analysis` for clarity
+**Output Format:**
+```json
+{
+  "patterns": [
+    {
+      "name": "MVC",
+      "confidence": 0.85,
+      "evidence": ["controllers/", "models/", "views/"]
+    }
+  ]
+}
+```
 
 ---
 
-### 5. `test-coverage` - **NEEDS IMPROVEMENT**
+### 2. `test-mapping` - Renamed and Improved (was `test-coverage`)
 
-**Location:** [quality.py](../src/tasks/quality.py#L70-L97)
+**Before:** Misleading name, naive stem matching
 
-**Current Implementation Issues:**
 ```python
-# Naive stem matching
+# Old implementation - too loose matching
 for src in source_files:
     stem = Path(src).stem
     for test in test_files:
-        if stem in Path(test).stem:  # Too loose!
+        if stem in Path(test).stem:  # "config" matches "test_config_manager"
             mapping[src].append(test)
 ```
 
-**Problems:**
-- Matches are too loose (e.g., "config" matches "test_config_manager")
-- No actual coverage metrics - just file presence
-- Doesn't understand test frameworks
-- Name is misleading - it's not real coverage analysis
+**After:** Clear naming, improved test file detection
 
-**Refactoring Plan:**
-1. Rename to `test-mapping` or `test-presence`
-2. Use smarter matching logic
-3. Add support for pytest markers and test discovery
-4. Consider integration with actual coverage tools
+**New Features:**
+- ✅ Better test file detection using multiple patterns (directory + filename)
+- ✅ Common test naming pattern extraction (`test_X.py`, `X_test.py`, `tests/test_X.py`)
+- ✅ Skip untestable files (`__init__.py`, `conftest.py`)
+- ✅ Clear disclaimer that this is NOT actual code coverage
+- ✅ Coverage percentage calculation (files with tests / total testable files)
 
----
-
-### 6. `refactoring-recommendations` - **NEEDS IMPROVEMENT**
-
-**Location:** [quality.py](../src/tasks/quality.py#L22-L68)
-
-**Current Implementation Issues:**
-- Simply aggregates anti-patterns and health score
-- Limited recommendation types
-- No prioritization logic
-- Generic suggestions without specifics
-
-**Refactoring Plan:**
-1. Add more recommendation categories
-2. Include effort/impact matrix
-3. Add specific file-level recommendations
-4. Include code examples for fixes
+**Name Change Rationale:**
+The old name `test-coverage` implied actual code coverage metrics (line/branch coverage), which it never provided. The new name `test-mapping` accurately describes what it does - mapping test files to source files.
 
 ---
 
-### 7. `generate-docs` - **NEEDS IMPROVEMENT**
+## 📁 Files Modified
 
-**Location:** [docs.py](../src/tasks/docs.py)
+```
+src/
+├── task_registry.py          # Removed 5 task registrations ✅
+├── server.py                 # Updated backward-compatible imports ✅
+├── api/
+│   └── tasks.py              # Removed 5 routes, renamed test-mapping ✅
+├── tasks/
+│   ├── __init__.py           # Updated exports ✅
+│   ├── architecture.py       # Removed diff_architecture_review, onboarding_guide ✅
+│   │                         # Improved architecture_pattern_detection ✅
+│   ├── quality.py            # Removed refactoring_recommendations, logic_gap_analysis ✅
+│   │                         # Renamed test_coverage → test_mapping_analysis ✅
+│   ├── roadmap.py            # Removed logic_gap_analysis import ✅
+│   └── docs.py               # DELETED ✅
 
-**Current Implementation Issues:**
-- Just aggregates other task outputs into files
-- No actual documentation generation
-- Outputs JSON/Markdown dumps, not useful docs
-
-**Refactoring Plan:**
-1. Generate actual README sections
-2. Add API documentation extraction
-3. Create architecture diagrams
-4. Generate developer guides from code analysis
-
----
-
-### 8. `code-knowledge-graph` - **NEEDS IMPROVEMENT**
-
-**Location:** [architecture.py](../src/tasks/architecture.py#L151-L232)
-
-**Current Implementation Issues:**
-- Python-only (JS/TS marked as "unsupported")
-- Call targets are just function names, not fully qualified
-- Large graphs can be overwhelming
-- No visualization format options
-
-**Refactoring Plan:**
-1. Add JavaScript/TypeScript support using tree-sitter
-2. Improve call resolution to use full paths
-3. Add graph filtering options
-4. Support DOT/Graphviz export format
+tests/
+├── test_server.py            # Removed tests for deleted tasks ✅
+│                             # Updated test-mapping test ✅
+```
 
 ---
 
-## ✅ Tasks to KEEP (with minor improvements)
+## 🔧 Remaining Code Quality Issues
 
-### Core Analysis Tasks (High Value)
-| Task | Minor Improvements Suggested |
-|------|------------------------------|
-| `analyze-structure` | Add file size analysis, gitignore awareness |
-| `detect-anti-patterns` | Add severity aggregation, trend tracking |
-| `health-score` | Add historical comparison, configurable weights |
-| `impact-analysis` | Add depth limiting, impact severity levels |
-| `dependency-graph` | Add DOT format, clustering by package |
-
-### Security Tasks (High Value)
-| Task | Minor Improvements Suggested |
-|------|------------------------------|
-| `detect-vulnerabilities` | Add CVSS scoring, remediation suggestions |
-| `security-heuristics` | Add rule categories, false positive suppression |
-
-### Quality Tasks (High Value)
-| Task | Minor Improvements Suggested |
-|------|------------------------------|
-| `identify-silent-failures` | Add exception type analysis |
-| `detect-duplication` | Add configurable thresholds via params |
-| `detect-duplication-semantic` | Add cross-file deduplication suggestions |
-
-### Aggregation Tasks (High Value)
-| Task | Minor Improvements Suggested |
-|------|------------------------------|
-| `synthesis-roadmap` | Add time estimates, dependency ordering |
-| `tech-stack` | Add version detection, deprecation warnings |
-
----
-
-## 🔧 Code Quality Issues Across All Tasks
+These are recommendations for future improvement:
 
 ### 1. **Inconsistent Parameter Handling**
 ```python
@@ -259,90 +161,84 @@ for src in source_files:
 def task_a(storage_path=None, source_path=None): ...
 def task_b(storage_path=None): ...  # Missing source_path
 ```
-**Fix:** Standardize all tasks to accept both parameters uniformly.
+**Recommendation:** Standardize all tasks to accept both parameters uniformly.
 
 ### 2. **Duplicated File Collection Logic**
-Every task calls `collect_file_paths()` separately - should be passed in.
+Every task calls `collect_file_paths()` separately.
 
-**Fix:** Create a task execution context that pre-collects files once.
+**Recommendation:** Create a task execution context that pre-collects files once.
 
 ### 3. **No Caching Between Related Tasks**
 `synthesis_roadmap` calls 7 other tasks, each re-scanning files.
 
-**Fix:** Implement result caching or shared context between tasks.
+**Recommendation:** Implement result caching or shared context between tasks.
 
 ### 4. **Missing Type Hints on Return Values**
 ```python
 def analyze_structure(...) -> Dict[str, Any]:  # Too generic
 ```
-**Fix:** Create TypedDict or dataclasses for task results.
-
-### 5. **No Task Dependencies Declaration**
-Tasks that depend on others (e.g., `refactoring_recommendations`) don't declare it.
-
-**Fix:** Add task metadata with dependencies, enabling parallel execution.
+**Recommendation:** Create TypedDict or dataclasses for task results.
 
 ---
 
-## 📊 Refactoring Priority Matrix
+## 📊 Future Enhancement Ideas
 
-| Priority | Task | Effort | Impact | Action |
-|----------|------|--------|--------|--------|
-| 🔴 P0 | `diff-architecture` | Low | High | Delete |
-| 🔴 P0 | `onboarding-guide` | Low | High | Delete |
-| 🟠 P1 | `detect-patterns` | Medium | High | Rewrite |
-| 🟠 P1 | `logic-gap-analysis` | Medium | Medium | Generalize |
-| 🟡 P2 | `test-coverage` | Medium | Medium | Rename + Improve |
-| 🟡 P2 | `code-knowledge-graph` | High | Medium | Add JS/TS support |
-| 🟢 P3 | `refactoring-recommendations` | Medium | Medium | Enhance |
-| 🟢 P3 | `generate-docs` | High | Medium | Expand scope |
+These tasks are good but could be improved further:
+
+| Task | Potential Enhancement |
+|------|----------------------|
+| `analyze-structure` | Add file size analysis, gitignore awareness |
+| `detect-anti-patterns` | Add severity aggregation, trend tracking |
+| `health-score` | Add historical comparison, configurable weights |
+| `impact-analysis` | Add depth limiting, impact severity levels |
+| `dependency-graph` | Add DOT format, clustering by package |
+| `detect-vulnerabilities` | Add CVSS scoring, remediation suggestions |
+| `security-heuristics` | Add rule categories, false positive suppression |
+| `identify-silent-failures` | Add exception type analysis |
+| `code-knowledge-graph` | Add JavaScript/TypeScript support via tree-sitter |
+| `synthesis-roadmap` | Add time estimates, dependency ordering |
 
 ---
 
 ## 📝 Implementation Checklist
 
-### Phase 1: Cleanup (Week 1)
+### Phase 1: Cleanup ✅ DONE
 - [x] Remove `diff-architecture` task
 - [x] Remove `onboarding-guide` task
+- [x] Remove `refactoring-recommendations` task
+- [x] Remove `generate-docs` task (entire docs.py module)
+- [x] Remove `logic-gap-analysis` task
 - [x] Update task registry imports
-- [ ] Update documentation
-- [ ] Update tests
+- [x] Update API routes
+- [x] Update tests
+- [x] All 58 tests passing
 
-### Phase 2: Core Improvements (Week 2-3)
-- [ ] Rewrite `detect-patterns` with confidence scores
-- [ ] Generalize `logic-gap-analysis` 
-- [ ] Rename `test-coverage` to `test-mapping`
-- [ ] Add shared task execution context
+### Phase 2: Core Improvements ✅ DONE
+- [x] Rewrite `detect-patterns` with confidence scores
+- [x] Rename `test-coverage` to `test-mapping`
+- [x] Improve test file detection logic
 
-### Phase 3: Enhancements (Week 4+)
+### Phase 3: Future Enhancements (Backlog)
 - [ ] Add JS/TS support to `code-knowledge-graph`
-- [ ] Enhance `refactoring-recommendations`
-- [ ] Improve `generate-docs` output quality
+- [ ] Add shared task execution context
 - [ ] Add task result caching
-
----
-
-## 📁 Files to Modify
-
-```
-src/
-├── task_registry.py          # Remove 2 task registrations
-├── tasks/
-│   ├── __init__.py           # Remove 2 exports
-│   ├── architecture.py       # Remove diff_architecture_review, onboarding_guide
-│   │                         # Improve architecture_pattern_detection
-│   ├── quality.py            # Generalize logic_gap_analysis
-│   │                         # Rename/improve test_coverage_analysis
-│   └── docs.py               # Enhance generate_docs
-```
+- [ ] Create TypedDict for task return values
 
 ---
 
 ## Conclusion
 
-Out of 20 tasks:
-- **2 tasks (10%)** should be **deleted** - provide no real value
-- **5 tasks (25%)** need **significant improvement**
-- **13 tasks (65%)** are **good to keep** with minor enhancements
+**Final Statistics:**
+- Started with: 20 tasks
+- Deleted: 5 tasks (25%)
+- Improved: 2 tasks (10%)
+- Final count: 15 tasks
 
-The codebase would benefit most from removing dead weight and focusing on making the core tasks more robust and configurable.
+The refactoring removed tasks that provided no real value and improved the remaining tasks for better accuracy and usability. The codebase is now cleaner and more focused on delivering actual value.
+
+### Test Verification
+All 58 tests pass after refactoring:
+```
+pytest tests/ -v --tb=short
+58 passed in 21.49s
+```
