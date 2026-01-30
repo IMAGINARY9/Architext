@@ -16,12 +16,15 @@ This document provides a comprehensive analysis of all default project tasks, id
 |--------|--------|-------|
 | Total Tasks | 20 | 15 |
 | Tasks Deleted | - | 5 |
-| Tasks Improved | - | 2 |
+| Tasks Improved | 0 | 4 |
 
 ### Changes Made:
 - **Deleted 5 tasks** (low value / project-specific / redundant)
 - **Improved `detect-patterns`** - added confidence scoring, more patterns
 - **Renamed `test-coverage` → `test-mapping`** - improved implementation
+- **Enhanced `code-knowledge-graph`** - added JS/TS support via tree-sitter
+- **Enhanced `dependency-graph`** - added DOT/Graphviz export format
+- **Added TypedDict types** - proper type definitions for all task results
 
 ---
 
@@ -136,9 +139,12 @@ src/
 ├── api/
 │   └── tasks.py              # Removed 5 routes, renamed test-mapping ✅
 ├── tasks/
-│   ├── __init__.py           # Updated exports ✅
+│   ├── __init__.py           # Updated exports, added type exports ✅
+│   ├── types.py              # NEW: TypedDict definitions for all tasks ✅
 │   ├── architecture.py       # Removed diff_architecture_review, onboarding_guide ✅
 │   │                         # Improved architecture_pattern_detection ✅
+│   │                         # Added JS/TS support to code_knowledge_graph ✅
+│   │                         # Added DOT format to dependency_graph_export ✅
 │   ├── quality.py            # Removed refactoring_recommendations, logic_gap_analysis ✅
 │   │                         # Renamed test_coverage → test_mapping_analysis ✅
 │   ├── roadmap.py            # Removed logic_gap_analysis import ✅
@@ -148,6 +154,64 @@ tests/
 ├── test_server.py            # Removed tests for deleted tasks ✅
 │                             # Updated test-mapping test ✅
 ```
+
+---
+
+## ✅ Phase 3 Improvements
+
+### 1. JS/TS Support in `code-knowledge-graph`
+
+The knowledge graph now supports JavaScript and TypeScript files via tree-sitter parsing:
+
+**Supported Languages:**
+- Python (.py) - Full AST parsing
+- JavaScript (.js, .jsx) - Tree-sitter parsing
+- TypeScript (.ts, .tsx) - Tree-sitter parsing
+
+**New Output Fields:**
+```json
+{
+  "nodes": [...],
+  "edges": [...],
+  "languages_parsed": {"python": 30, "javascript": 5, "typescript": 3},
+  "total_nodes": 308,
+  "total_edges": 500
+}
+```
+
+Each node now includes a `language` field indicating its source language.
+
+### 2. DOT Format for `dependency-graph`
+
+Added Graphviz DOT format export:
+
+```bash
+# Use via API
+POST /tasks/dependency-graph
+{"source_path": "src", "output_format": "dot"}
+```
+
+**Output:**
+```dot
+digraph dependencies {
+  rankdir=LR;
+  node [shape=box];
+  "server" -> "architecture";
+  ...
+}
+```
+
+### 3. TypedDict Definitions
+
+Created [types.py](../src/tasks/types.py) with comprehensive type definitions:
+
+- `StructureResult`, `HealthResult`, `TechStackResult`
+- `PatternDetectionResult`, `ImpactAnalysisResult`, `DependencyGraphResult`
+- `KnowledgeGraphResult`, `TestMappingResult`, `AntiPatternResult`
+- `SecurityHeuristicsResult`, `VulnerabilityResult`
+- `DuplicationResult`, `SemanticDuplicationResult`
+- `SilentFailureResult`, `SynthesisRoadmapResult`
+- `TaskContext` - For future shared context implementation
 
 ---
 
@@ -218,11 +282,16 @@ These tasks are good but could be improved further:
 - [x] Rename `test-coverage` to `test-mapping`
 - [x] Improve test file detection logic
 
-### Phase 3: Future Enhancements (Backlog)
-- [ ] Add JS/TS support to `code-knowledge-graph`
-- [ ] Add shared task execution context
-- [ ] Add task result caching
-- [ ] Create TypedDict for task return values
+### Phase 3: Enhanced Capabilities ✅ DONE
+- [x] Add JS/TS support to `code-knowledge-graph` (using tree-sitter)
+- [x] Add DOT/Graphviz format to `dependency-graph`
+- [x] Create TypedDict definitions for all task return values
+- [x] Add `language` field to knowledge graph nodes
+
+### Phase 4: Future Enhancements (Backlog)
+- [ ] Add shared task execution context with file caching
+- [ ] Add task result caching for `synthesis-roadmap`
+- [ ] Standardize parameter handling across all tasks
 
 ---
 
@@ -231,14 +300,19 @@ These tasks are good but could be improved further:
 **Final Statistics:**
 - Started with: 20 tasks
 - Deleted: 5 tasks (25%)
-- Improved: 2 tasks (10%)
+- Improved: 4 tasks (20%)
 - Final count: 15 tasks
 
-The refactoring removed tasks that provided no real value and improved the remaining tasks for better accuracy and usability. The codebase is now cleaner and more focused on delivering actual value.
+**Phase 3 Enhancements:**
+- JS/TS support via tree-sitter
+- DOT format export
+- TypedDict definitions for IDE support
+
+The refactoring removed tasks that provided no real value, improved remaining tasks for better accuracy and usability, and added multi-language support. The codebase is now cleaner, more extensible, and better typed.
 
 ### Test Verification
 All 58 tests pass after refactoring:
 ```
 pytest tests/ -v --tb=short
-58 passed in 21.49s
+58 passed in 60.88s
 ```

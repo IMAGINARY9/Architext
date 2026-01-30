@@ -20,7 +20,28 @@ from src.tasks.security import detect_vulnerabilities, security_heuristics
 from src.tasks.structure import analyze_structure
 from src.tasks.tech_stack import tech_stack
 
+# Import types for type hints
+from src.tasks.types import (
+	AntiPatternResult,
+	DependencyGraphResult,
+	DuplicationResult,
+	HealthResult,
+	ImpactAnalysisResult,
+	KnowledgeGraphResult,
+	PatternDetectionResult,
+	SecurityHeuristicsResult,
+	SemanticDuplicationResult,
+	SilentFailureResult,
+	StructureResult,
+	SynthesisRoadmapResult,
+	TaskContext,
+	TechStackResult,
+	TestMappingResult,
+	VulnerabilityResult,
+)
+
 __all__ = [
+	# Task functions
 	"analyze_structure",
 	"tech_stack",
 	"detect_anti_patterns",
@@ -37,4 +58,21 @@ __all__ = [
 	"detect_duplicate_blocks",
 	"detect_duplicate_blocks_semantic",
 	"query_diagnostics",
+	# Type definitions
+	"AntiPatternResult",
+	"DependencyGraphResult",
+	"DuplicationResult",
+	"HealthResult",
+	"ImpactAnalysisResult",
+	"KnowledgeGraphResult",
+	"PatternDetectionResult",
+	"SecurityHeuristicsResult",
+	"SemanticDuplicationResult",
+	"SilentFailureResult",
+	"StructureResult",
+	"SynthesisRoadmapResult",
+	"TaskContext",
+	"TechStackResult",
+	"TestMappingResult",
+	"VulnerabilityResult",
 ]
