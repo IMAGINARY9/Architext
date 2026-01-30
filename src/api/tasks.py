@@ -1,9 +1,16 @@
 """Task analysis endpoints."""
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from fastapi import APIRouter, Body, HTTPException
+
+from src.task_registry import (
+    list_task_categories,
+    run_tasks_parallel,
+    run_category as run_task_category,
+    TASK_CATEGORIES,
+)
 
 
 SubmitTask = Callable[[str, Any], str]
@@ -156,5 +163,110 @@ def build_tasks_router(
             task_id = submit_task("synthesis-roadmap", payload)
             return {"task_id": task_id, "status": "queued"}
         return _inline_response("synthesis-roadmap", payload)
+
+    @router.get("/tasks/categories")
+    async def get_task_categories() -> Dict[str, List[str]]:
+        """Get all task categories with their task names."""
+        return list_task_categories()
+
+    @router.post("/tasks/run-parallel", status_code=200)
+    async def run_parallel_tasks(
+        request: Dict[str, Any] = Body(
+            ...,
+            examples={
+                "multiple_tasks": {
+                    "summary": "Run multiple tasks in parallel",
+                    "value": {
+                        "tasks": ["analyze-structure", "tech-stack", "detect-patterns"],
+                        "source": "./src",
+                        "max_workers": 4,
+                    },
+                },
+            },
+        ),
+    ) -> Dict[str, Any]:
+        """
+        Run multiple tasks in parallel with shared file caching.
+        
+        This is more efficient than running tasks sequentially as file
+        collection is done once and shared across all tasks.
+        """
+        task_names: List[str] = request.get("tasks", [])
+        source_path: Optional[str] = request.get("source")
+        storage_path: Optional[str] = request.get("storage")
+        max_workers: int = request.get("max_workers", 4)
+        
+        if not task_names:
+            raise HTTPException(status_code=400, detail="tasks list is required")
+        if not source_path and not storage_path:
+            raise HTTPException(status_code=400, detail="source or storage path is required")
+        
+        try:
+            results = run_tasks_parallel(
+                task_names=task_names,
+                source_path=source_path,
+                storage_path=storage_path,
+                max_workers=max_workers,
+            )
+            return {
+                "status": "completed",
+                "tasks_run": len(task_names),
+                "results": results,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @router.post("/tasks/run-category/{category}", status_code=200)
+    async def run_category_tasks(
+        category: str,
+        request: Dict[str, Any] = Body(
+            ...,
+            examples={
+                "quality": {
+                    "summary": "Run all quality tasks",
+                    "value": {"source": "./src"},
+                },
+            },
+        ),
+    ) -> Dict[str, Any]:
+        """
+        Run all tasks in a category in parallel.
+        
+        Categories:
+        - structure: analyze-structure, tech-stack, detect-patterns
+        - quality: detect-anti-patterns, health-score, test-mapping, identify-silent-failures
+        - security: detect-vulnerabilities, security-heuristics
+        - duplication: detect-duplication, detect-duplication-semantic
+        - architecture: impact-analysis, dependency-graph, code-knowledge-graph
+        - synthesis: synthesis-roadmap
+        """
+        source_path: Optional[str] = request.get("source")
+        storage_path: Optional[str] = request.get("storage")
+        max_workers: int = request.get("max_workers", 4)
+        
+        if not source_path and not storage_path:
+            raise HTTPException(status_code=400, detail="source or storage path is required")
+        
+        if category not in TASK_CATEGORIES:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unknown category: {category}. Valid: {list(TASK_CATEGORIES.keys())}"
+            )
+        
+        try:
+            results = run_task_category(
+                category=category,
+                source_path=source_path,
+                storage_path=storage_path,
+                max_workers=max_workers,
+            )
+            return {
+                "status": "completed",
+                "category": category,
+                "tasks_run": len(TASK_CATEGORIES[category]),
+                "results": results,
+            }
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     return router
