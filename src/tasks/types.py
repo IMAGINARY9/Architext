@@ -255,18 +255,6 @@ class SynthesisRoadmapResult(TypedDict):
     summary: Dict[str, int]
 
 
-# === Task Context Types ===
-
-class TaskContext(TypedDict, total=False):
-    """
-    Shared context passed between tasks to avoid duplicate work.
-    
-    This enables caching of file collections and parsed results.
-    """
-    files: List[str]
-    storage_path: Optional[str]
-    source_path: Optional[str]
-    # Cached parsed ASTs for reuse
-    parsed_asts: Dict[str, Any]
-    # Cached import graph
-    import_graph: Dict[str, List[str]]
+# Note: The runtime TaskContext class is defined in src.tasks.shared
+# and provides caching functionality for task execution.
+# Import it from there: from src.tasks import TaskContext, task_context

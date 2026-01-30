@@ -17,10 +17,11 @@ from src.tasks.quality import (
 from src.tasks.query import query_diagnostics
 from src.tasks.roadmap import synthesis_roadmap
 from src.tasks.security import detect_vulnerabilities, security_heuristics
+from src.tasks.shared import TaskContext, task_context
 from src.tasks.structure import analyze_structure
 from src.tasks.tech_stack import tech_stack
 
-# Import types for type hints
+# Import types for type hints (re-export for backwards compatibility)
 from src.tasks.types import (
 	AntiPatternResult,
 	DependencyGraphResult,
@@ -34,7 +35,6 @@ from src.tasks.types import (
 	SilentFailureResult,
 	StructureResult,
 	SynthesisRoadmapResult,
-	TaskContext,
 	TechStackResult,
 	TestMappingResult,
 	VulnerabilityResult,
@@ -58,6 +58,9 @@ __all__ = [
 	"detect_duplicate_blocks",
 	"detect_duplicate_blocks_semantic",
 	"query_diagnostics",
+	# Task context utilities
+	"TaskContext",
+	"task_context",
 	# Type definitions
 	"AntiPatternResult",
 	"DependencyGraphResult",
@@ -71,7 +74,6 @@ __all__ = [
 	"SilentFailureResult",
 	"StructureResult",
 	"SynthesisRoadmapResult",
-	"TaskContext",
 	"TechStackResult",
 	"TestMappingResult",
 	"VulnerabilityResult",

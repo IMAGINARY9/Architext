@@ -8,7 +8,7 @@ from src.tasks.health import health_score
 from src.tasks.quality import identify_silent_failures
 from src.tasks.security import security_heuristics
 from src.tasks.duplication import detect_duplicate_blocks, detect_duplicate_blocks_semantic
-from src.tasks.shared import _progress
+from src.tasks.shared import _progress, task_context
 
 
 def synthesis_roadmap(
@@ -20,14 +20,21 @@ def synthesis_roadmap(
     Generate a prioritized improvement roadmap by aggregating findings from multiple analysis tasks.
     
     Combines: anti-patterns, health score, security heuristics, silent failures, and duplication.
+    
+    Uses a shared TaskContext to cache file collection across all sub-tasks,
+    significantly improving performance for large codebases.
     """
-    _progress(progress_callback, {"stage": "analyze", "message": "Gathering structural signals"})
-    anti_patterns = detect_anti_patterns(storage_path, source_path)
-    health = health_score(storage_path, source_path)
-    silent = identify_silent_failures(storage_path, source_path)
-    heuristics = security_heuristics(storage_path, source_path)
-    duplication = detect_duplicate_blocks(storage_path, source_path)
-    semantic_duplication = detect_duplicate_blocks_semantic(storage_path, source_path)
+    # Use shared context to cache file collection across all sub-tasks
+    with task_context(storage_path=storage_path, source_path=source_path):
+        _progress(progress_callback, {"stage": "analyze", "message": "Gathering structural signals"})
+        
+        # All these tasks will share the cached file list from the context
+        anti_patterns = detect_anti_patterns(storage_path, source_path)
+        health = health_score(storage_path, source_path)
+        silent = identify_silent_failures(storage_path, source_path)
+        heuristics = security_heuristics(storage_path, source_path)
+        duplication = detect_duplicate_blocks(storage_path, source_path)
+        semantic_duplication = detect_duplicate_blocks_semantic(storage_path, source_path)
 
     opportunities: List[Dict[str, Any]] = []
 
