@@ -35,6 +35,24 @@ from src.tasks.base import (
     get_documentation_files,
     calculate_ratio,
 )
+from src.tasks.history import (
+    TaskExecution,
+    TaskAnalytics,
+    TaskExecutionHistory,
+    ExecutionTracker,
+    get_task_history,
+)
+from src.tasks.pipeline import (
+    PipelineStep,
+    ParallelGroup,
+    TaskPipeline,
+    PipelineExecutor,
+    PipelineStore,
+    BUILTIN_PIPELINES,
+    list_builtin_pipelines,
+    get_builtin_pipeline,
+    get_pipeline_store,
+)
 
 # Import types for type hints (re-export for backwards compatibility)
 from src.tasks.types import (
@@ -95,6 +113,22 @@ __all__ = [
 	"get_test_files",
 	"get_documentation_files",
 	"calculate_ratio",
+	# Execution history and analytics
+	"TaskExecution",
+	"TaskAnalytics",
+	"TaskExecutionHistory",
+	"ExecutionTracker",
+	"get_task_history",
+	# Pipeline composition
+	"PipelineStep",
+	"ParallelGroup",
+	"TaskPipeline",
+	"PipelineExecutor",
+	"PipelineStore",
+	"BUILTIN_PIPELINES",
+	"list_builtin_pipelines",
+	"get_builtin_pipeline",
+	"get_pipeline_store",
 	# Type definitions
 	"AntiPatternResult",
 	"DependencyGraphResult",

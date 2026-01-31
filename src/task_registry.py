@@ -112,21 +112,25 @@ def run_task(
     task_name: str,
     use_cache: bool = False,
     cache_ttl: Optional[float] = None,
+    track_history: bool = True,
     **kwargs: Any,
 ) -> Dict[str, Any]:
     """
-    Run a task by name with optional result caching.
+    Run a task by name with optional result caching and history tracking.
     
     Args:
         task_name: Name of the task to run
         use_cache: Whether to use caching (default: False)
         cache_ttl: Cache time-to-live in seconds (default: 1 hour)
+        track_history: Whether to track execution history (default: True)
         **kwargs: Task-specific parameters
         
     Returns:
         Task result dictionary
     """
     from src.tasks.cache import get_task_cache
+    from src.tasks.history import get_task_history
+    import time
     
     handler = get_task_handler(task_name)
     signature = inspect.signature(handler)
@@ -145,10 +149,37 @@ def run_task(
             storage_path=filtered.get("storage_path"),
         )
         if cached_result is not None:
+            # Track cache hit in history
+            if track_history:
+                history = get_task_history()
+                now = time.time()
+                history.record(
+                    task_name=task_name,
+                    status="success",
+                    started_at=now,
+                    completed_at=now,
+                    source_path=filtered.get("source_path"),
+                    storage_path=filtered.get("storage_path"),
+                    cached=True,
+                )
             return cached_result
     
-    # Execute task
-    result = handler(**filtered)
+    # Execute task with history tracking
+    if track_history:
+        history = get_task_history()
+        with history.track(
+            task_name,
+            source_path=filtered.get("source_path"),
+            storage_path=filtered.get("storage_path"),
+        ) as tracker:
+            try:
+                result = handler(**filtered)
+                tracker.set_result(result)
+            except Exception as e:
+                tracker.set_error(str(e))
+                raise
+    else:
+        result = handler(**filtered)
     
     # Store in cache if enabled
     if use_cache:

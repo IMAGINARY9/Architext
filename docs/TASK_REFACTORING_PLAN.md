@@ -449,7 +449,150 @@ Fixed infinite loading issue in parallel task execution:
 - Pass context to each worker via `set_current_context(ctx)` 
 - Pre-warm file cache synchronously before parallel execution
 - Add timeout handling to prevent hangs
+
+---
+
+## ✅ Phase 7 Improvements
+
+### Task Execution History
+
+Added automatic tracking of all task executions with analytics:
+
+**Features:**
+- ✅ Automatic tracking of every task execution
+- ✅ Tracks success/failure status, duration, cache hits
+- ✅ Disk persistence (`~/.architext/history/executions.json`)
+- ✅ Configurable max history entries (default: 1000)
+- ✅ Analytics: success rate, average duration, cache hit rate
+- ✅ Filter history by task name, status, date range
+
+**Usage:**
+```python
+from src.tasks.history import get_task_history, TaskExecution
+
+# Get singleton history instance
+history = get_task_history()
+
+# Get all history
+executions = history.get_history()
+
+# Filter by task name
+pattern_history = history.get_history(task_name="detect-patterns")
+
+# Get analytics for a task
+analytics = history.get_analytics("detect-patterns")
+print(f"Success rate: {analytics.success_rate}%")
+print(f"Avg duration: {analytics.average_duration_seconds}s")
+print(f"Cache hit rate: {analytics.cache_hit_rate}%")
+
+# Tracking is automatic when using run_task()
+result = run_task("analyze-structure", source_path="src")  # Tracked!
+
+# Or manually with context manager
+with history.track("my-task") as tracker:
+    # do work
+    tracker.set_cached(False)
+```
+
+### Task Pipelines
+
+Added custom task pipelines for composing multiple tasks:
+
+**Features:**
+- ✅ Sequential and parallel step execution
+- ✅ Error handling modes: stop, skip, or continue
+- ✅ 5 built-in pipelines: quick-scan, full-analysis, security-audit, code-quality, architecture-review
+- ✅ Custom pipeline persistence (`~/.architext/pipelines/`)
+- ✅ Pipeline execution results with per-task status
+
+**Built-in Pipelines:**
+| Pipeline | Tasks | Description |
+|----------|-------|-------------|
+| `quick-scan` | structure, tech-stack, health | Fast overview of codebase |
+| `full-analysis` | 11 tasks | Comprehensive analysis |
+| `security-audit` | vulnerabilities, security-heuristics, silent-failures | Security-focused scan |
+| `code-quality` | anti-patterns, duplication, quality, health | Code quality metrics |
+| `architecture-review` | structure, dependencies, graph, impact-analysis | Architecture analysis |
+
+**Usage:**
+```python
+from src.tasks.pipeline import (
+    PipelineExecutor, PipelineStore, TaskPipeline, PipelineStep, ParallelGroup,
+    get_builtin_pipeline, BUILTIN_PIPELINES
+)
+
+# Run a built-in pipeline
+executor = PipelineExecutor(source_path="src", storage_path="storage")
+result = executor.execute(get_builtin_pipeline("quick-scan"))
+print(f"Success: {result.success}")
+print(f"Duration: {result.total_duration_seconds}s")
+
+# Create a custom pipeline
+custom = TaskPipeline(
+    name="my-pipeline",
+    description="Custom analysis",
+    steps=[
+        PipelineStep(task_name="analyze-structure"),
+        ParallelGroup(steps=[
+            PipelineStep(task_name="tech-stack"),
+            PipelineStep(task_name="detect-patterns"),
+        ]),
+        PipelineStep(task_name="health-score", on_error="skip"),
+    ]
+)
+
+# Save custom pipeline
+store = PipelineStore()
+store.save(custom)
+
+# List all pipelines
+all_pipelines = store.list_pipelines()
+```
+
+### History & Pipeline API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/tasks/history` | GET | Get task execution history |
+| `/tasks/history` | DELETE | Clear history (optionally by task) |
+| `/tasks/history/analytics` | GET | Get analytics for a task |
+| `/tasks/pipelines` | GET | List all pipelines (built-in + custom) |
+| `/tasks/pipelines` | POST | Create a custom pipeline |
+| `/tasks/pipelines/{id}` | GET | Get pipeline by ID |
+| `/tasks/pipelines/{id}` | DELETE | Delete a custom pipeline |
+| `/tasks/pipelines/{id}/run` | POST | Execute a pipeline |
+
+**Example: Get execution history**
+```bash
+curl "http://localhost:8000/tasks/history?task_name=analyze-structure&limit=10"
+```
+
+**Example: Get task analytics**
+```bash
+curl "http://localhost:8000/tasks/history/analytics?task_name=detect-patterns"
+# Returns: {"task_name": "detect-patterns", "total_executions": 15, "success_rate": 93.3, ...}
+```
+
+**Example: Run a pipeline**
+```bash
+curl -X POST http://localhost:8000/tasks/pipelines/quick-scan/run \
+  -H "Content-Type: application/json" \
   -d '{"source": "./src"}'
+# Returns: {"success": true, "total_duration_seconds": 2.5, "step_results": [...]}
+```
+
+**Example: Create custom pipeline**
+```bash
+curl -X POST http://localhost:8000/tasks/pipelines \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-custom-pipeline",
+    "description": "Quick security check",
+    "steps": [
+      {"task_name": "detect-vulnerabilities"},
+      {"task_name": "security-heuristics", "on_error": "skip"}
+    ]
+  }'
 ```
 
 ---
@@ -550,10 +693,25 @@ These tasks are good but could be improved further:
 - [x] Add file utility functions (filter_files_by_extension, get_test_files, etc.)
 - [x] Add 33 new tests (12 parallel + 16 cache + 5 API = 91 total)
 
-### Phase 7: Future Enhancements (Backlog)
-- [ ] Add task execution history and analytics
-- [ ] Add custom task composition (user-defined task pipelines)
+### Phase 7: History & Pipelines ✅ DONE
+- [x] Add task execution history and analytics
+- [x] Add `TaskExecutionHistory` class with disk persistence
+- [x] Add `TaskExecution` and `TaskAnalytics` dataclasses
+- [x] Add `ExecutionTracker` context manager for automatic tracking
+- [x] Integrate history tracking into `run_task()` function
+- [x] Add custom task composition (user-defined task pipelines)
+- [x] Add `TaskPipeline`, `PipelineStep`, `ParallelGroup` dataclasses
+- [x] Add `PipelineExecutor` for running sequential/parallel pipelines
+- [x] Add `PipelineStore` for persisting custom pipelines
+- [x] Add 5 built-in pipelines: quick-scan, full-analysis, security-audit, code-quality, architecture-review
+- [x] Add API endpoints for history: `/tasks/history`, `/tasks/history/analytics`
+- [x] Add API endpoints for pipelines: `/tasks/pipelines`, `/tasks/pipelines/{id}`, `/tasks/pipelines/{id}/run`
+- [x] Add 52 new tests (21 history + 31 pipeline = 144 total)
+
+### Phase 8: Future Enhancements (Backlog)
 - [ ] Migrate existing tasks to use BaseTask class
+- [ ] Add task execution metrics dashboard
+- [ ] Add task recommendation engine based on history
 
 ---
 
@@ -572,6 +730,7 @@ These tasks are good but could be improved further:
 - ✅ Phase 4: Performance & Consistency (TaskContext caching)
 - ✅ Phase 5: Parallel Execution & Categories (concurrent tasks, API endpoints)
 - ✅ Phase 6: Caching & Infrastructure (disk caching, BaseTask class)
+- ✅ Phase 7: History & Pipelines (execution tracking, custom pipelines)
 
 The refactoring:
 1. Removed tasks that provided no real value
@@ -582,12 +741,14 @@ The refactoring:
 6. Organized tasks into logical categories
 7. Added persistent disk caching with automatic invalidation
 8. Created base classes for future task development
+9. Added execution history tracking with analytics
+10. Added custom task pipelines with 5 built-in templates
 
 The codebase is now cleaner, faster, better typed, and more extensible.
 
 ### Test Verification
-All 91 tests pass after refactoring:
+All 144 tests pass after refactoring:
 ```
 pytest tests/ -v --tb=short
-91 passed in 23.18s
+144 passed in 65.37s
 ```
