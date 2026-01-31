@@ -597,6 +597,132 @@ curl -X POST http://localhost:8000/tasks/pipelines \
 
 ---
 
+## ✅ Phase 8 Improvements
+
+### BaseTask-Based Task Implementations
+
+Migrated several tasks to use the `BaseTask` class pattern for cleaner, more maintainable code:
+
+**New Task Classes (`src/tasks/tasks_v2.py`):**
+- `AntiPatternDetectionTask` - Detects code smells and anti-patterns
+- `SilentFailuresTask` - Finds silent exception handlers
+- `TestMappingTask` - Maps test files to source files
+- `HealthScoreTask` - Calculates codebase health score
+
+**Benefits:**
+- Automatic file collection and filtering
+- Built-in progress reporting
+- Context-aware caching integration
+- Standardized error handling
+- Cleaner separation of concerns
+
+**Usage:**
+```python
+from src.tasks.tasks_v2 import AntiPatternDetectionTask, HealthScoreTask
+
+# Class-based usage
+task = AntiPatternDetectionTask(source_path="src")
+result = task.run()
+
+# Or use wrapper functions for backward compatibility
+from src.tasks import detect_anti_patterns_v2, health_score_v2
+result = detect_anti_patterns_v2(source_path="src")
+```
+
+### Task Recommendation Engine
+
+Added intelligent task recommendations based on execution history:
+
+**Features:**
+- ✅ Score-based ranking (0-100)
+- ✅ Never-run task boosting
+- ✅ Stale task detection (24h/7d thresholds)
+- ✅ Success rate analysis
+- ✅ Category preference support
+- ✅ Related task suggestions
+- ✅ Quick-scan recommendations
+- ✅ Configurable scoring weights
+
+**Usage:**
+```python
+from src.tasks.recommendations import (
+    get_recommendation_engine, get_task_recommendations
+)
+
+# Get top 5 recommendations
+recommendations = get_task_recommendations(limit=5)
+
+# Get category-specific recommendations
+engine = get_recommendation_engine()
+security_recs = engine.get_category_recommendations("security", limit=3)
+
+# Get related task suggestions
+related = engine.get_related_recommendations("health-score")
+
+# Quick scan recommendations (essential tasks)
+quick = engine.get_quick_scan_recommendation()
+```
+
+### Metrics Dashboard
+
+Added comprehensive task execution metrics and analytics:
+
+**Features:**
+- ✅ Overall success rate and cache hit rate
+- ✅ Per-task metrics (executions, duration, success rate)
+- ✅ Per-category metrics with task coverage
+- ✅ Daily execution trends
+- ✅ Top performers (most run, fastest, slowest)
+- ✅ Health indicators (never-run tasks, failing tasks)
+
+**Usage:**
+```python
+from src.tasks.metrics import get_dashboard_metrics, get_metrics_dashboard
+
+# Get full dashboard
+metrics = get_dashboard_metrics(days=30)
+print(f"Total executions: {metrics['summary']['total_executions']}")
+print(f"Success rate: {metrics['summary']['overall_success_rate']}%")
+
+# Get details for specific task
+dashboard = get_metrics_dashboard()
+task_details = dashboard.get_task_details("analyze-structure", days=7)
+```
+
+### Recommendations & Metrics API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/tasks/recommendations` | GET | Get task recommendations |
+| `/tasks/recommendations/quick-scan` | GET | Get essential quick-scan tasks |
+| `/tasks/recommendations/category/{category}` | GET | Get category recommendations |
+| `/tasks/recommendations/related/{task_name}` | GET | Get related task suggestions |
+| `/tasks/metrics/dashboard` | GET | Get full metrics dashboard |
+| `/tasks/metrics/task/{task_name}` | GET | Get metrics for specific task |
+| `/tasks/metrics/summary` | GET | Get metrics summary only |
+| `/tasks/metrics/trends` | GET | Get daily execution trends |
+| `/tasks/metrics/categories` | GET | Get per-category metrics |
+
+**Example: Get recommendations**
+```bash
+curl "http://localhost:8000/tasks/recommendations?limit=5&category=quality"
+# Returns: {"recommendations": [...], "count": 5}
+```
+
+**Example: Get dashboard**
+```bash
+curl "http://localhost:8000/tasks/metrics/dashboard?days=7"
+# Returns: {"summary": {...}, "task_metrics": [...], "daily_trends": [...]}
+```
+
+**Example: Get task metrics**
+```bash
+curl "http://localhost:8000/tasks/metrics/task/analyze-structure"
+# Returns: {"task_name": "...", "metrics": {...}, "duration": {...}, "recent_executions": [...]}
+```
+
+---
+
 ## 🔧 Remaining Code Quality Issues
 
 These are recommendations for future improvement:
@@ -708,10 +834,26 @@ These tasks are good but could be improved further:
 - [x] Add API endpoints for pipelines: `/tasks/pipelines`, `/tasks/pipelines/{id}`, `/tasks/pipelines/{id}/run`
 - [x] Add 52 new tests (21 history + 31 pipeline = 144 total)
 
-### Phase 8: Future Enhancements (Backlog)
-- [ ] Migrate existing tasks to use BaseTask class
-- [ ] Add task execution metrics dashboard
-- [ ] Add task recommendation engine based on history
+### Phase 8: Metrics & Recommendations ✅ DONE
+- [x] Migrate existing tasks to use BaseTask class
+- [x] Create `tasks_v2.py` with class-based task implementations
+- [x] Add `AntiPatternDetectionTask`, `SilentFailuresTask`, `TestMappingTask`, `HealthScoreTask` classes
+- [x] Add backward-compatible wrapper functions (`detect_anti_patterns_v2`, etc.)
+- [x] Add task execution metrics dashboard (`metrics.py`)
+- [x] Add `MetricsDashboard`, `TaskMetrics`, `ExecutionTrend`, `DashboardMetrics` classes
+- [x] Add per-task and per-category metrics aggregation
+- [x] Add daily execution trend analysis
+- [x] Add task recommendation engine (`recommendations.py`)
+- [x] Add `TaskRecommendationEngine` with configurable scoring
+- [x] Add quick-scan, category-based, and related task recommendations
+- [x] Add API endpoints for recommendations and metrics dashboard
+- [x] Add 52 new tests (21 tasks_v2 + 15 recommendations + 16 metrics = 195 total)
+
+### Phase 9: Future Enhancements (Backlog)
+- [ ] Complete migration of all tasks to BaseTask class
+- [ ] Add task execution webhooks/notifications
+- [ ] Add task scheduling/automation
+- [ ] Add customizable scoring weights for recommendations
 
 ---
 
@@ -731,6 +873,7 @@ These tasks are good but could be improved further:
 - ✅ Phase 5: Parallel Execution & Categories (concurrent tasks, API endpoints)
 - ✅ Phase 6: Caching & Infrastructure (disk caching, BaseTask class)
 - ✅ Phase 7: History & Pipelines (execution tracking, custom pipelines)
+- ✅ Phase 8: Metrics & Recommendations (dashboard, smart recommendations)
 
 The refactoring:
 1. Removed tasks that provided no real value
@@ -743,12 +886,14 @@ The refactoring:
 8. Created base classes for future task development
 9. Added execution history tracking with analytics
 10. Added custom task pipelines with 5 built-in templates
+11. Added metrics dashboard with per-task and category analytics
+12. Added intelligent task recommendation engine
 
 The codebase is now cleaner, faster, better typed, and more extensible.
 
 ### Test Verification
-All 144 tests pass after refactoring:
+All 195 tests pass after refactoring:
 ```
 pytest tests/ -v --tb=short
-144 passed in 65.37s
+195 passed in 24.21s
 ```

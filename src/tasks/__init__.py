@@ -53,6 +53,31 @@ from src.tasks.pipeline import (
     get_builtin_pipeline,
     get_pipeline_store,
 )
+from src.tasks.recommendations import (
+    TaskRecommendation,
+    RecommendationConfig,
+    TaskRecommendationEngine,
+    get_recommendation_engine,
+    get_task_recommendations,
+)
+from src.tasks.metrics import (
+    ExecutionTrend,
+    TaskMetrics,
+    DashboardMetrics,
+    MetricsDashboard,
+    get_metrics_dashboard,
+    get_dashboard_metrics,
+)
+from src.tasks.tasks_v2 import (
+    AntiPatternDetectionTask,
+    SilentFailuresTask,
+    TestMappingTask,
+    HealthScoreTask,
+    detect_anti_patterns_v2,
+    identify_silent_failures_v2,
+    test_mapping_analysis_v2,
+    health_score_v2,
+)
 
 # Import types for type hints (re-export for backwards compatibility)
 from src.tasks.types import (
@@ -129,6 +154,28 @@ __all__ = [
 	"list_builtin_pipelines",
 	"get_builtin_pipeline",
 	"get_pipeline_store",
+	# Task recommendations
+	"TaskRecommendation",
+	"RecommendationConfig",
+	"TaskRecommendationEngine",
+	"get_recommendation_engine",
+	"get_task_recommendations",
+	# Metrics dashboard
+	"ExecutionTrend",
+	"TaskMetrics",
+	"DashboardMetrics",
+	"MetricsDashboard",
+	"get_metrics_dashboard",
+	"get_dashboard_metrics",
+	# BaseTask implementations (v2)
+	"AntiPatternDetectionTask",
+	"SilentFailuresTask",
+	"TestMappingTask",
+	"HealthScoreTask",
+	"detect_anti_patterns_v2",
+	"identify_silent_failures_v2",
+	"test_mapping_analysis_v2",
+	"health_score_v2",
 	# Type definitions
 	"AntiPatternResult",
 	"DependencyGraphResult",

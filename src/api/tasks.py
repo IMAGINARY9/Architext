@@ -633,4 +633,177 @@ def build_tasks_router(
             "errors": result.errors,
         }
 
+    # =========================================================================
+    # Task Recommendations
+    # =========================================================================
+    
+    @router.get("/tasks/recommendations")
+    async def get_recommendations(
+        limit: int = 5,
+        category: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get task recommendations based on execution history.
+        
+        Args:
+            limit: Maximum number of recommendations (default: 5)
+            category: Prefer tasks from this category
+        """
+        from src.tasks.recommendations import get_task_recommendations
+        
+        recommendations = get_task_recommendations(
+            limit=limit,
+            prefer_category=category,
+        )
+        
+        return {
+            "recommendations": recommendations,
+            "count": len(recommendations),
+        }
+    
+    @router.get("/tasks/recommendations/quick-scan")
+    async def get_quick_scan_recommendations() -> Dict[str, Any]:
+        """Get recommendations for a quick codebase scan."""
+        from src.tasks.recommendations import get_recommendation_engine
+        
+        engine = get_recommendation_engine()
+        recommendations = engine.get_quick_scan_recommendation()
+        
+        return {
+            "recommendations": [r.to_dict() for r in recommendations],
+            "description": "Essential tasks for a quick codebase overview",
+        }
+    
+    @router.get("/tasks/recommendations/category/{category}")
+    async def get_category_recommendations(
+        category: str,
+        limit: int = 5,
+    ) -> Dict[str, Any]:
+        """Get recommendations for tasks in a specific category."""
+        from src.tasks.recommendations import get_recommendation_engine
+        
+        if category not in TASK_CATEGORIES:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Category not found: {category}. Available: {list(TASK_CATEGORIES.keys())}"
+            )
+        
+        engine = get_recommendation_engine()
+        recommendations = engine.get_category_recommendations(category, limit)
+        
+        return {
+            "category": category,
+            "recommendations": [r.to_dict() for r in recommendations],
+        }
+    
+    @router.get("/tasks/recommendations/related/{task_name}")
+    async def get_related_recommendations(
+        task_name: str,
+        limit: int = 3,
+    ) -> Dict[str, Any]:
+        """Get recommendations for tasks related to a given task."""
+        from src.tasks.recommendations import get_recommendation_engine
+        from src.task_registry import TASK_REGISTRY
+        
+        if task_name not in TASK_REGISTRY:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task not found: {task_name}"
+            )
+        
+        engine = get_recommendation_engine()
+        recommendations = engine.get_related_recommendations(task_name, limit)
+        
+        return {
+            "task_name": task_name,
+            "related_recommendations": [r.to_dict() for r in recommendations],
+        }
+
+    # =========================================================================
+    # Metrics Dashboard
+    # =========================================================================
+    
+    @router.get("/tasks/metrics/dashboard")
+    async def get_dashboard(days: int = 30) -> Dict[str, Any]:
+        """
+        Get the complete metrics dashboard.
+        
+        Args:
+            days: Number of days to include in analysis (default: 30)
+        """
+        from src.tasks.metrics import get_dashboard_metrics
+        
+        return get_dashboard_metrics(days)
+    
+    @router.get("/tasks/metrics/task/{task_name}")
+    async def get_task_metrics(
+        task_name: str,
+        days: int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Get detailed metrics for a specific task.
+        
+        Args:
+            task_name: Name of the task
+            days: Number of days to include (default: 30)
+        """
+        from src.tasks.metrics import get_metrics_dashboard
+        from src.task_registry import TASK_REGISTRY
+        
+        if task_name not in TASK_REGISTRY:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task not found: {task_name}"
+            )
+        
+        dashboard = get_metrics_dashboard()
+        return dashboard.get_task_details(task_name, days)
+    
+    @router.get("/tasks/metrics/summary")
+    async def get_metrics_summary(days: int = 30) -> Dict[str, Any]:
+        """
+        Get a summary of execution metrics.
+        
+        Returns only the summary portion of the dashboard for quick overview.
+        """
+        from src.tasks.metrics import get_dashboard_metrics
+        
+        metrics = get_dashboard_metrics(days)
+        return {
+            "summary": metrics["summary"],
+            "top_performers": metrics["top_performers"],
+            "health": metrics["health"],
+            "generated_at": metrics["generated_at"],
+        }
+    
+    @router.get("/tasks/metrics/trends")
+    async def get_execution_trends(days: int = 30) -> Dict[str, Any]:
+        """
+        Get daily execution trends.
+        
+        Returns execution counts and success rates by day.
+        """
+        from src.tasks.metrics import get_dashboard_metrics
+        
+        metrics = get_dashboard_metrics(days)
+        return {
+            "daily_trends": metrics["daily_trends"],
+            "days": days,
+        }
+    
+    @router.get("/tasks/metrics/categories")
+    async def get_category_metrics(days: int = 30) -> Dict[str, Any]:
+        """
+        Get metrics grouped by category.
+        
+        Shows execution stats for each task category.
+        """
+        from src.tasks.metrics import get_dashboard_metrics
+        
+        metrics = get_dashboard_metrics(days)
+        return {
+            "category_metrics": metrics["category_metrics"],
+            "days": days,
+        }
+
     return router
