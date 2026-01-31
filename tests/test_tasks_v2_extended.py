@@ -1,9 +1,9 @@
-"""Tests for extended BaseTask implementations (tasks_v2_extended.py)."""
+"""Tests for extended BaseTask implementations."""
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from src.tasks.tasks_v2_extended import (
+from src.tasks.analysis import (
     StructureAnalysisTask,
     TechStackTask,
     ArchitecturePatternTask,
@@ -21,7 +21,7 @@ from src.tasks.tasks_v2_extended import (
     detect_duplicate_blocks_semantic_v2,
     security_heuristics_v2,
 )
-from src.tasks.base import FileInfo
+from src.tasks.core.base import FileInfo
 
 
 class TestStructureAnalysisTask:
@@ -77,8 +77,8 @@ class TestStructureAnalysisTask:
         assert "graph TD" in diagram
         assert "root" in diagram
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_analyze_json_format(self, mock_read, mock_collect):
         """Test analysis with JSON output."""
         mock_collect.return_value = ["src/main.py", "src/utils.py"]
@@ -95,8 +95,8 @@ class TestStructureAnalysisTask:
 class TestTechStackTask:
     """Tests for TechStackTask."""
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_detect_frameworks(self, mock_read, mock_collect):
         """Test framework detection."""
         mock_collect.return_value = ["app.py"]
@@ -113,8 +113,8 @@ from sqlalchemy import create_engine
         assert "fastapi" in result["data"]["frameworks"]
         assert "sqlalchemy" in result["data"]["frameworks"]
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_markdown_output(self, mock_read, mock_collect):
         """Test markdown output format."""
         mock_collect.return_value = ["app.py"]
@@ -130,7 +130,7 @@ from sqlalchemy import create_engine
 class TestArchitecturePatternTask:
     """Tests for ArchitecturePatternTask."""
     
-    @patch("src.tasks.base.collect_file_paths")
+    @patch("src.tasks.core.base.collect_file_paths")
     def test_detect_mvc_pattern(self, mock_collect):
         """Test MVC pattern detection."""
         mock_collect.return_value = [
@@ -146,7 +146,7 @@ class TestArchitecturePatternTask:
         detailed = next(p for p in result["detailed"] if p["pattern"] == "MVC")
         assert detailed["confidence"] >= 0.6
     
-    @patch("src.tasks.base.collect_file_paths")
+    @patch("src.tasks.core.base.collect_file_paths")
     def test_no_patterns_detected(self, mock_collect):
         """Test when no patterns match."""
         mock_collect.return_value = [
@@ -163,8 +163,8 @@ class TestArchitecturePatternTask:
 class TestImpactAnalysisTask:
     """Tests for ImpactAnalysisTask."""
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_find_affected_modules(self, mock_graph, mock_collect):
         """Test finding affected modules."""
         mock_collect.return_value = ["a.py", "b.py", "c.py"]
@@ -181,8 +181,8 @@ class TestImpactAnalysisTask:
         assert "b" in result["affected"]
         assert "a" in result["affected"]
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_module_not_found(self, mock_graph, mock_collect):
         """Test when module is not found."""
         mock_collect.return_value = ["a.py"]
@@ -198,8 +198,8 @@ class TestImpactAnalysisTask:
 class TestDependencyGraphTask:
     """Tests for DependencyGraphTask."""
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_json_output(self, mock_graph, mock_collect):
         """Test JSON output format."""
         mock_collect.return_value = ["a.py", "b.py"]
@@ -212,8 +212,8 @@ class TestDependencyGraphTask:
         assert "nodes" in result
         assert "edges" in result
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_mermaid_output(self, mock_graph, mock_collect):
         """Test Mermaid output format."""
         mock_collect.return_value = ["a.py", "b.py"]
@@ -225,8 +225,8 @@ class TestDependencyGraphTask:
         assert result["format"] == "mermaid"
         assert "graph TD" in result["content"]
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_dot_output(self, mock_graph, mock_collect):
         """Test DOT/Graphviz output format."""
         mock_collect.return_value = ["a.py", "b.py"]
@@ -249,8 +249,8 @@ class TestDuplicateBlocksTask:
         assert DuplicateBlocksTask._normalize_line("// comment", ".js") == ""
         assert DuplicateBlocksTask._normalize_line("", ".py") == ""
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_find_duplicates(self, mock_read, mock_collect):
         """Test finding duplicate blocks."""
         duplicate_code = "\n".join([f"line{i}" for i in range(10)])
@@ -277,8 +277,8 @@ class TestSemanticDuplicationTask:
         assert normalized  # Should produce output
         assert "_id" in normalized  # Identifiers normalized
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_find_semantic_duplicates(self, mock_read, mock_collect):
         """Test finding semantically similar functions."""
         code = '''
@@ -303,8 +303,8 @@ def function_b(number):
 class TestSecurityHeuristicsTask:
     """Tests for SecurityHeuristicsTask."""
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_detect_eval_exec(self, mock_read, mock_collect):
         """Test detecting eval/exec usage."""
         mock_collect.return_value = ["unsafe.py"]
@@ -318,8 +318,8 @@ class TestSecurityHeuristicsTask:
         assert any("dynamic" in f["description"].lower() or "code execution" in f["description"].lower() 
                    for f in result["findings"])
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_detect_hardcoded_secret(self, mock_read, mock_collect):
         """Test detecting hardcoded secrets."""
         mock_collect.return_value = ["config.py"]
@@ -331,8 +331,8 @@ class TestSecurityHeuristicsTask:
         assert result["count"] > 0
         assert any("secret" in f["description"].lower() for f in result["findings"])
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_clean_code_no_findings(self, mock_read, mock_collect):
         """Test clean code produces no findings."""
         mock_collect.return_value = ["safe.py"]
@@ -348,10 +348,10 @@ def calculate_sum(a, b):
 
 
 class TestWrapperFunctions:
-    """Tests for wrapper functions maintaining backward compatibility."""
+    """Tests for wrapper functions."""
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_analyze_structure_v2(self, mock_read, mock_collect):
         """Test analyze_structure_v2 wrapper."""
         mock_collect.return_value = ["main.py"]
@@ -361,8 +361,8 @@ class TestWrapperFunctions:
         
         assert "summary" in result or "format" in result
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.base._read_file_text")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.core.base._read_file_text")
     def test_tech_stack_v2(self, mock_read, mock_collect):
         """Test tech_stack_v2 wrapper."""
         mock_collect.return_value = ["app.py"]
@@ -372,7 +372,7 @@ class TestWrapperFunctions:
         
         assert "data" in result
     
-    @patch("src.tasks.base.collect_file_paths")
+    @patch("src.tasks.core.base.collect_file_paths")
     def test_architecture_pattern_detection_v2(self, mock_collect):
         """Test architecture_pattern_detection_v2 wrapper."""
         mock_collect.return_value = ["src/controllers/main.py"]
@@ -381,8 +381,8 @@ class TestWrapperFunctions:
         
         assert "patterns" in result
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_impact_analysis_v2(self, mock_graph, mock_collect):
         """Test impact_analysis_v2 wrapper."""
         mock_collect.return_value = ["a.py"]
@@ -392,8 +392,8 @@ class TestWrapperFunctions:
         
         assert "module" in result
     
-    @patch("src.tasks.base.collect_file_paths")
-    @patch("src.tasks.tasks_v2_extended._build_import_graph")
+    @patch("src.tasks.core.base.collect_file_paths")
+    @patch("src.tasks.analysis.architecture._build_import_graph")
     def test_dependency_graph_export_v2(self, mock_graph, mock_collect):
         """Test dependency_graph_export_v2 wrapper."""
         mock_collect.return_value = ["a.py"]

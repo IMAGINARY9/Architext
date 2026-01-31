@@ -1,11 +1,11 @@
-"""Tests for BaseTask-based task implementations (tasks_v2)."""
+"""Tests for BaseTask-based task implementations."""
 from __future__ import annotations
 
 import pytest
 from unittest.mock import patch, MagicMock
 from typing import List
 
-from src.tasks.tasks_v2 import (
+from src.tasks.analysis import (
     AntiPatternDetectionTask,
     SilentFailuresTask,
     TestMappingTask,
@@ -15,7 +15,7 @@ from src.tasks.tasks_v2 import (
     test_mapping_analysis_v2,
     health_score_v2,
 )
-from src.tasks.base import FileInfo
+from src.tasks.core.base import FileInfo
 
 
 # =============================================================================
@@ -205,7 +205,7 @@ except ValueError as e:
         assert result["count"] == 0
 
 
-class TestTestMappingTask:
+class TestTestMappingTaskAnalysis:
     """Tests for test mapping task."""
     
     def test_maps_test_to_source(self):
@@ -348,9 +348,9 @@ class TestHealthScoreTask:
 # =============================================================================
 
 class TestWrapperFunctions:
-    """Tests for backward-compatible wrapper functions."""
+    """Tests for wrapper functions."""
     
-    @patch("src.tasks.tasks_v2.AntiPatternDetectionTask.run")
+    @patch("src.tasks.analysis.anti_patterns.AntiPatternDetectionTask.run")
     def test_detect_anti_patterns_v2_wrapper(self, mock_run):
         """Test wrapper function calls task correctly."""
         mock_run.return_value = {"issues": []}
@@ -360,7 +360,7 @@ class TestWrapperFunctions:
         mock_run.assert_called_once()
         assert result == {"issues": []}
     
-    @patch("src.tasks.tasks_v2.SilentFailuresTask.run")
+    @patch("src.tasks.analysis.quality.SilentFailuresTask.run")
     def test_identify_silent_failures_v2_wrapper(self, mock_run):
         """Test wrapper function calls task correctly."""
         mock_run.return_value = {"findings": [], "count": 0}
@@ -369,7 +369,7 @@ class TestWrapperFunctions:
         
         mock_run.assert_called_once()
     
-    @patch("src.tasks.tasks_v2.TestMappingTask.run")
+    @patch("src.tasks.analysis.quality.TestMappingTask.run")
     def test_test_mapping_analysis_v2_wrapper(self, mock_run):
         """Test wrapper function calls task correctly."""
         mock_run.return_value = {"tested_ratio": 0.5}
@@ -378,7 +378,7 @@ class TestWrapperFunctions:
         
         mock_run.assert_called_once()
     
-    @patch("src.tasks.tasks_v2.HealthScoreTask.run")
+    @patch("src.tasks.analysis.health.HealthScoreTask.run")
     def test_health_score_v2_wrapper(self, mock_run):
         """Test wrapper function calls task correctly."""
         mock_run.return_value = {"score": 75, "grade": "C"}

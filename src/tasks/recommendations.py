@@ -13,10 +13,32 @@ import json
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
 from src.tasks.history import get_task_history, TaskExecution, TaskAnalytics
-from src.task_registry import TASK_REGISTRY, TASK_CATEGORIES, TASK_DEPENDENCIES
+
+# Lazy imports to avoid circular dependency:
+# recommendations -> task_registry -> src.tasks -> orchestration -> recommendations
+if TYPE_CHECKING:
+    pass  # No type hints needed from task_registry
+
+
+def _get_task_registry():
+    """Lazy import of TASK_REGISTRY to avoid circular import."""
+    from src.task_registry import TASK_REGISTRY
+    return TASK_REGISTRY
+
+
+def _get_task_categories():
+    """Lazy import of TASK_CATEGORIES to avoid circular import."""
+    from src.task_registry import TASK_CATEGORIES
+    return TASK_CATEGORIES
+
+
+def _get_task_dependencies():
+    """Lazy import of TASK_DEPENDENCIES to avoid circular import."""
+    from src.task_registry import TASK_DEPENDENCIES
+    return TASK_DEPENDENCIES
 
 
 # Default weights file location
@@ -253,7 +275,7 @@ class TaskRecommendationEngine:
     def _build_task_category_map(self) -> Dict[str, str]:
         """Build mapping from task name to category."""
         mapping = {}
-        for category, tasks in TASK_CATEGORIES.items():
+        for category, tasks in _get_task_categories().items():
             for task in tasks:
                 mapping[task] = category
         return mapping
@@ -343,7 +365,7 @@ class TaskRecommendationEngine:
         # Get history and analytics for all tasks
         all_history = self._history.get_history()
         
-        for task_name in TASK_REGISTRY:
+        for task_name in _get_task_registry():
             if task_name in exclude_tasks:
                 continue
             
@@ -421,7 +443,7 @@ class TaskRecommendationEngine:
         
         # Category coverage - boost tasks in underrepresented categories
         if category:
-            category_tasks = TASK_CATEGORIES.get(category, [])
+            category_tasks = _get_task_categories().get(category, [])
             category_runs = sum(
                 1 for h in all_history
                 if h.task_name in category_tasks
@@ -456,7 +478,7 @@ class TaskRecommendationEngine:
         recommendations = []
         
         for task_name in quick_tasks:
-            if task_name in TASK_REGISTRY:
+            if task_name in _get_task_registry():
                 rec = self._score_task(task_name, [], None)
                 rec.score = 100.0  # Max score for quick scan
                 rec.reasons = ["Essential for quick overview"]
@@ -479,13 +501,13 @@ class TaskRecommendationEngine:
         Returns:
             Recommendations for tasks in the category
         """
-        if category not in TASK_CATEGORIES:
+        if category not in _get_task_categories():
             return []
         
-        category_tasks = set(TASK_CATEGORIES[category])
+        category_tasks = set(_get_task_categories()[category])
         return self.get_recommendations(
             limit=limit,
-            exclude_tasks=set(TASK_REGISTRY.keys()) - category_tasks,
+            exclude_tasks=set(_get_task_registry().keys()) - category_tasks,
             prefer_category=category,
         )
     
@@ -504,15 +526,15 @@ class TaskRecommendationEngine:
         # Add tasks in the same category
         category = self._task_to_category.get(task_name)
         if category:
-            related.update(TASK_CATEGORIES.get(category, []))
+            related.update(_get_task_categories().get(category, []))
         
         # Add dependent tasks
-        for task, deps in TASK_DEPENDENCIES.items():
+        for task, deps in _get_task_dependencies().items():
             if task_name in deps:
                 related.add(task)
         
         # Add tasks that this task depends on
-        related.update(TASK_DEPENDENCIES.get(task_name, set()))
+        related.update(_get_task_dependencies().get(task_name, set()))
         
         # Remove the original task
         related.discard(task_name)
@@ -523,7 +545,7 @@ class TaskRecommendationEngine:
         # Get recommendations for related tasks only
         return self.get_recommendations(
             limit=limit,
-            exclude_tasks=set(TASK_REGISTRY.keys()) - related,
+            exclude_tasks=set(_get_task_registry().keys()) - related,
         )
 
 

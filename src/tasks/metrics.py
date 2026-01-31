@@ -8,10 +8,26 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from src.tasks.history import get_task_history, TaskExecution
-from src.task_registry import TASK_REGISTRY, TASK_CATEGORIES
+
+# Lazy import to avoid circular dependency:
+# metrics -> task_registry -> src.tasks -> orchestration -> metrics
+if TYPE_CHECKING:
+    pass  # No type hints needed from task_registry
+
+
+def _get_task_registry():
+    """Lazy import of TASK_REGISTRY to avoid circular import."""
+    from src.task_registry import TASK_REGISTRY
+    return TASK_REGISTRY
+
+
+def _get_task_categories():
+    """Lazy import of TASK_CATEGORIES to avoid circular import."""
+    from src.task_registry import TASK_CATEGORIES
+    return TASK_CATEGORIES
 
 
 @dataclass
@@ -160,7 +176,7 @@ class MetricsDashboard:
     def _build_task_category_map(self) -> Dict[str, str]:
         """Build mapping from task name to category."""
         mapping = {}
-        for category, tasks in TASK_CATEGORIES.items():
+        for category, tasks in _get_task_categories().items():
             for task in tasks:
                 mapping[task] = category
         return mapping
@@ -207,7 +223,7 @@ class MetricsDashboard:
         )
         
         # Health indicators
-        never_run = [t for t in TASK_REGISTRY if t not in tasks_run]
+        never_run = [t for t in _get_task_registry() if t not in tasks_run]
         failing = [m.task_name for m in task_metrics if m.success_rate < 50]
         
         return DashboardMetrics(
@@ -279,7 +295,7 @@ class MetricsDashboard:
             total_duration = sum(h.duration_seconds or 0 for h in executions)
             
             tasks_run = set(h.task_name for h in executions)
-            category_tasks = set(TASK_CATEGORIES.get(category, []))
+            category_tasks = set(_get_task_categories().get(category, []))
             coverage = len(tasks_run) / len(category_tasks) * 100 if category_tasks else 0
             
             metrics[category] = {
