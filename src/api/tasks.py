@@ -720,6 +720,117 @@ def build_tasks_router(
         }
 
     # =========================================================================
+    # Scoring Weights Configuration
+    # =========================================================================
+    
+    @router.get("/tasks/recommendations/weights")
+    async def get_scoring_weights() -> Dict[str, Any]:
+        """Get current scoring weights for task recommendations."""
+        from src.tasks.recommendations import get_scoring_weights as get_weights
+        
+        return {
+            "weights": get_weights(),
+            "description": "Current scoring weights used for task recommendations",
+        }
+    
+    @router.put("/tasks/recommendations/weights")
+    async def update_scoring_weights(
+        request: Dict[str, Any] = Body(...),
+    ) -> Dict[str, Any]:
+        """
+        Update scoring weights for task recommendations.
+        
+        Body should contain weight names and values, e.g.:
+        {"never_run_boost": 40.0, "stale_boost": 25.0}
+        
+        Available weights:
+        - never_run_boost: Boost for tasks never executed (default: 30.0)
+        - stale_boost: Boost for tasks not run recently (default: 20.0)
+        - very_stale_boost: Additional boost for very old tasks (default: 25.0)
+        - high_success_rate_boost: Boost for reliable tasks (default: 10.0)
+        - low_success_rate_penalty: Penalty for failing tasks (default: -15.0)
+        - fast_execution_boost: Boost for quick tasks (default: 5.0)
+        - category_coverage_boost: Boost for underrepresented categories (default: 15.0)
+        - dependency_boost: Boost for tasks with dependencies ready (default: 10.0)
+        """
+        from src.tasks.recommendations import update_scoring_weights as update_weights
+        
+        # Filter to only float values
+        weight_updates = {k: float(v) for k, v in request.items() if isinstance(v, (int, float))}
+        
+        if not weight_updates:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid weight updates provided"
+            )
+        
+        updated = update_weights(**weight_updates)
+        
+        return {
+            "weights": updated,
+            "updated_fields": list(weight_updates.keys()),
+        }
+    
+    @router.post("/tasks/recommendations/weights/reset")
+    async def reset_scoring_weights() -> Dict[str, Any]:
+        """Reset scoring weights to default values."""
+        from src.tasks.recommendations import reset_scoring_weights as reset_weights
+        
+        defaults = reset_weights()
+        
+        return {
+            "weights": defaults,
+            "message": "Scoring weights reset to defaults",
+        }
+    
+    @router.get("/tasks/recommendations/weights/presets")
+    async def get_weight_presets() -> Dict[str, Any]:
+        """
+        Get available scoring weight presets.
+        
+        Presets provide pre-configured weight combinations for different use cases:
+        - default: Balanced recommendations
+        - aggressive: Prioritize coverage and freshness
+        - conservative: Prioritize reliability and speed
+        - reliability-focused: Strongly prefer tasks that succeed
+        - coverage-focused: Strongly prefer running all tasks
+        """
+        from src.tasks.recommendations import get_weight_presets as get_presets
+        
+        presets = get_presets()
+        
+        return {
+            "presets": presets,
+            "available": list(presets.keys()),
+        }
+    
+    @router.post("/tasks/recommendations/weights/presets/{preset_name}")
+    async def apply_weight_preset(preset_name: str) -> Dict[str, Any]:
+        """
+        Apply a scoring weight preset.
+        
+        Available presets: default, aggressive, conservative, 
+        reliability-focused, coverage-focused
+        """
+        from src.tasks.recommendations import apply_weight_preset as apply_preset
+        
+        result = apply_preset(preset_name)
+        
+        if result is None:
+            from src.tasks.recommendations import get_weight_presets as get_presets
+            available = list(get_presets().keys())
+            raise HTTPException(
+                status_code=404,
+                detail=f"Preset not found: {preset_name}. Available: {available}"
+            )
+        
+        return {
+            "preset": preset_name,
+            "weights": result,
+            "message": f"Applied preset: {preset_name}",
+        }
+
+    # =========================================================================
     # Metrics Dashboard
     # =========================================================================
     
@@ -804,6 +915,496 @@ def build_tasks_router(
         return {
             "category_metrics": metrics["category_metrics"],
             "days": days,
+        }
+
+    # =========================================================================
+    # Webhooks
+    # =========================================================================
+    
+    @router.get("/tasks/webhooks")
+    async def list_webhooks() -> Dict[str, Any]:
+        """List all registered webhooks."""
+        from src.tasks.webhooks import get_webhook_manager
+        
+        manager = get_webhook_manager()
+        webhooks = manager.list_webhooks()
+        
+        return {
+            "webhooks": [w.to_dict() for w in webhooks],
+            "count": len(webhooks),
+        }
+    
+    @router.post("/tasks/webhooks")
+    async def register_webhook(
+        request: Dict[str, Any] = Body(
+            ...,
+            examples={
+                "all_events": {
+                    "summary": "Subscribe to all events",
+                    "value": {
+                        "url": "https://example.com/webhook",
+                        "events": ["task.started", "task.completed", "task.failed"],
+                    },
+                },
+                "with_secret": {
+                    "summary": "With HMAC signature",
+                    "value": {
+                        "url": "https://example.com/webhook",
+                        "events": ["task.completed"],
+                        "secret": "my-secret-key",
+                    },
+                },
+            },
+        ),
+    ) -> Dict[str, Any]:
+        """
+        Register a new webhook.
+        
+        Args:
+            url: The URL to send webhook notifications to
+            events: List of events to subscribe to
+            secret: Optional secret for HMAC signature verification
+            max_retries: Maximum retry attempts (default: 3)
+            enabled: Whether webhook is active (default: True)
+        """
+        from src.tasks.webhooks import WebhookConfig, WebhookEvent, get_webhook_manager
+        
+        url = request.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="url is required")
+        
+        event_names = request.get("events", [])
+        if not event_names:
+            raise HTTPException(status_code=400, detail="events list is required")
+        
+        # Convert event names to WebhookEvent enum
+        try:
+            events = [WebhookEvent(name) for name in event_names]
+        except ValueError as e:
+            valid_events = [e.value for e in WebhookEvent]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid event name. Valid events: {valid_events}"
+            )
+        
+        config = WebhookConfig(
+            url=url,
+            events=events,
+            secret=request.get("secret"),
+            max_retries=request.get("max_retries", 3),
+            enabled=request.get("enabled", True),
+        )
+        
+        manager = get_webhook_manager()
+        manager.register_webhook(config)
+        
+        return {
+            "status": "registered",
+            "webhook_id": config.id,
+            "url": config.url,
+            "events": [e.value for e in config.events],
+        }
+    
+    @router.get("/tasks/webhooks/{webhook_id}")
+    async def get_webhook(webhook_id: str) -> Dict[str, Any]:
+        """Get details of a specific webhook."""
+        from src.tasks.webhooks import get_webhook_manager
+        
+        manager = get_webhook_manager()
+        webhook = manager.get_webhook(webhook_id)
+        
+        if webhook is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Webhook not found: {webhook_id}"
+            )
+        
+        return webhook.to_dict()
+    
+    @router.put("/tasks/webhooks/{webhook_id}")
+    async def update_webhook(
+        webhook_id: str,
+        request: Dict[str, Any] = Body(...),
+    ) -> Dict[str, Any]:
+        """
+        Update a webhook configuration.
+        
+        Args:
+            url: New URL (optional)
+            events: New events list (optional)
+            secret: New secret (optional)
+            enabled: Enable/disable (optional)
+        """
+        from src.tasks.webhooks import WebhookEvent, get_webhook_manager
+        
+        manager = get_webhook_manager()
+        
+        updates = {}
+        if "url" in request:
+            updates["url"] = request["url"]
+        if "events" in request:
+            try:
+                updates["events"] = [WebhookEvent(name) for name in request["events"]]
+            except ValueError:
+                valid_events = [e.value for e in WebhookEvent]
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid event. Valid: {valid_events}"
+                )
+        if "secret" in request:
+            updates["secret"] = request["secret"]
+        if "enabled" in request:
+            updates["enabled"] = request["enabled"]
+        if "max_retries" in request:
+            updates["max_retries"] = request["max_retries"]
+        
+        webhook = manager.update_webhook(webhook_id, updates)
+        
+        if webhook is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Webhook not found: {webhook_id}"
+            )
+        
+        return {
+            "status": "updated",
+            "webhook": webhook.to_dict(),
+        }
+    
+    @router.delete("/tasks/webhooks/{webhook_id}")
+    async def delete_webhook(webhook_id: str) -> Dict[str, Any]:
+        """Delete a webhook."""
+        from src.tasks.webhooks import get_webhook_manager
+        
+        manager = get_webhook_manager()
+        deleted = manager.unregister_webhook(webhook_id)
+        
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Webhook not found: {webhook_id}"
+            )
+        
+        return {"status": "deleted", "webhook_id": webhook_id}
+    
+    @router.get("/tasks/webhooks/{webhook_id}/deliveries")
+    async def get_webhook_deliveries(
+        webhook_id: str,
+        limit: int = 50,
+    ) -> Dict[str, Any]:
+        """Get delivery history for a webhook."""
+        from src.tasks.webhooks import get_webhook_manager
+        
+        manager = get_webhook_manager()
+        webhook = manager.get_webhook(webhook_id)
+        
+        if webhook is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Webhook not found: {webhook_id}"
+            )
+        
+        deliveries = manager.get_deliveries(webhook_id, limit)
+        
+        return {
+            "webhook_id": webhook_id,
+            "deliveries": [d.to_dict() for d in deliveries],
+            "count": len(deliveries),
+        }
+    
+    @router.post("/tasks/webhooks/{webhook_id}/test")
+    async def test_webhook(webhook_id: str) -> Dict[str, Any]:
+        """Send a test event to a webhook."""
+        from src.tasks.webhooks import WebhookEvent, get_webhook_manager
+        
+        manager = get_webhook_manager()
+        webhook = manager.get_webhook(webhook_id)
+        
+        if webhook is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Webhook not found: {webhook_id}"
+            )
+        
+        # Emit a test event
+        delivery = manager.emit(
+            event=WebhookEvent.TASK_COMPLETED,
+            data={
+                "task_name": "test-webhook",
+                "task_id": "test-123",
+                "status": "success",
+                "duration_seconds": 0.1,
+                "is_test": True,
+            },
+            webhook_ids=[webhook_id],
+            async_delivery=False,  # Wait for result
+        )
+        
+        if delivery:
+            return {
+                "status": "sent",
+                "delivery": delivery[0].to_dict() if delivery else None,
+            }
+        return {"status": "no_delivery", "reason": "Webhook may not subscribe to task.completed"}
+
+    # =========================================================================
+    # Task Scheduling
+    # =========================================================================
+    
+    @router.get("/tasks/schedules")
+    async def list_schedules() -> Dict[str, Any]:
+        """List all scheduled tasks."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        schedules = scheduler.list_schedules()
+        
+        return {
+            "schedules": [s.to_dict() for s in schedules],
+            "count": len(schedules),
+            "scheduler_running": scheduler.is_running,
+        }
+    
+    @router.post("/tasks/schedules")
+    async def create_schedule(
+        request: Dict[str, Any] = Body(
+            ...,
+            examples={
+                "interval": {
+                    "summary": "Run every 30 minutes",
+                    "value": {
+                        "task_name": "health-score",
+                        "schedule_type": "interval",
+                        "interval_minutes": 30,
+                        "source_path": "./src",
+                    },
+                },
+                "cron": {
+                    "summary": "Daily at 2am",
+                    "value": {
+                        "task_name": "detect-anti-patterns",
+                        "schedule_type": "cron",
+                        "cron_minute": "0",
+                        "cron_hour": "2",
+                        "source_path": "./src",
+                    },
+                },
+            },
+        ),
+    ) -> Dict[str, Any]:
+        """
+        Create a scheduled task.
+        
+        Schedule types:
+        - interval: Run every N minutes (specify interval_minutes)
+        - cron: Cron-like schedule (specify cron_minute, cron_hour, cron_day_of_week)
+        - once: Run once at specified time (specify run_at as ISO datetime)
+        """
+        from src.tasks.scheduler import (
+            ScheduleConfig, ScheduleType, get_task_scheduler
+        )
+        from src.task_registry import TASK_REGISTRY
+        import uuid
+        from datetime import datetime
+        
+        task_name = request.get("task_name")
+        if not task_name:
+            raise HTTPException(status_code=400, detail="task_name is required")
+        
+        if task_name not in TASK_REGISTRY:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task not found: {task_name}"
+            )
+        
+        schedule_type_str = request.get("schedule_type", "interval")
+        try:
+            schedule_type = ScheduleType(schedule_type_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid schedule_type. Valid: {[t.value for t in ScheduleType]}"
+            )
+        
+        config = ScheduleConfig(
+            id=str(uuid.uuid4())[:8],
+            task_name=task_name,
+            schedule_type=schedule_type,
+            enabled=request.get("enabled", True),
+            interval_seconds=(
+                request.get("interval_minutes", 60) * 60
+                if schedule_type == ScheduleType.INTERVAL else None
+            ),
+            cron_minute=request.get("cron_minute"),
+            cron_hour=request.get("cron_hour"),
+            cron_day_of_week=request.get("cron_day_of_week"),
+            run_at=(
+                datetime.fromisoformat(request["run_at"])
+                if request.get("run_at") else None
+            ),
+            source_path=request.get("source_path"),
+            storage_path=request.get("storage_path"),
+            task_params=request.get("params", {}),
+        )
+        
+        scheduler = get_task_scheduler()
+        created = scheduler.create_schedule(config)
+        
+        return {
+            "status": "created",
+            "schedule": created.to_dict(),
+        }
+    
+    @router.get("/tasks/schedules/{schedule_id}")
+    async def get_schedule(schedule_id: str) -> Dict[str, Any]:
+        """Get details of a specific schedule."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        schedule = scheduler.get_schedule(schedule_id)
+        
+        if schedule is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        return schedule.to_dict()
+    
+    @router.put("/tasks/schedules/{schedule_id}")
+    async def update_schedule(
+        schedule_id: str,
+        request: Dict[str, Any] = Body(...),
+    ) -> Dict[str, Any]:
+        """Update a schedule configuration."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        updated = scheduler.update_schedule(schedule_id, request)
+        
+        if updated is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        return {
+            "status": "updated",
+            "schedule": updated.to_dict(),
+        }
+    
+    @router.delete("/tasks/schedules/{schedule_id}")
+    async def delete_schedule(schedule_id: str) -> Dict[str, Any]:
+        """Delete a schedule."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        deleted = scheduler.delete_schedule(schedule_id)
+        
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        return {"status": "deleted", "schedule_id": schedule_id}
+    
+    @router.post("/tasks/schedules/{schedule_id}/run")
+    async def run_schedule_now(schedule_id: str) -> Dict[str, Any]:
+        """Run a scheduled task immediately."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        execution = scheduler.run_now(schedule_id)
+        
+        if execution is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        return {
+            "status": "executed",
+            "execution": execution.to_dict(),
+        }
+    
+    @router.post("/tasks/schedules/{schedule_id}/enable")
+    async def enable_schedule(schedule_id: str) -> Dict[str, Any]:
+        """Enable a schedule."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        if not scheduler.enable_schedule(schedule_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        return {"status": "enabled", "schedule_id": schedule_id}
+    
+    @router.post("/tasks/schedules/{schedule_id}/disable")
+    async def disable_schedule(schedule_id: str) -> Dict[str, Any]:
+        """Disable a schedule."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        if not scheduler.disable_schedule(schedule_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        return {"status": "disabled", "schedule_id": schedule_id}
+    
+    @router.get("/tasks/schedules/{schedule_id}/executions")
+    async def get_schedule_executions(
+        schedule_id: str,
+        limit: int = 50,
+    ) -> Dict[str, Any]:
+        """Get execution history for a schedule."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        schedule = scheduler.get_schedule(schedule_id)
+        
+        if schedule is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Schedule not found: {schedule_id}"
+            )
+        
+        executions = scheduler.get_executions(limit, schedule_id)
+        
+        return {
+            "schedule_id": schedule_id,
+            "executions": [e.to_dict() for e in executions],
+            "count": len(executions),
+        }
+    
+    @router.post("/tasks/scheduler/start")
+    async def start_scheduler() -> Dict[str, Any]:
+        """Start the background task scheduler."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        scheduler.start()
+        
+        return {
+            "status": "started",
+            "message": "Task scheduler is now running in background",
+        }
+    
+    @router.post("/tasks/scheduler/stop")
+    async def stop_scheduler() -> Dict[str, Any]:
+        """Stop the background task scheduler."""
+        from src.tasks.scheduler import get_task_scheduler
+        
+        scheduler = get_task_scheduler()
+        scheduler.stop()
+        
+        return {
+            "status": "stopped",
+            "message": "Task scheduler has been stopped",
         }
 
     return router

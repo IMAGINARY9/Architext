@@ -57,18 +57,22 @@ class TestRecommendationConfig:
         
         assert config.stale_threshold_hours == 24
         assert config.very_stale_threshold_hours == 168
-        assert config.never_run_boost == 30.0
+        # Scoring weights are now in a separate ScoringWeights object
+        assert config.weights is not None
+        assert config.weights.never_run_boost == 30.0
         assert config.success_rate_high == 90.0
     
     def test_custom_values(self):
         """Test custom configuration."""
+        from src.tasks.recommendations import ScoringWeights
+        custom_weights = ScoringWeights(never_run_boost=50.0)
         config = RecommendationConfig(
             stale_threshold_hours=12,
-            never_run_boost=50.0,
+            weights=custom_weights,
         )
         
         assert config.stale_threshold_hours == 12
-        assert config.never_run_boost == 50.0
+        assert config.weights.never_run_boost == 50.0
 
 
 class TestTaskRecommendationEngine:
