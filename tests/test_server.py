@@ -484,3 +484,111 @@ def test_detect_patterns_task_inline(mocker, patched_settings):
     assert data["status"] == "completed"
     assert "result" in data
 
+
+# ===== Parallel Execution Tests =====
+
+
+def test_task_categories_endpoint(patched_settings):
+    """Test GET /tasks/categories returns all task categories."""
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.get("/tasks/categories")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "structure" in data
+    assert "quality" in data
+    assert "security" in data
+    assert "duplication" in data
+    assert "architecture" in data
+    assert "synthesis" in data
+    # Check structure category contents
+    assert "analyze-structure" in data["structure"]
+    assert "tech-stack" in data["structure"]
+
+
+def test_run_parallel_tasks_endpoint(mocker, patched_settings):
+    """Test POST /tasks/run-parallel executes multiple tasks concurrently."""
+    # Mock the individual tasks
+    mocker.patch("src.task_registry.run_task", side_effect=[
+        {"files": 10},
+        {"languages": ["python"]},
+    ])
+    
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/run-parallel",
+        json={
+            "tasks": ["analyze-structure", "tech-stack"],
+            "source": "./src",
+            "max_workers": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "completed"
+    assert data["tasks_run"] == 2
+    assert "results" in data
+
+
+def test_run_parallel_tasks_validation(patched_settings):
+    """Test validation for missing required parameters."""
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    # Missing tasks list
+    response = client.post(
+        "/tasks/run-parallel",
+        json={"source": "./src"},
+    )
+    assert response.status_code == 400
+    
+    # Missing source/storage
+    response = client.post(
+        "/tasks/run-parallel",
+        json={"tasks": ["analyze-structure"]},
+    )
+    assert response.status_code == 400
+
+
+def test_run_category_endpoint(mocker, patched_settings):
+    """Test POST /tasks/run-category/{category} executes all tasks in category."""
+    # Mock run_task_category
+    mocker.patch("src.api.tasks.run_task_category", return_value={
+        "analyze-structure": {"files": 10},
+        "tech-stack": {"languages": ["python"]},
+        "detect-patterns": {"patterns": []},
+    })
+    
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/run-category/structure",
+        json={"source": "./src"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "completed"
+    assert data["category"] == "structure"
+    assert data["tasks_run"] == 3
+
+
+def test_run_category_invalid_category(patched_settings):
+    """Test that invalid category returns 400."""
+    app = create_app(settings=patched_settings)
+    client = TestClient(app)
+
+    response = client.post(
+        "/tasks/run-category/invalid-category",
+        json={"source": "./src"},
+    )
+
+    assert response.status_code == 400
+    assert "Unknown category" in response.json()["detail"]
+

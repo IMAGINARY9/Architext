@@ -23,6 +23,7 @@ from src.tasks import (
     detect_duplicate_blocks_semantic,
     TaskContext,
     task_context,
+    set_current_context,
 )
 
 
@@ -107,7 +108,26 @@ def get_task_handler(task_name: str) -> Callable[..., Dict[str, Any]]:
         raise ValueError(f"Unknown task: {task_name}") from exc
 
 
-def run_task(task_name: str, **kwargs: Any) -> Dict[str, Any]:
+def run_task(
+    task_name: str,
+    use_cache: bool = False,
+    cache_ttl: Optional[float] = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    """
+    Run a task by name with optional result caching.
+    
+    Args:
+        task_name: Name of the task to run
+        use_cache: Whether to use caching (default: False)
+        cache_ttl: Cache time-to-live in seconds (default: 1 hour)
+        **kwargs: Task-specific parameters
+        
+    Returns:
+        Task result dictionary
+    """
+    from src.tasks.cache import get_task_cache
+    
     handler = get_task_handler(task_name)
     signature = inspect.signature(handler)
     filtered = {
@@ -115,7 +135,32 @@ def run_task(task_name: str, **kwargs: Any) -> Dict[str, Any]:
         for name, value in kwargs.items()
         if name in signature.parameters and value is not None
     }
-    return handler(**filtered)
+    
+    # Try cache if enabled
+    if use_cache:
+        cache = get_task_cache()
+        cached_result = cache.get(
+            task_name,
+            source_path=filtered.get("source_path"),
+            storage_path=filtered.get("storage_path"),
+        )
+        if cached_result is not None:
+            return cached_result
+    
+    # Execute task
+    result = handler(**filtered)
+    
+    # Store in cache if enabled
+    if use_cache:
+        cache.set(
+            task_name,
+            result,
+            source_path=filtered.get("source_path"),
+            storage_path=filtered.get("storage_path"),
+            ttl=cache_ttl,
+        )
+    
+    return result
 
 
 def run_tasks_parallel(
@@ -124,6 +169,7 @@ def run_tasks_parallel(
     source_path: Optional[str] = None,
     max_workers: int = 4,
     progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    timeout_per_task: Optional[float] = 300.0,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Run multiple tasks in parallel with shared context caching.
@@ -137,6 +183,7 @@ def run_tasks_parallel(
         source_path: Path to source directory
         max_workers: Maximum number of parallel workers (default: 4)
         progress_callback: Optional callback for progress updates
+        timeout_per_task: Timeout in seconds per task (default: 300s, None for no timeout)
         
     Returns:
         Dict mapping task names to their results
@@ -153,38 +200,50 @@ def run_tasks_parallel(
             raise ValueError(f"Unknown task: {name}")
     
     results: Dict[str, Dict[str, Any]] = {}
-    errors: Dict[str, str] = {}
     
-    # Use shared context for caching
-    with task_context(storage_path=storage_path, source_path=source_path) as ctx:
-        # Pre-warm the file cache
-        _ = ctx.get_files()
-        
-        def run_single_task(task_name: str) -> tuple[str, Dict[str, Any]]:
+    # Create shared context and pre-warm file cache BEFORE starting threads
+    # This avoids thread-local storage issues with ThreadPoolExecutor
+    ctx = TaskContext(storage_path=storage_path, source_path=source_path)
+    cached_files = ctx.get_files()  # Pre-warm cache synchronously
+    
+    def run_single_task(task_name: str) -> tuple[str, Dict[str, Any]]:
+        """Run a single task with explicit context (no thread-local dependency)."""
+        if progress_callback:
+            progress_callback({"task": task_name, "status": "started"})
+        try:
+            # Set context for this thread explicitly
+            set_current_context(ctx)
+            result = run_task(
+                task_name,
+                storage_path=storage_path,
+                source_path=source_path,
+                progress_callback=progress_callback,
+            )
             if progress_callback:
-                progress_callback({"task": task_name, "status": "started"})
-            try:
-                result = run_task(
-                    task_name,
-                    storage_path=storage_path,
-                    source_path=source_path,
-                    progress_callback=progress_callback,
-                )
-                if progress_callback:
-                    progress_callback({"task": task_name, "status": "completed"})
-                return (task_name, result)
-            except Exception as e:
-                if progress_callback:
-                    progress_callback({"task": task_name, "status": "failed", "error": str(e)})
-                return (task_name, {"error": str(e), "task": task_name})
+                progress_callback({"task": task_name, "status": "completed"})
+            return (task_name, result)
+        except Exception as e:
+            if progress_callback:
+                progress_callback({"task": task_name, "status": "failed", "error": str(e)})
+            return (task_name, {"error": str(e), "task": task_name})
+        finally:
+            # Clean up thread-local context
+            set_current_context(None)
+    
+    # Run tasks in parallel with explicit context passing
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(run_single_task, name): name for name in task_names}
         
-        # Run tasks in parallel
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(run_single_task, name): name for name in task_names}
-            
-            for future in as_completed(futures):
-                task_name, result = future.result()
+        for future in as_completed(futures, timeout=timeout_per_task * len(task_names) if timeout_per_task else None):
+            try:
+                task_name, result = future.result(timeout=timeout_per_task)
                 results[task_name] = result
+            except TimeoutError:
+                task_name = futures[future]
+                results[task_name] = {"error": "Task timed out", "task": task_name}
+            except Exception as e:
+                task_name = futures[future]
+                results[task_name] = {"error": str(e), "task": task_name}
     
     return results
 

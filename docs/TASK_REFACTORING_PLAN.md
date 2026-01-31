@@ -1,6 +1,6 @@
 # Architext Tasks Analysis & Refactoring Plan
 
-**Date:** January 30, 2026  
+**Date:** January 31, 2026  
 **Initial Tasks Analyzed:** 20  
 **Current Tasks:** 15 ✅
 
@@ -17,6 +17,7 @@ This document provides a comprehensive analysis of all default project tasks, id
 | Total Tasks | 20 | 15 |
 | Tasks Deleted | - | 5 |
 | Tasks Improved | 0 | 6 |
+| Tests | 58 | 91 |
 
 ### Changes Made:
 - **Deleted 5 tasks** (low value / project-specific / redundant)
@@ -28,6 +29,8 @@ This document provides a comprehensive analysis of all default project tasks, id
 - **Added TaskContext** - shared context with caching for multi-task execution
 - **Added parallel execution** - run multiple tasks concurrently with shared caching
 - **Added task categories** - group related tasks for batch execution
+- **Added disk caching** - persistent task result cache with TTL and source-change detection
+- **Added BaseTask class** - reusable base class for task implementation
 
 ---
 
@@ -350,6 +353,107 @@ curl -X POST http://localhost:8000/tasks/run-category/quality \
 
 ---
 
+## ✅ Phase 6 Improvements
+
+### Task Result Caching
+
+Added persistent disk caching for task results with automatic invalidation:
+
+**Features:**
+- ✅ Disk persistence (JSON files in `~/.architext/cache/`)
+- ✅ TTL-based expiration (default: 1 hour)
+- ✅ Source file change detection (invalidates cache when files change)
+- ✅ Memory + disk hybrid caching
+- ✅ Thread-safe access
+- ✅ Configurable via decorator or direct API
+
+**Usage:**
+```python
+from src.tasks.cache import TaskResultCache, cached_task, get_task_cache
+
+# Direct cache usage
+cache = get_task_cache()
+result = cache.get("analyze-structure", source_path="src")
+if result is None:
+    result = run_analysis()
+    cache.set("analyze-structure", result, source_path="src")
+
+# Or use the decorator
+@cached_task(ttl=1800)  # 30 minute cache
+def my_analysis(source_path=None, storage_path=None, progress_callback=None):
+    # Expensive computation
+    return {"result": "data"}
+
+# Run task with caching
+result = run_task("analyze-structure", source_path="src", use_cache=True)
+```
+
+### Cache API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/tasks/cache/stats` | GET | Get cache statistics |
+| `/tasks/cache/clear` | POST | Clear cache (optionally by task name) |
+
+**Example: Get cache stats**
+```bash
+curl http://localhost:8000/tasks/cache/stats
+# Returns: {"enabled": true, "memory_entries": 5, "disk_entries": 5, "disk_size_bytes": 12345}
+```
+
+**Example: Clear cache**
+```bash
+curl -X POST http://localhost:8000/tasks/cache/clear \
+  -H "Content-Type: application/json" \
+  -d '{"task_name": "analyze-structure"}'
+```
+
+### BaseTask Abstract Class
+
+Added a reusable base class for implementing new tasks:
+
+```python
+from src.tasks.base import BaseTask, FileInfo, PYTHON_EXTENSIONS
+
+class MyCustomTask(BaseTask):
+    def __init__(self, **kwargs):
+        super().__init__(extensions=PYTHON_EXTENSIONS, **kwargs)
+    
+    def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
+        results = []
+        for file in files:
+            if file.ast_tree:
+                # Analyze Python AST
+                pass
+        return {"results": results}
+
+# Usage
+task = MyCustomTask(source_path="src")
+result = task.run()
+```
+
+**Benefits:**
+- Automatic file collection and filtering
+- Progress reporting
+- Context-aware caching integration
+- Standardized error handling
+
+### Parallel Execution Fix
+
+Fixed infinite loading issue in parallel task execution:
+
+**Problem:** Thread-local storage (`threading.local()`) wasn't propagated to ThreadPoolExecutor worker threads.
+
+**Solution:** 
+- Create `TaskContext` explicitly before spawning threads
+- Pass context to each worker via `set_current_context(ctx)` 
+- Pre-warm file cache synchronously before parallel execution
+- Add timeout handling to prevent hangs
+  -d '{"source": "./src"}'
+```
+
+---
+
 ## 🔧 Remaining Code Quality Issues
 
 These are recommendations for future improvement:
@@ -436,10 +540,20 @@ These tasks are good but could be improved further:
 - [x] Add `run_category()` for running all tasks in a category
 - [x] Add API endpoints: `/tasks/categories`, `/tasks/run-parallel`, `/tasks/run-category/{category}`
 
-### Phase 6: Future Enhancements (Backlog)
-- [ ] Add task result caching across sessions (persist to disk)
+### Phase 6: Caching & Infrastructure ✅ DONE
+- [x] Add task result caching across sessions (persist to disk)
+- [x] Add `TaskResultCache` class with TTL and source-change invalidation
+- [x] Add `@cached_task` decorator for easy caching
+- [x] Add cache API endpoints: `/tasks/cache/stats`, `/tasks/cache/clear`
+- [x] Fix parallel execution thread-local context propagation
+- [x] Add `BaseTask` abstract class for task implementation
+- [x] Add file utility functions (filter_files_by_extension, get_test_files, etc.)
+- [x] Add 33 new tests (12 parallel + 16 cache + 5 API = 91 total)
+
+### Phase 7: Future Enhancements (Backlog)
 - [ ] Add task execution history and analytics
 - [ ] Add custom task composition (user-defined task pipelines)
+- [ ] Migrate existing tasks to use BaseTask class
 
 ---
 
@@ -457,6 +571,7 @@ These tasks are good but could be improved further:
 - ✅ Phase 3: Enhanced Capabilities (JS/TS support, DOT format, TypedDict)
 - ✅ Phase 4: Performance & Consistency (TaskContext caching)
 - ✅ Phase 5: Parallel Execution & Categories (concurrent tasks, API endpoints)
+- ✅ Phase 6: Caching & Infrastructure (disk caching, BaseTask class)
 
 The refactoring:
 1. Removed tasks that provided no real value
@@ -465,12 +580,14 @@ The refactoring:
 4. Implemented shared caching for performance
 5. Added parallel execution for efficiency
 6. Organized tasks into logical categories
+7. Added persistent disk caching with automatic invalidation
+8. Created base classes for future task development
 
 The codebase is now cleaner, faster, better typed, and more extensible.
 
 ### Test Verification
-All 58 tests pass after refactoring:
+All 91 tests pass after refactoring:
 ```
 pytest tests/ -v --tb=short
-58 passed in 23.20s
+91 passed in 23.18s
 ```

@@ -17,9 +17,24 @@ from src.tasks.quality import (
 from src.tasks.query import query_diagnostics
 from src.tasks.roadmap import synthesis_roadmap
 from src.tasks.security import detect_vulnerabilities, security_heuristics
-from src.tasks.shared import TaskContext, task_context
+from src.tasks.shared import TaskContext, task_context, set_current_context, get_current_context
 from src.tasks.structure import analyze_structure
 from src.tasks.tech_stack import tech_stack
+from src.tasks.cache import TaskResultCache, cached_task, get_task_cache
+from src.tasks.base import (
+    BaseTask,
+    FileInfo,
+    TaskResult,
+    PYTHON_EXTENSIONS,
+    JS_TS_EXTENSIONS,
+    CODE_EXTENSIONS,
+    filter_files_by_extension,
+    count_by_extension,
+    count_by_language,
+    get_test_files,
+    get_documentation_files,
+    calculate_ratio,
+)
 
 # Import types for type hints (re-export for backwards compatibility)
 from src.tasks.types import (
@@ -61,6 +76,25 @@ __all__ = [
 	# Task context utilities
 	"TaskContext",
 	"task_context",
+	"set_current_context",
+	"get_current_context",
+	# Caching
+	"TaskResultCache",
+	"cached_task",
+	"get_task_cache",
+	# Base task utilities
+	"BaseTask",
+	"FileInfo",
+	"TaskResult",
+	"PYTHON_EXTENSIONS",
+	"JS_TS_EXTENSIONS",
+	"CODE_EXTENSIONS",
+	"filter_files_by_extension",
+	"count_by_extension",
+	"count_by_language",
+	"get_test_files",
+	"get_documentation_files",
+	"calculate_ratio",
 	# Type definitions
 	"AntiPatternResult",
 	"DependencyGraphResult",

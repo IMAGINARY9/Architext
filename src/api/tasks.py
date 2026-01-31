@@ -269,4 +269,40 @@ def build_tasks_router(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    # ===== Cache Management Endpoints =====
+    
+    @router.get("/tasks/cache/stats")
+    async def get_cache_stats() -> Dict[str, Any]:
+        """Get task result cache statistics."""
+        from src.tasks.cache import get_task_cache
+        cache = get_task_cache()
+        return cache.get_stats()
+    
+    @router.post("/tasks/cache/clear")
+    async def clear_cache(
+        request: Dict[str, Any] = Body(
+            default={},
+            examples={
+                "clear_all": {"summary": "Clear all cache", "value": {}},
+                "clear_task": {"summary": "Clear specific task", "value": {"task_name": "analyze-structure"}},
+            },
+        ),
+    ) -> Dict[str, Any]:
+        """
+        Clear task result cache.
+        
+        Optionally specify task_name to clear only that task's cache.
+        """
+        from src.tasks.cache import get_task_cache
+        cache = get_task_cache()
+        
+        task_name = request.get("task_name")
+        count = cache.invalidate(task_name=task_name)
+        
+        return {
+            "status": "cleared",
+            "entries_removed": count,
+            "task_name": task_name or "all",
+        }
+
     return router
