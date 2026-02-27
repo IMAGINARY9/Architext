@@ -182,7 +182,7 @@ pre-commit run --all-files
 ```
 
 ## 6. Developing New Features
-1.  **Add a Task:** Create a function in `src/tasks/<module>.py`, export it via `src/tasks/__init__.py`, register it in `src/task_registry.py`, and wire CLI support in `src/cli.py` if needed.
+1.  **Add a Task:** Create a function in `src/tasks/<module>.py`, export it via `src/tasks/__init__.py`, and register it in `src/task_registry.py`.
 2.  **Add a Provider:** Update `src/config.py` Enum and `src/indexer_components/factories.py`.
 3.  **Update Deps:** `pip freeze > requirements.txt`.
 

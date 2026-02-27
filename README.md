@@ -7,7 +7,7 @@ Architext is a production-ready RAG (Retrieval-Augmented Generation) tool design
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
 ![Tests](https://img.shields.io/badge/Tests-92%2F92%20Passing-success)
 ![Phase](https://img.shields.io/badge/Phase-3%20Complete-blue)
-![Version](https://img.shields.io/badge/Version-0.5.0-informational)
+![Version](https://img.shields.io/badge/Version-1.0.0-informational)
 
 **[→ Read the Full Project Status Report](docs/PROJECT_STATUS.md)**
 
@@ -115,20 +115,9 @@ curl -X POST http://localhost:8000/tasks/audit \
   -d '{"source": ".", "output": "./architext-audit"}'
 ```
 
-For a full list of tasks and detailed usage, see `docs/DEVELOPMENT.md`.
+For a full list of tasks, detailed usage, and response schemas, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
 > Note: Environment variables like `LLM_PROVIDER`, `OPENAI_API_KEY`, or local LLM endpoints should be set before starting the server. See **Configuration** below for examples. 🔒
-
-**Preview Plan Schema** (for index preview):
-```json
-{
-  "source": "./src",
-  "resolved_path": "/path/to/src",
-  "documents": 36,
-  "file_types": {".py": 30, ".md": 5},
-  "warnings": ["Remote repository will be cloned/cached locally"]
-}
-```
 
 ---
 
@@ -159,95 +148,7 @@ OPENAI_API_KEY=sk-...
 
 Architext provides **stable JSON schemas** for reliable agent integration. All API responses follow consistent Pydantic models.
 
-### Index Preview
-```bash
-curl -X POST http://localhost:8000/index/preview \
-  -H "Content-Type: application/json" \
-  -d '{"source": "https://github.com/user/repo"}'
-```
-
-**Response:**
-```json
-{
-  "source": "https://github.com/user/repo",
-  "resolved_path": "/cache/repo-hash",
-  "documents": 42,
-  "file_types": {".py": 30, ".md": 5},
-  "warnings": ["Remote repository will be cloned"],
-  "would_index": true
-}
-```
-
-### Query Responses
-
-**RAG Mode:**
-```bash
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"text": "How does auth work?", "mode": "rag"}'
-```
-
-**Agent Mode (Structured):**
-```bash
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"text": "How does auth work?", "mode": "agent"}'
-```
-
-**Compact Agent Mode:**
-```bash
-curl -X POST http://localhost:8000/ask \
-  -H "Content-Type: application/json" \
-  -d '{"text": "How does auth work?"}'
-```
-
-All schemas include `confidence`, `sources`, `reranked`, and `hybrid_enabled` fields for consistent agent consumption.
-
-### Index Discovery
-
-**List All Indices:**
-```bash
-curl -X GET http://localhost:8000/indices
-```
-
-**Response:**
-```json
-{
-  "indices": [
-    {
-      "name": "my-project",
-      "path": "/path/to/storage/my-project",
-      "documents": 42,
-      "provider": "chroma",
-      "collection": "architext_db"
-    }
-  ]
-}
-```
-
-**Get Index Metadata:**
-```bash
-curl -X GET http://localhost:8000/indices/my-project
-```
-
-**Response:**
-```json
-{
-  "name": "my-project",
-  "path": "/path/to/storage/my-project",
-  "documents": 42,
-  "provider": "chroma",
-  "collection": "architext_db",
-  "status": "available"
-}
-```
-
-> Note: Request-level flags (e.g., `enable_rerank`, `enable_hybrid`, `llm_provider`) override equivalent values in your server configuration for that single request. Use request fields when you need a per-call override; update your `architext.config.json` or environment variables for global defaults.
-
-Want to inspect what indices are available? You can:
-- Use `GET /indices` to list all available indices with metadata
-- Use `GET /indices/{index_name}` to get detailed metadata for a specific index
-- Use `GET /tasks` and `GET /status/{task_id}` to find completed indexing tasks and their `storage_path` values (the server persists recent task metadata).
+For full schema documentation (index preview, query responses, index discovery, request-level overrides), see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
 ## Testing
 
