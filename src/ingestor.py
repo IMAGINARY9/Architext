@@ -7,10 +7,13 @@ This module handles:
 - Cache management
 """
 import hashlib
+import logging
 import os
 import shutil
 from pathlib import Path
 from typing import Optional, Dict
+
+logger = logging.getLogger(__name__)
 
 try:
     from git import Repo
@@ -99,17 +102,17 @@ def _clone_to_cache(url: str, ssh_key: Optional[str] = None) -> Path:
     
     # If already cached, update it
     if repo_path.exists():
-        print(f"Updating cached repo: {repo_path}")
+        logger.info("Updating cached repo: %s", repo_path)
         try:
             repo = Repo(repo_path)
             if env:
                 repo.git.update_environment(**env)
             repo.remotes.origin.pull()
         except (InvalidGitRepositoryError, GitCommandError) as e:
-            print(f"Warning: Could not update cache, using existing: {e}")
+            logger.warning("Could not update cache, using existing: %s", e)
     else:
         # Clone fresh
-        print(f"Cloning {url} to {repo_path}...")
+        logger.info("Cloning %s to %s...", url, repo_path)
         try:
             Repo.clone_from(url, repo_path, env=env)
         except GitCommandError as e:
@@ -155,7 +158,7 @@ def cleanup_cache(max_age_days: int = 30) -> int:
         age_days = (now - atime) / (24 * 3600)
         
         if age_days > max_age_days:
-            print(f"Removing cached repo: {repo_dir.name} (unused for {age_days:.0f} days)")
+            logger.info("Removing cached repo: %s (unused for %.0f days)", repo_dir.name, age_days)
             try:
                 # On Windows, need to handle read-only files in .git
                 def handle_remove_readonly(func, path, exc):
@@ -166,6 +169,6 @@ def cleanup_cache(max_age_days: int = 30) -> int:
                 shutil.rmtree(repo_dir, onerror=handle_remove_readonly)
                 removed += 1
             except Exception as e:
-                print(f"Warning: Could not remove {repo_dir.name}: {e}")
+                logger.warning("Could not remove %s: %s", repo_dir.name, e)
     
     return removed

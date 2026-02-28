@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Iterator, Tuple, TYPE_CHECKING
@@ -13,10 +14,27 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from src.config import ArchitextSettings, load_settings
 from src.file_filters import should_skip_path
 from src.indexer_components.factories import build_llm, build_vector_store
-from src.indexer_components.querying import _keyword_score, _tokenize  # noqa: F401
 
 if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
+
+
+# ---------------------------------------------------------------------------
+# Query / keyword helpers (previously in indexer_components/querying.py)
+# ---------------------------------------------------------------------------
+
+def _tokenize(text: str) -> List[str]:
+    """Split text into lowercase alphanumeric tokens."""
+    return re.findall(r"[a-zA-Z0-9_]+", text.lower())
+
+
+def _keyword_score(query: str, document: str) -> float:
+    """Return fraction of query tokens found in the document."""
+    query_terms = set(_tokenize(query))
+    if not query_terms:
+        return 0.0
+    doc_terms = set(_tokenize(document))
+    return len(query_terms & doc_terms) / len(query_terms)
 
 
 def _build_llm(cfg: ArchitextSettings):
