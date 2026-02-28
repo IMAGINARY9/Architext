@@ -1,7 +1,7 @@
 """Shared server utilities used by route handlers and the app factory.
 
-Pure helper functions with no FastAPI dependency — safe to import
-from any module that needs path validation, hashing, or directory stats.
+Contains pure helper functions (hashing, directory stats, text transforms)
+and index-resolution helpers that raise ``HTTPException`` on validation failures.
 """
 from __future__ import annotations
 
@@ -296,3 +296,177 @@ def build_mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
             },
         },
     ]
+
+# ---------------------------------------------------------------------------
+# Timestamp / text-transform helpers
+# ---------------------------------------------------------------------------
+
+def now_iso() -> str:
+    """Return the current UTC time as an ISO 8601 string (``…Z`` suffix)."""
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def ensure_sources_instruction(text: str) -> str:
+    """Append a source-citation instruction unless the query already asks for sources."""
+    lower = (text or "").lower()
+    keywords = [
+        "show sources", "show source", "file path", "file:",
+        "quote line", "quote lines", "line", "lines", "sources", "cite",
+    ]
+    if any(k in lower for k in keywords):
+        return text
+    instruction = (
+        "\n\nPlease include sources (file path and line ranges) "
+        "for any code referenced, e.g., 'file.py:10-20'."
+    )
+    return text + instruction
+
+
+# ---------------------------------------------------------------------------
+# Index-resolution helpers  (raise ``HTTPException`` on validation failures)
+# ---------------------------------------------------------------------------
+
+def find_index_path_by_name(name: str, storage_roots: List[Path]) -> str:
+    """Return the storage path for an index identified by *name*.
+
+    Raises ``HTTPException(404)`` when no matching index is found.
+    """
+    from fastapi import HTTPException  # lazy import
+
+    for root in storage_roots:
+        if not root.exists():
+            continue
+        if root.name == name and (root / "chroma.sqlite3").exists():
+            return str(root)
+        for item in root.iterdir():
+            if item.is_dir() and item.name == name and (item / "chroma.sqlite3").exists():
+                return str(item)
+    raise HTTPException(status_code=404, detail=f"Index with name '{name}' not found")
+
+
+def list_available_indices(storage_roots: List[Path]) -> List[Dict[str, str]]:
+    """Return a list of ``{"name": …, "path": …}`` dicts for every discovered index."""
+    found: List[Dict[str, str]] = []
+    for root in storage_roots:
+        if not root.exists():
+            continue
+        if (root / "chroma.sqlite3").exists():
+            found.append({"name": root.name, "path": str(root)})
+        for item in root.iterdir():
+            if item.is_dir() and (item / "chroma.sqlite3").exists():
+                found.append({"name": item.name, "path": str(item)})
+    return found
+
+
+def resolve_index_storage(name: Optional[str], storage_roots: List[Path]) -> str:
+    """Resolve the storage path for an index.
+
+    When *name* is given, look it up directly.  Otherwise auto-select iff
+    exactly one index exists.
+
+    Raises ``HTTPException(404)`` if none found, ``HTTPException(400)`` if
+    multiple exist and *name* was not specified.
+    """
+    from fastapi import HTTPException  # lazy import
+
+    if name:
+        return find_index_path_by_name(name, storage_roots)
+
+    candidates = list_available_indices(storage_roots)
+    if len(candidates) == 1:
+        return candidates[0]["path"]
+    if len(candidates) == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="No indices available. Create one with the /index endpoint.",
+        )
+    names = ", ".join(c["name"] for c in candidates[:10])
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"Multiple indices available ({len(candidates)}). "
+            f"Specify the 'name' field to select one. Available: {names}"
+        ),
+    )
+
+
+def validate_source_dir(path: Path, source_roots: List[Path]) -> None:
+    """Validate that *path* exists, is a directory, and lives under *source_roots*.
+
+    Raises ``HTTPException(400)`` on any validation failure.
+    """
+    from fastapi import HTTPException  # lazy import
+
+    if not path.exists():
+        raise HTTPException(status_code=400, detail="source path does not exist")
+    if not path.is_dir():
+        raise HTTPException(status_code=400, detail="source path must be a directory")
+    if not is_within_any(path, source_roots):
+        raise HTTPException(
+            status_code=400, detail="source path must be within allowed roots"
+        )
+
+
+def resolve_storage_path(
+    raw_path: Optional[str],
+    source: Optional[str],
+    storage_roots: List[Path],
+    default_storage_path: str,
+) -> str:
+    """Resolve and validate the storage path for indexing.
+
+    If *raw_path* is given it is validated against *storage_roots*.
+    Otherwise a deterministic path is computed from *source* (or the default
+    storage path is used as fallback).
+
+    Raises ``HTTPException(400)`` on validation failures.
+    """
+    from fastapi import HTTPException  # lazy import
+
+    if raw_path:
+        candidate = Path(raw_path).expanduser().resolve()
+        if not is_within_any(candidate, storage_roots):
+            allowed_paths = ", ".join(str(root) for root in storage_roots)
+            if raw_path in ["string", "path", "example", "null"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"storage path cannot be '{raw_path}' (placeholder value). "
+                        f"Use a real path within allowed roots like "
+                        f"'{allowed_paths}/my-index', or omit the field to use defaults."
+                    ),
+                )
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"storage path '{candidate}' must be within "
+                    f"allowed roots: {allowed_paths}"
+                ),
+            )
+        return str(candidate)
+
+    if source:
+        index_name = compute_index_name(source)
+        default_root = Path(default_storage_path).expanduser().resolve()
+        storage_path = default_root / index_name
+        if not is_within_any(storage_path, storage_roots):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Computed storage path '{storage_path}' is not within allowed roots"
+                ),
+            )
+        return str(storage_path)
+
+    candidate = Path(default_storage_path).expanduser().resolve()
+    if not is_within_any(candidate, storage_roots):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Default storage path '{candidate}' is not within allowed roots",
+        )
+    return str(candidate)

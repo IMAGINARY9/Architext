@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
 
@@ -86,8 +86,8 @@ def test_query_endpoint_agent_mode(mocker, patched_settings):
     node = MockNode()
     mock_response.source_nodes = [node]
 
-    mocker.patch("src.server.load_existing_index", return_value=Mock())
-    mocker.patch("src.server.query_index", return_value=mock_response)
+    mocker.patch("src.api.querying.load_existing_index", return_value=Mock())
+    mocker.patch("src.api.querying.query_index", return_value=mock_response)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -124,7 +124,7 @@ def test_query_cancels_on_disconnect(mocker, tmp_path, patched_settings):
         time.sleep(1)
         return Mock()
 
-    mocker.patch("src.server.load_existing_index", side_effect=slow_load)
+    mocker.patch("src.api.querying.load_existing_index", side_effect=slow_load)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -150,8 +150,8 @@ def test_query_appends_sources_instruction_when_missing(mocker, tmp_path, patche
         mock_response.source_nodes = []
         return mock_response
 
-    mocker.patch("src.server.load_existing_index", return_value=Mock())
-    mocker.patch("src.server.query_index", side_effect=fake_query)
+    mocker.patch("src.api.querying.load_existing_index", return_value=Mock())
+    mocker.patch("src.api.querying.query_index", side_effect=fake_query)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -176,8 +176,8 @@ def test_query_does_not_duplicate_instruction(mocker, tmp_path, patched_settings
         mock_response.source_nodes = []
         return mock_response
 
-    mocker.patch("src.server.load_existing_index", return_value=Mock())
-    mocker.patch("src.server.query_index", side_effect=fake_query)
+    mocker.patch("src.api.querying.load_existing_index", return_value=Mock())
+    mocker.patch("src.api.querying.query_index", side_effect=fake_query)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -193,8 +193,8 @@ def test_query_endpoint_override_flags(mocker, patched_settings):
     mock_response.__str__ = Mock(return_value="answer")
     mock_response.source_nodes = []
 
-    mocker.patch("src.server.load_existing_index", return_value=Mock())
-    query_mock = mocker.patch("src.server.query_index", return_value=mock_response)
+    mocker.patch("src.api.querying.load_existing_index", return_value=Mock())
+    query_mock = mocker.patch("src.api.querying.query_index", return_value=mock_response)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -236,8 +236,8 @@ def test_mcp_run_query_dispatch(mocker, patched_settings):
     mock_response.__str__ = Mock(return_value="answer")
     mock_response.source_nodes = []
 
-    mocker.patch("src.server.load_existing_index", return_value=Mock())
-    mocker.patch("src.server.query_index", return_value=mock_response)
+    mocker.patch("src.api.querying.load_existing_index", return_value=Mock())
+    mocker.patch("src.api.querying.query_index", return_value=mock_response)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -295,8 +295,8 @@ def test_query_with_name_works_when_multiple_indices(mocker, tmp_path, patched_s
     node.score = 0.9
     mock_response.source_nodes = [node]
 
-    mocker.patch("src.server.load_existing_index", return_value=Mock())
-    mocker.patch("src.server.query_index", return_value=mock_response)
+    mocker.patch("src.api.querying.load_existing_index", return_value=Mock())
+    mocker.patch("src.api.querying.query_index", return_value=mock_response)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
