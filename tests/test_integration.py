@@ -6,11 +6,9 @@ These tests validate:
 - Query generation and response
 - Storage persistence and reloading
 """
-import os
-import tempfile
 from pathlib import Path
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from src.config import ArchitextSettings
 from src.indexer import initialize_settings, load_documents, create_index, load_existing_index

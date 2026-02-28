@@ -102,7 +102,7 @@ async def reindex_with_logical_chunking():
     print()
     print("📝 Next steps:")
     print("   1. Start the server: ./start_windows.bat --api")
-    print(f"   2. Update queries to use: name='src-5640d5cd-v2'")
+    print("   2. Update queries to use: name='src-5640d5cd-v2'")
     print("   3. Test queries and verify start_line/end_line are populated")
     print()
     print("   Or rename the new index to replace the old one:")

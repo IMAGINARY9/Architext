@@ -87,6 +87,7 @@ TASK_CATEGORIES: Dict[str, List[str]] = {
 
 
 def list_task_names() -> list[str]:
+    """Return a sorted list of all registered task names."""
     return sorted(TASK_REGISTRY.keys())
 
 

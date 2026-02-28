@@ -4,11 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import tempfile
-import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,8 +17,6 @@ from src.tasks.orchestration.webhooks import (
     emit_task_completed,
     emit_task_failed,
     emit_task_started,
-    emit_task_cached,
-    get_webhook_manager,
 )
 
 

@@ -1,9 +1,8 @@
 """Tests for task pipeline composition."""
 from __future__ import annotations
 
-import time
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

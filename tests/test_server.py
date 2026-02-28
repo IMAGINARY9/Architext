@@ -1,4 +1,5 @@
-﻿import pytest
+﻿"""Tests for the FastAPI server application."""
+import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
 

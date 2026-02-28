@@ -1,7 +1,5 @@
 """Tests for extended BaseTask implementations."""
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.tasks.analysis import (
     StructureAnalysisTask,
@@ -17,11 +15,7 @@ from src.tasks.analysis import (
     architecture_pattern_detection_v2,
     impact_analysis_v2,
     dependency_graph_export_v2,
-    detect_duplicate_blocks_v2,
-    detect_duplicate_blocks_semantic_v2,
-    security_heuristics_v2,
 )
-from src.tasks.core.base import FileInfo
 
 
 class TestStructureAnalysisTask:

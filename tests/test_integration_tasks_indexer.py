@@ -1,3 +1,4 @@
+"""Integration tests for task execution with indexer context."""
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor

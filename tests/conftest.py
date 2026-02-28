@@ -1,6 +1,5 @@
+"""Shared pytest fixtures for Architext tests."""
 import pytest
-import os
-import shutil
 
 @pytest.fixture
 def temp_repo_path(tmp_path):

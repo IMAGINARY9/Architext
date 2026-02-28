@@ -1,12 +1,9 @@
 """Tests for task scheduling system."""
 from __future__ import annotations
 
-import json
-import tempfile
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

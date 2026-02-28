@@ -1,9 +1,5 @@
 """Tests for customizable scoring weights in the recommendation engine."""
-import json
-import pytest
-from pathlib import Path
 from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta
 
 from src.tasks.orchestration.recommendations import (
     ScoringWeights,
@@ -11,10 +7,7 @@ from src.tasks.orchestration.recommendations import (
     RecommendationConfig,
     TaskRecommendationEngine,
     get_scoring_weights,
-    update_scoring_weights,
-    reset_scoring_weights,
     get_weight_presets,
-    apply_weight_preset,
 )
 
 

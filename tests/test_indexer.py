@@ -1,3 +1,4 @@
+"""Tests for the indexer module."""
 import os
 import pytest
 

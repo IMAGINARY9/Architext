@@ -12,7 +12,6 @@ from src.task_registry import (
     list_task_categories,
     get_task_dependencies,
     TASK_CATEGORIES,
-    TASK_DEPENDENCIES,
 )
 
 

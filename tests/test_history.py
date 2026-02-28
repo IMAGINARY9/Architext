@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -12,7 +9,6 @@ from src.tasks.orchestration.history import (
     TaskExecution,
     TaskAnalytics,
     TaskExecutionHistory,
-    ExecutionTracker,
     get_task_history,
 )
 

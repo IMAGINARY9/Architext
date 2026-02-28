@@ -12,7 +12,7 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from src.config import ArchitextSettings
 
 
-def build_llm(cfg: ArchitextSettings):
+def build_llm(cfg: ArchitextSettings) -> OpenAILike:
     """Create the configured LLM client.
 
     Currently supports local/OpenAI-compatible endpoints via OpenAILike.
@@ -61,6 +61,7 @@ def build_embedding(cfg: ArchitextSettings):
 
 
 def resolve_collection_name(cfg: ArchitextSettings) -> str:
+    """Return the configured collection name, falling back to 'architext_db'."""
     return cfg.vector_store_collection or "architext_db"
 
 

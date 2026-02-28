@@ -1,9 +1,7 @@
 """Tests for BaseTask-based task implementations."""
 from __future__ import annotations
 
-import pytest
-from unittest.mock import patch, MagicMock
-from typing import List
+from unittest.mock import patch
 
 from src.tasks.analysis import (
     AntiPatternDetectionTask,
