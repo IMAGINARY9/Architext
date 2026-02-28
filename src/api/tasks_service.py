@@ -10,16 +10,7 @@ from fastapi import HTTPException
 
 from src.task_registry import run_task
 from src.ingestor import resolve_source
-
-
-def _is_within_any(candidate: Path, roots: List[Path]) -> bool:
-    for root in roots:
-        try:
-            candidate.relative_to(root)
-            return True
-        except ValueError:
-            continue
-    return False
+from src.server_utils import is_within_any as _is_within_any
 
 
 def resolve_task_store_path(raw_path: Optional[str]) -> Path:
