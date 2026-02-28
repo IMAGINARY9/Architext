@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from src.tasks.graph import _build_import_graph
-from src.tasks.shared import _progress, _read_file_text, collect_file_paths
+from src.tasks.shared import ProgressCallback, _progress, _read_file_text, collect_file_paths
 
 
 def _count_python_docstrings(files: List[str]) -> int:
+    """Count Python docstrings across all given files."""
     count = 0
     for path in files:
         if Path(path).suffix != ".py":
@@ -20,7 +21,7 @@ def _count_python_docstrings(files: List[str]) -> int:
             continue
         try:
             tree = ast.parse(content)
-        except Exception:
+        except SyntaxError:
             continue
 
         if ast.get_docstring(tree):
@@ -35,8 +36,13 @@ def _count_python_docstrings(files: List[str]) -> int:
 def health_score(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
+    """Calculate an aggregate health score for the codebase.
+
+    Combines modularity, coupling, documentation coverage, and test presence
+    into a single 0-100 score.
+    """
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
     if not files:

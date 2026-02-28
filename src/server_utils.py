@@ -6,6 +6,7 @@ and index-resolution helpers that raise ``HTTPException`` on validation failures
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 import threading
@@ -13,6 +14,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
@@ -83,7 +86,8 @@ def clear_chroma_storage(storage_path: str) -> None:
         if candidate.is_file():
             try:
                 candidate.unlink()
-            except Exception:
+            except OSError:
+                logger.debug("Could not remove %s, skipping", candidate)
                 continue
 
 
@@ -168,7 +172,7 @@ def build_mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
                 if item.is_dir() and (item / "chroma.sqlite3").exists():
                     indices.append(item.name)
     except Exception:
-        pass
+        logger.debug("Error scanning storage roots for indices", exc_info=True)
 
     available = ", ".join(indices) if indices else "none found"
     return [

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from src.tasks.shared import (
     SECURITY_RULES,
     SEMANTIC_VULNERABILITY_QUERIES,
+    ProgressCallback,
     _progress,
     _read_file_text,
     collect_file_paths,
@@ -17,6 +18,7 @@ from src.tasks.shared import (
 
 
 def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict[str, Any]]:
+    """Apply regex-based security rules against every source line."""
     findings: List[Dict[str, Any]] = []
     for path in files:
         suffix = Path(path).suffix.lower()
@@ -47,10 +49,11 @@ def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict
 
 
 def _scan_python_ast_security(path: str, content: str) -> List[Dict[str, Any]]:
+    """Walk the Python AST to find dangerous calls (eval, exec, subprocess, etc.)."""
     findings: List[Dict[str, Any]] = []
     try:
         tree = ast.parse(content)
-    except Exception:
+    except SyntaxError:
         return findings
 
     class Visitor(ast.NodeVisitor):
@@ -95,10 +98,11 @@ def _scan_python_ast_security(path: str, content: str) -> List[Dict[str, Any]]:
 
 
 def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]:
+    """Simple taint analysis: detect user-input flowing into sensitive sinks."""
     findings: List[Dict[str, Any]] = []
     try:
         tree = ast.parse(content)
-    except Exception:
+    except SyntaxError:
         return findings
 
     source_keywords = {
@@ -205,8 +209,9 @@ def security_heuristics(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
     max_findings: int = 500,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
+    """Run a combined regex + AST + taint security scan on all source files."""
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
     _progress(progress_callback, {"stage": "analyze", "message": "Scanning for heuristic matches"})
@@ -236,8 +241,9 @@ def security_heuristics(
 def detect_vulnerabilities(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
+    """Run heuristic scan plus optional semantic (RAG) vulnerability queries."""
     heuristics = security_heuristics(
         storage_path=storage_path,
         source_path=source_path,

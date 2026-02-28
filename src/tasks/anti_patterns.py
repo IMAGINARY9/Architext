@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from src.tasks.graph import _build_import_graph, _find_cycles
 from src.tasks.shared import (
+    ProgressCallback,
     _classify_import_clusters,
     _extract_imports,
     _progress,
@@ -19,8 +20,14 @@ from src.tasks.shared import (
 def detect_anti_patterns(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
+    """Detect code anti-patterns, structural issues, and project hygiene gaps.
+
+    Scans for god objects, large files, mixed responsibilities, circular
+    dependencies, missing tests/docs/CI, duplicated stems, flat structure, and
+    other common code smells.
+    """
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
 

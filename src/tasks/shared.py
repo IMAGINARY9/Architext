@@ -7,11 +7,14 @@ import threading
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import chromadb
 
 from src.file_filters import should_skip_path
+
+# Type alias for progress callback used across all task functions.
+ProgressCallback = Optional[Callable[[Dict[str, Any]], None]]
 
 
 # === Task Execution Context ===
@@ -336,7 +339,8 @@ SEMANTIC_VULNERABILITY_QUERIES: List[Dict[str, str]] = [
 ]
 
 
-def _progress(progress_callback, payload: Dict[str, Any]):
+def _progress(progress_callback: ProgressCallback, payload: Dict[str, Any]) -> None:
+    """Invoke the progress callback if provided."""
     if progress_callback:
         progress_callback(payload)
 

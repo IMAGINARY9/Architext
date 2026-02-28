@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from src.tasks.shared import (
     DEFAULT_EXTENSIONS,
     TEST_PATTERNS,
+    ProgressCallback,
     _line_number_from_index,
     _progress,
     _read_file_text,
@@ -50,7 +51,7 @@ def _is_test_file(path: str) -> bool:
 def test_mapping_analysis(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
     """
     Analyze test file presence and map tests to source files.
@@ -119,7 +120,7 @@ def test_mapping_analysis(
 def identify_silent_failures(
     storage_path: Optional[str] = None,
     source_path: Optional[str] = None,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
     """
     Find exception handlers that silently swallow errors.

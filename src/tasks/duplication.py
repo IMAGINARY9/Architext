@@ -10,10 +10,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.tasks.shared import _progress, _read_file_text, collect_file_paths
+from src.tasks.shared import ProgressCallback, _progress, _read_file_text, collect_file_paths
 
 
 def _normalize_duplication_line(line: str, suffix: str) -> str:
+    """Strip comments and whitespace for line-level duplicate comparison."""
     stripped = line.strip()
     if not stripped:
         return ""
@@ -25,6 +26,11 @@ def _normalize_duplication_line(line: str, suffix: str) -> str:
 
 
 def _normalize_python_tokens(segment: str) -> str:
+    """Normalize Python tokens for semantic comparison.
+
+    Replaces identifiers with ``_id``, strings with ``S``, and numbers
+    with ``0`` so structurally identical code hashes the same.
+    """
     tokens: List[str] = []
     try:
         for tok in tokenize.generate_tokens(io.StringIO(segment).readline):
@@ -43,7 +49,7 @@ def _normalize_python_tokens(segment: str) -> str:
                 tokens.append("0")
             else:
                 tokens.append(tok.string)
-    except Exception:
+    except tokenize.TokenError:
         return ""
     return " ".join(tokens)
 
@@ -53,8 +59,9 @@ def detect_duplicate_blocks_semantic(
     source_path: Optional[str] = None,
     min_tokens: int = 40,
     max_findings: int = 50,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
+    """Detect semantically similar functions via token normalization."""
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
 
@@ -70,7 +77,7 @@ def detect_duplicate_blocks_semantic(
             continue
         try:
             tree = ast.parse(content)
-        except Exception:
+        except SyntaxError:
             continue
 
         for node in ast.walk(tree):
@@ -122,8 +129,9 @@ def detect_duplicate_blocks(
     min_lines: int = 8,
     max_findings: int = 50,
     max_windows_per_file: int = 6000,
-    progress_callback=None,
+    progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
+    """Detect exact duplicate code blocks using sliding-window hashing."""
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
 
