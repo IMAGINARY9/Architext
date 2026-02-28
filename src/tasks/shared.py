@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import ast
-import os
 import re
 import threading
-from collections import Counter
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
 import chromadb
 

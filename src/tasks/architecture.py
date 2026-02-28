@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import ast
-import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional

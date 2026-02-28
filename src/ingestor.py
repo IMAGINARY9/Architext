@@ -10,8 +10,7 @@ import hashlib
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Union, Dict
-from urllib.parse import urlparse
+from typing import Optional, Dict
 
 try:
     from git import Repo

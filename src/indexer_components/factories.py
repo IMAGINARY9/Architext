@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 import chromadb
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding

@@ -22,7 +22,6 @@ from src.tasks import (
     detect_duplicate_blocks,
     detect_duplicate_blocks_semantic,
     TaskContext,
-    task_context,
     set_current_context,
 )
 

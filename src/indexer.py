@@ -1,7 +1,7 @@
 import os
 import threading
 from pathlib import Path
-from typing import Optional, List, Dict, Iterable, Iterator, Tuple, TYPE_CHECKING
+from typing import Optional, List, Dict, Iterator, Tuple, TYPE_CHECKING
 
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings, Document
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -13,7 +13,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from src.config import ArchitextSettings, load_settings
 from src.file_filters import should_skip_path
 from src.indexer_components.factories import build_llm, build_vector_store
-from src.indexer_components.querying import _keyword_score, _tokenize
+from src.indexer_components.querying import _keyword_score, _tokenize  # noqa: F401
 
 if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
@@ -440,7 +440,7 @@ def _apply_cross_encoder_rerank(
     model_name: str,
 ) -> List[NodeWithScore]:
     try:
-        from sentence_transformers import CrossEncoder
+        pass
     except Exception as exc:  # pylint: disable=broad-except
         raise RuntimeError(f"Cross-encoder unavailable for rerank: {exc}") from exc
 

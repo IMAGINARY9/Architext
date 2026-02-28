@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from src.tasks.graph import _build_import_graph, _find_cycles
 from src.tasks.shared import (

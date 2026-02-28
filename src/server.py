@@ -6,7 +6,7 @@ import traceback
 import json
 from pathlib import Path
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from concurrent.futures import ThreadPoolExecutor
