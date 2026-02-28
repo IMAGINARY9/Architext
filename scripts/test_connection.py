@@ -1,3 +1,4 @@
+"""Quick connectivity test for the local LLM API endpoint."""
 import os
 import sys
 from openai import OpenAI
@@ -6,7 +7,8 @@ from openai import OpenAI
 API_BASE = os.getenv('OPENAI_API_BASE', 'http://127.0.0.1:5000/v1')
 API_KEY = os.getenv('OPENAI_API_KEY', 'local')
 
-def test_local_connection():
+def test_local_connection() -> None:
+    """Test connectivity to the configured LLM API endpoint."""
     print(f"Testing connection to: {API_BASE}")
     
     # Configure OpenAI

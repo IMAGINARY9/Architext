@@ -122,6 +122,7 @@ def _clone_to_cache(url: str, ssh_key: Optional[str] = None) -> Path:
 
 
 def _build_git_env(ssh_key: Optional[str]) -> Dict[str, str]:
+    """Build environment variables for git SSH authentication."""
     if not ssh_key:
         return {}
     key_path = Path(ssh_key).expanduser().resolve()

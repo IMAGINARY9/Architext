@@ -10,7 +10,7 @@ from src.tasks.analysis import (
     HealthScoreTask,
     detect_anti_patterns_v2,
     identify_silent_failures_v2,
-    test_mapping_analysis_v2,
+    test_mapping_analysis_v2 as _test_mapping_analysis_v2,
     health_score_v2,
 )
 from src.tasks.core.base import FileInfo
@@ -372,7 +372,7 @@ class TestWrapperFunctions:
         """Test wrapper function calls task correctly."""
         mock_run.return_value = {"tested_ratio": 0.5}
         
-        result = test_mapping_analysis_v2(source_path="src")
+        result = _test_mapping_analysis_v2(source_path="src")
         
         mock_run.assert_called_once()
     
