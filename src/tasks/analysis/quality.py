@@ -17,7 +17,7 @@ from src.tasks.core.base import (
     CODE_EXTENSIONS,
     calculate_ratio,
 )
-from src.tasks.shared import _line_number_from_index
+from src.tasks.shared import TEST_PATTERNS, _line_number_from_index
 
 
 # =============================================================================
@@ -153,15 +153,6 @@ silent_failures_detection_v2 = identify_silent_failures_v2
 # =============================================================================
 # Test Mapping Task
 # =============================================================================
-
-# Common test file naming patterns
-TEST_PATTERNS = [
-    r"^test_(.+)$",      # test_module.py
-    r"^(.+)_test$",      # module_test.py
-    r"^tests?$",         # test.py or tests.py
-    r"^(.+)\.test$",     # module.test.js
-    r"^(.+)\.spec$",     # module.spec.ts
-]
 
 # Files to skip when checking for test coverage
 SKIP_STEMS = {"__init__", "conftest", "__main__", "setup", "config", "settings"}

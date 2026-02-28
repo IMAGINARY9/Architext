@@ -185,6 +185,157 @@ FRAMEWORK_SETTINGS_IGNORES = {
 }
 
 
+# --- Constants shared between v1 (top-level) and v2 (analysis/) task files ---
+
+FRAMEWORK_PATTERNS: Dict[str, List[str]] = {
+    "django": ["django"],
+    "flask": ["flask"],
+    "fastapi": ["fastapi"],
+    "requests": ["requests"],
+    "sqlalchemy": ["sqlalchemy"],
+    "pandas": ["pandas"],
+    "numpy": ["numpy"],
+    "pytest": ["pytest"],
+    "react": ["react", "react-dom"],
+    "vue": ["vue"],
+    "angular": ["@angular"],
+    "express": ["express"],
+    "nestjs": ["@nestjs"],
+    "spring": ["springframework", "spring-boot"],
+}
+
+PATTERN_RULES: Dict[str, Dict[str, Any]] = {
+    "MVC": {
+        "required": [["controllers", "controller"], ["views", "view", "templates"]],
+        "optional": [["models", "model"]],
+        "min_confidence": 0.6,
+    },
+    "Service-Repository": {
+        "required": [["services", "service"], ["repositories", "repository", "repos"]],
+        "optional": [["entities", "entity", "models"]],
+        "min_confidence": 0.6,
+    },
+    "Layered Architecture": {
+        "required": [["domain", "core"], ["infrastructure", "adapters"]],
+        "optional": [["application", "usecases", "use_cases"]],
+        "min_confidence": 0.5,
+    },
+    "Hexagonal/Ports-Adapters": {
+        "required": [["ports"], ["adapters"]],
+        "optional": [["domain", "core"]],
+        "min_confidence": 0.7,
+    },
+    "CQRS": {
+        "required": [["commands", "command"], ["queries", "query"]],
+        "optional": [["handlers", "handler"]],
+        "min_confidence": 0.7,
+    },
+    "Plugin Architecture": {
+        "required": [["plugins", "plugin", "extensions", "extension"]],
+        "optional": [["hooks", "hook"]],
+        "min_confidence": 0.5,
+    },
+    "Event-Driven": {
+        "required": [["events", "event"], ["handlers", "handler", "listeners", "subscriber"]],
+        "optional": [["kafka", "rabbitmq", "pubsub"]],
+        "min_confidence": 0.6,
+    },
+    "Microservices": {
+        "required": [["docker-compose", "kubernetes", "k8s"]],
+        "optional": [["gateway", "api-gateway"], ["service-"]],
+        "min_confidence": 0.5,
+    },
+}
+
+TEST_PATTERNS: List[str] = [
+    r"^test_(.+)$",      # test_module.py
+    r"^(.+)_test$",      # module_test.py
+    r"^tests?$",         # test.py or tests.py (generic)
+    r"^(.+)\.test$",     # module.test.js
+    r"^(.+)\.spec$",     # module.spec.ts
+]
+
+SECURITY_RULES: List[Dict[str, Any]] = [
+    {
+        "id": "py-open-user-input",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(
+            r"\bopen\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
+            re.IGNORECASE,
+        ),
+        "description": "Potential file operation with user-controlled input",
+    },
+    {
+        "id": "py-path-read-user-input",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(
+            r"\b(read_text|read_bytes)\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
+            re.IGNORECASE,
+        ),
+        "description": "Potential file read with user-controlled input",
+    },
+    {
+        "id": "py-subprocess-user-input",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(
+            r"\b(subprocess\.run|subprocess\.popen|os\.system)\([^)]*(request|input|user|params|query)[^)]*\)",
+            re.IGNORECASE,
+        ),
+        "description": "Potential command execution using user input",
+    },
+    {
+        "id": "py-eval-exec",
+        "severity": "high",
+        "extensions": {".py"},
+        "pattern": re.compile(r"\b(eval|exec)\(.*\)", re.IGNORECASE),
+        "description": "Dynamic code execution detected",
+    },
+    {
+        "id": "js-fs-user-input",
+        "severity": "high",
+        "extensions": {".js", ".ts", ".jsx", ".tsx"},
+        "pattern": re.compile(
+            r"\bfs\.(readFile|readFileSync|writeFile|writeFileSync|createReadStream|createWriteStream)\(.*(req\.|request|params|query|body)\b",
+            re.IGNORECASE,
+        ),
+        "description": "Potential fs operation with request data",
+    },
+    {
+        "id": "hardcoded-secret",
+        "severity": "medium",
+        "extensions": None,
+        "pattern": re.compile(
+            r"\b(api_key|secret|password|token|access_key)\b\s*[:=]\s*['\"][^'\"]{6,}['\"]",
+            re.IGNORECASE,
+        ),
+        "description": "Potential hardcoded secret",
+    },
+]
+
+SEMANTIC_VULNERABILITY_QUERIES: List[Dict[str, str]] = [
+    {
+        "id": "unvalidated-file-io",
+        "prompt": "Where is user input passed into file operations without validation?",
+    },
+    {
+        "id": "path-traversal",
+        "prompt": "Find any code that constructs file paths from user input without sanitizing "
+                  "traversal like ..",
+    },
+    {
+        "id": "silent-exceptions",
+        "prompt": "Locate try/except blocks that swallow errors without logging or re-throwing.",
+    },
+    {
+        "id": "dynamic-code-exec",
+        "prompt": "Find dynamic code execution (eval/exec) or unsafe command execution paths.",
+    },
+]
+
+
 def _progress(progress_callback, payload: Dict[str, Any]):
     if progress_callback:
         progress_callback(payload)

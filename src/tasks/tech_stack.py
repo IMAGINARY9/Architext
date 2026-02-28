@@ -6,25 +6,13 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.tasks.shared import DEFAULT_EXTENSIONS, _progress, _read_file_text, collect_file_paths
-
-
-FRAMEWORK_PATTERNS = {
-    "django": ["django"],
-    "flask": ["flask"],
-    "fastapi": ["fastapi"],
-    "requests": ["requests"],
-    "sqlalchemy": ["sqlalchemy"],
-    "pandas": ["pandas"],
-    "numpy": ["numpy"],
-    "pytest": ["pytest"],
-    "react": ["react", "react-dom"],
-    "vue": ["vue"],
-    "angular": ["@angular"],
-    "express": ["express"],
-    "nestjs": ["@nestjs"],
-    "spring": ["springframework", "spring-boot"],
-}
+from src.tasks.shared import (
+    DEFAULT_EXTENSIONS,
+    FRAMEWORK_PATTERNS,
+    _progress,
+    _read_file_text,
+    collect_file_paths,
+)
 
 
 def tech_stack(

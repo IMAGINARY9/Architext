@@ -9,25 +9,10 @@ from collections import Counter, defaultdict
 from typing import Any, Callable, Dict, List, Optional
 
 from src.tasks.core.base import BaseTask, FileInfo
+from src.tasks.shared import FRAMEWORK_PATTERNS
 
-
-# Framework detection patterns
-FRAMEWORK_SIGNATURES = {
-    "django": ["django"],
-    "flask": ["flask"],
-    "fastapi": ["fastapi"],
-    "requests": ["requests"],
-    "sqlalchemy": ["sqlalchemy"],
-    "pandas": ["pandas"],
-    "numpy": ["numpy"],
-    "pytest": ["pytest"],
-    "react": ["react", "react-dom"],
-    "vue": ["vue"],
-    "angular": ["@angular"],
-    "express": ["express"],
-    "nestjs": ["@nestjs"],
-    "spring": ["springframework", "spring-boot"],
-}
+# Backward-compat alias used within this module
+FRAMEWORK_SIGNATURES = FRAMEWORK_PATTERNS
 
 # Language indicators by file extension
 LANGUAGE_INDICATORS = {

@@ -8,21 +8,12 @@ from typing import Any, Dict, List, Optional
 
 from src.tasks.shared import (
     DEFAULT_EXTENSIONS,
+    TEST_PATTERNS,
     _line_number_from_index,
     _progress,
     _read_file_text,
     collect_file_paths,
 )
-
-
-# Common test file naming patterns
-TEST_PATTERNS = [
-    r"^test_(.+)$",      # test_module.py
-    r"^(.+)_test$",      # module_test.py
-    r"^tests?$",         # test.py or tests.py (generic)
-    r"^(.+)\.test$",     # module.test.js
-    r"^(.+)\.spec$",     # module.spec.ts
-]
 
 
 def _extract_test_subject(test_filename: str) -> Optional[str]:

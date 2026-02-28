@@ -10,38 +10,10 @@ from collections import Counter
 from typing import Any, Callable, Dict, List, Optional
 
 from src.tasks.core.base import BaseTask, FileInfo, CODE_EXTENSIONS
+from src.tasks.shared import SECURITY_RULES
 
-
-# Security detection rules
-SECURITY_PATTERNS = [
-    {
-        "id": "py-open-user-input",
-        "severity": "high",
-        "extensions": {".py"},
-        "pattern": re.compile(
-            r"\bopen\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
-            re.IGNORECASE,
-        ),
-        "description": "Potential file operation with user-controlled input",
-    },
-    {
-        "id": "py-eval-exec",
-        "severity": "high",
-        "extensions": {".py"},
-        "pattern": re.compile(r"\b(eval|exec)\(.*\)", re.IGNORECASE),
-        "description": "Dynamic code execution detected",
-    },
-    {
-        "id": "hardcoded-secret",
-        "severity": "medium",
-        "extensions": None,
-        "pattern": re.compile(
-            r"\b(api_key|secret|password|token|access_key)\b\s*[:=]\s*['\"][^'\"]{6,}['\"]",
-            re.IGNORECASE,
-        ),
-        "description": "Potential hardcoded secret",
-    },
-]
+# Backward-compat alias used within this module
+SECURITY_PATTERNS = SECURITY_RULES
 
 
 class SecurityHeuristicsTask(BaseTask):

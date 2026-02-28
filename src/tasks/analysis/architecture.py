@@ -10,54 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from src.tasks.core.base import BaseTask, FileInfo, CODE_EXTENSIONS
 from src.tasks.graph import _build_import_graph
-
-
-# =============================================================================
-# Architecture Pattern Detection
-# =============================================================================
-
-PATTERN_RULES = {
-    "MVC": {
-        "required": [["controllers", "controller"], ["views", "view", "templates"]],
-        "optional": [["models", "model"]],
-        "min_confidence": 0.6,
-    },
-    "Service-Repository": {
-        "required": [["services", "service"], ["repositories", "repository", "repos"]],
-        "optional": [["entities", "entity", "models"]],
-        "min_confidence": 0.6,
-    },
-    "Layered Architecture": {
-        "required": [["domain", "core"], ["infrastructure", "adapters"]],
-        "optional": [["application", "usecases", "use_cases"]],
-        "min_confidence": 0.5,
-    },
-    "Hexagonal/Ports-Adapters": {
-        "required": [["ports"], ["adapters"]],
-        "optional": [["domain", "core"]],
-        "min_confidence": 0.7,
-    },
-    "CQRS": {
-        "required": [["commands", "command"], ["queries", "query"]],
-        "optional": [["handlers", "handler"]],
-        "min_confidence": 0.7,
-    },
-    "Plugin Architecture": {
-        "required": [["plugins", "plugin", "extensions", "extension"]],
-        "optional": [["hooks", "hook"]],
-        "min_confidence": 0.5,
-    },
-    "Event-Driven": {
-        "required": [["events", "event"], ["handlers", "handler", "listeners", "subscriber"]],
-        "optional": [["kafka", "rabbitmq", "pubsub"]],
-        "min_confidence": 0.6,
-    },
-    "Microservices": {
-        "required": [["docker-compose", "kubernetes", "k8s"]],
-        "optional": [["gateway", "api-gateway"], ["service-"]],
-        "min_confidence": 0.5,
-    },
-}
+from src.tasks.shared import PATTERN_RULES
 
 
 class ArchitecturePatternTask(BaseTask):

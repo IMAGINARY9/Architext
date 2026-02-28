@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from src.tasks.graph import _build_import_graph
-from src.tasks.shared import _get_ts_parser, _progress, _read_file_text, collect_file_paths
+from src.tasks.shared import (
+    PATTERN_RULES,
+    _get_ts_parser,
+    _progress,
+    _read_file_text,
+    collect_file_paths,
+)
 
 
 def impact_analysis(
@@ -90,51 +96,6 @@ def dependency_graph_export(
         return {"format": "dot", "content": "\n".join(lines), "edge_count": len(edges)}
 
     return {"format": "json", "nodes": list(graph.keys()), "edges": edges}
-
-
-# Architecture pattern detection rules with confidence scoring
-PATTERN_RULES = {
-    "MVC": {
-        "required": [["controllers", "controller"], ["views", "view", "templates"]],
-        "optional": [["models", "model"]],
-        "min_confidence": 0.6,
-    },
-    "Service-Repository": {
-        "required": [["services", "service"], ["repositories", "repository", "repos"]],
-        "optional": [["entities", "entity", "models"]],
-        "min_confidence": 0.6,
-    },
-    "Layered Architecture": {
-        "required": [["domain", "core"], ["infrastructure", "adapters"]],
-        "optional": [["application", "usecases", "use_cases"]],
-        "min_confidence": 0.5,
-    },
-    "Hexagonal/Ports-Adapters": {
-        "required": [["ports"], ["adapters"]],
-        "optional": [["domain", "core"]],
-        "min_confidence": 0.7,
-    },
-    "CQRS": {
-        "required": [["commands", "command"], ["queries", "query"]],
-        "optional": [["handlers", "handler"]],
-        "min_confidence": 0.7,
-    },
-    "Plugin Architecture": {
-        "required": [["plugins", "plugin", "extensions", "extension"]],
-        "optional": [["hooks", "hook"]],
-        "min_confidence": 0.5,
-    },
-    "Event-Driven": {
-        "required": [["events", "event"], ["handlers", "handler", "listeners", "subscriber"]],
-        "optional": [["kafka", "rabbitmq", "pubsub"]],
-        "min_confidence": 0.6,
-    },
-    "Microservices": {
-        "required": [["docker-compose", "kubernetes", "k8s"]],
-        "optional": [["gateway", "api-gateway"], ["service-"]],
-        "min_confidence": 0.5,
-    },
-}
 
 
 def architecture_pattern_detection(

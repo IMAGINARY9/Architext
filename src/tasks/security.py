@@ -7,86 +7,13 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.tasks.shared import _progress, _read_file_text, collect_file_paths
-
-SECURITY_RULES = [
-    {
-        "id": "py-open-user-input",
-        "severity": "high",
-        "extensions": {".py"},
-        "pattern": re.compile(
-            r"\bopen\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
-            re.IGNORECASE,
-        ),
-        "description": "Potential file operation with user-controlled input",
-    },
-    {
-        "id": "py-path-read-user-input",
-        "severity": "high",
-        "extensions": {".py"},
-        "pattern": re.compile(
-            r"\b(read_text|read_bytes)\(\s*[^)]*(request|input|user|filename|filepath|path)[^)]*\)",
-            re.IGNORECASE,
-        ),
-        "description": "Potential file read with user-controlled input",
-    },
-    {
-        "id": "py-subprocess-user-input",
-        "severity": "high",
-        "extensions": {".py"},
-        "pattern": re.compile(
-            r"\b(subprocess\.run|subprocess\.popen|os\.system)\([^)]*(request|input|user|params|query)[^)]*\)",
-            re.IGNORECASE,
-        ),
-        "description": "Potential command execution using user input",
-    },
-    {
-        "id": "py-eval-exec",
-        "severity": "high",
-        "extensions": {".py"},
-        "pattern": re.compile(r"\b(eval|exec)\(.*\)", re.IGNORECASE),
-        "description": "Dynamic code execution detected",
-    },
-    {
-        "id": "js-fs-user-input",
-        "severity": "high",
-        "extensions": {".js", ".ts", ".jsx", ".tsx"},
-        "pattern": re.compile(
-            r"\bfs\.(readFile|readFileSync|writeFile|writeFileSync|createReadStream|createWriteStream)\(.*(req\.|request|params|query|body)\b",
-            re.IGNORECASE,
-        ),
-        "description": "Potential fs operation with request data",
-    },
-    {
-        "id": "hardcoded-secret",
-        "severity": "medium",
-        "extensions": None,
-        "pattern": re.compile(
-            r"\b(api_key|secret|password|token|access_key)\b\s*[:=]\s*['\"][^'\"]{6,}['\"]",
-            re.IGNORECASE,
-        ),
-        "description": "Potential hardcoded secret",
-    },
-]
-
-SEMANTIC_VULNERABILITY_QUERIES = [
-    {
-        "id": "unvalidated-file-io",
-        "prompt": "Where is user input passed into file operations without validation?",
-    },
-    {
-        "id": "path-traversal",
-        "prompt": "Find any code that constructs file paths from user input without sanitizing traversal like ..",
-    },
-    {
-        "id": "silent-exceptions",
-        "prompt": "Locate try/except blocks that swallow errors without logging or re-throwing.",
-    },
-    {
-        "id": "dynamic-code-exec",
-        "prompt": "Find dynamic code execution (eval/exec) or unsafe command execution paths.",
-    },
-]
+from src.tasks.shared import (
+    SECURITY_RULES,
+    SEMANTIC_VULNERABILITY_QUERIES,
+    _progress,
+    _read_file_text,
+    collect_file_paths,
+)
 
 
 def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict[str, Any]]:
