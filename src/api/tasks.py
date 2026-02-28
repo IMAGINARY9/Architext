@@ -319,7 +319,7 @@ def build_tasks_router(
             task_name: Filter by specific task name
             limit: Maximum number of entries to return (default: 100)
         """
-        from src.tasks.history import get_task_history
+        from src.tasks.orchestration.history import get_task_history
         history = get_task_history()
         
         executions = history.get_history(
@@ -342,7 +342,7 @@ def build_tasks_router(
         
         Returns statistics like average duration, success rate, etc.
         """
-        from src.tasks.history import get_task_history
+        from src.tasks.orchestration.history import get_task_history
         history = get_task_history()
         
         analytics = history.get_analytics(task_name=task_name)
@@ -368,7 +368,7 @@ def build_tasks_router(
         Args:
             task_name: Clear history for specific task only
         """
-        from src.tasks.history import get_task_history
+        from src.tasks.orchestration.history import get_task_history
         history = get_task_history()
         
         count = history.clear(task_name=task_name)
@@ -384,7 +384,7 @@ def build_tasks_router(
     @router.get("/tasks/pipelines")
     async def list_pipelines() -> Dict[str, Any]:
         """List all available pipelines (built-in and custom)."""
-        from src.tasks.pipeline import list_builtin_pipelines, get_pipeline_store
+        from src.tasks.orchestration.pipeline import list_builtin_pipelines, get_pipeline_store
         
         builtin = list_builtin_pipelines()
         store = get_pipeline_store()
@@ -415,7 +415,7 @@ def build_tasks_router(
     @router.get("/tasks/pipelines/{pipeline_id}")
     async def get_pipeline(pipeline_id: str) -> Dict[str, Any]:
         """Get details of a specific pipeline."""
-        from src.tasks.pipeline import get_builtin_pipeline, get_pipeline_store
+        from src.tasks.orchestration.pipeline import get_builtin_pipeline, get_pipeline_store
         
         # Try built-in first
         pipeline = get_builtin_pipeline(pipeline_id)
@@ -434,7 +434,7 @@ def build_tasks_router(
         
         def serialize_step(step):
             """Serialize a step (PipelineStep or ParallelGroup)."""
-            from src.tasks.pipeline import ParallelGroup
+            from src.tasks.orchestration.pipeline import ParallelGroup
             if isinstance(step, ParallelGroup):
                 return {
                     "type": "parallel",
@@ -498,7 +498,7 @@ def build_tasks_router(
         - {"task_name": "...", "params": {...}, "continue_on_error": false}
         - {"parallel": [...steps...]} for parallel execution
         """
-        from src.tasks.pipeline import (
+        from src.tasks.orchestration.pipeline import (
             TaskPipeline, PipelineStep, ParallelGroup, get_pipeline_store
         )
         
@@ -546,7 +546,7 @@ def build_tasks_router(
     @router.delete("/tasks/pipelines/{pipeline_id}")
     async def delete_pipeline(pipeline_id: str) -> Dict[str, Any]:
         """Delete a custom pipeline (built-in pipelines cannot be deleted)."""
-        from src.tasks.pipeline import get_builtin_pipeline, get_pipeline_store
+        from src.tasks.orchestration.pipeline import get_builtin_pipeline, get_pipeline_store
         
         if get_builtin_pipeline(pipeline_id) is not None:
             raise HTTPException(
@@ -587,7 +587,7 @@ def build_tasks_router(
             max_workers: Max parallel workers (default: 4)
             stop_on_error: Stop pipeline on first error (default: True)
         """
-        from src.tasks.pipeline import (
+        from src.tasks.orchestration.pipeline import (
             get_builtin_pipeline, get_pipeline_store, PipelineExecutor
         )
         
@@ -649,7 +649,7 @@ def build_tasks_router(
             limit: Maximum number of recommendations (default: 5)
             category: Prefer tasks from this category
         """
-        from src.tasks.recommendations import get_task_recommendations
+        from src.tasks.orchestration.recommendations import get_task_recommendations
         
         recommendations = get_task_recommendations(
             limit=limit,
@@ -664,7 +664,7 @@ def build_tasks_router(
     @router.get("/tasks/recommendations/quick-scan")
     async def get_quick_scan_recommendations() -> Dict[str, Any]:
         """Get recommendations for a quick codebase scan."""
-        from src.tasks.recommendations import get_recommendation_engine
+        from src.tasks.orchestration.recommendations import get_recommendation_engine
         
         engine = get_recommendation_engine()
         recommendations = engine.get_quick_scan_recommendation()
@@ -680,7 +680,7 @@ def build_tasks_router(
         limit: int = 5,
     ) -> Dict[str, Any]:
         """Get recommendations for tasks in a specific category."""
-        from src.tasks.recommendations import get_recommendation_engine
+        from src.tasks.orchestration.recommendations import get_recommendation_engine
         
         if category not in TASK_CATEGORIES:
             raise HTTPException(
@@ -702,7 +702,7 @@ def build_tasks_router(
         limit: int = 3,
     ) -> Dict[str, Any]:
         """Get recommendations for tasks related to a given task."""
-        from src.tasks.recommendations import get_recommendation_engine
+        from src.tasks.orchestration.recommendations import get_recommendation_engine
         from src.task_registry import TASK_REGISTRY
         
         if task_name not in TASK_REGISTRY:
@@ -726,7 +726,7 @@ def build_tasks_router(
     @router.get("/tasks/recommendations/weights")
     async def get_scoring_weights() -> Dict[str, Any]:
         """Get current scoring weights for task recommendations."""
-        from src.tasks.recommendations import get_scoring_weights as get_weights
+        from src.tasks.orchestration.recommendations import get_scoring_weights as get_weights
         
         return {
             "weights": get_weights(),
@@ -753,7 +753,7 @@ def build_tasks_router(
         - category_coverage_boost: Boost for underrepresented categories (default: 15.0)
         - dependency_boost: Boost for tasks with dependencies ready (default: 10.0)
         """
-        from src.tasks.recommendations import update_scoring_weights as update_weights
+        from src.tasks.orchestration.recommendations import update_scoring_weights as update_weights
         
         # Filter to only float values
         weight_updates = {k: float(v) for k, v in request.items() if isinstance(v, (int, float))}
@@ -774,7 +774,7 @@ def build_tasks_router(
     @router.post("/tasks/recommendations/weights/reset")
     async def reset_scoring_weights() -> Dict[str, Any]:
         """Reset scoring weights to default values."""
-        from src.tasks.recommendations import reset_scoring_weights as reset_weights
+        from src.tasks.orchestration.recommendations import reset_scoring_weights as reset_weights
         
         defaults = reset_weights()
         
@@ -795,7 +795,7 @@ def build_tasks_router(
         - reliability-focused: Strongly prefer tasks that succeed
         - coverage-focused: Strongly prefer running all tasks
         """
-        from src.tasks.recommendations import get_weight_presets as get_presets
+        from src.tasks.orchestration.recommendations import get_weight_presets as get_presets
         
         presets = get_presets()
         
@@ -812,12 +812,12 @@ def build_tasks_router(
         Available presets: default, aggressive, conservative, 
         reliability-focused, coverage-focused
         """
-        from src.tasks.recommendations import apply_weight_preset as apply_preset
+        from src.tasks.orchestration.recommendations import apply_weight_preset as apply_preset
         
         result = apply_preset(preset_name)
         
         if result is None:
-            from src.tasks.recommendations import get_weight_presets as get_presets
+            from src.tasks.orchestration.recommendations import get_weight_presets as get_presets
             available = list(get_presets().keys())
             raise HTTPException(
                 status_code=404,
@@ -842,7 +842,7 @@ def build_tasks_router(
         Args:
             days: Number of days to include in analysis (default: 30)
         """
-        from src.tasks.metrics import get_dashboard_metrics
+        from src.tasks.orchestration.metrics import get_dashboard_metrics
         
         return get_dashboard_metrics(days)
     
@@ -858,7 +858,7 @@ def build_tasks_router(
             task_name: Name of the task
             days: Number of days to include (default: 30)
         """
-        from src.tasks.metrics import get_metrics_dashboard
+        from src.tasks.orchestration.metrics import get_metrics_dashboard
         from src.task_registry import TASK_REGISTRY
         
         if task_name not in TASK_REGISTRY:
@@ -877,7 +877,7 @@ def build_tasks_router(
         
         Returns only the summary portion of the dashboard for quick overview.
         """
-        from src.tasks.metrics import get_dashboard_metrics
+        from src.tasks.orchestration.metrics import get_dashboard_metrics
         
         metrics = get_dashboard_metrics(days)
         return {
@@ -894,7 +894,7 @@ def build_tasks_router(
         
         Returns execution counts and success rates by day.
         """
-        from src.tasks.metrics import get_dashboard_metrics
+        from src.tasks.orchestration.metrics import get_dashboard_metrics
         
         metrics = get_dashboard_metrics(days)
         return {
@@ -909,7 +909,7 @@ def build_tasks_router(
         
         Shows execution stats for each task category.
         """
-        from src.tasks.metrics import get_dashboard_metrics
+        from src.tasks.orchestration.metrics import get_dashboard_metrics
         
         metrics = get_dashboard_metrics(days)
         return {
@@ -924,7 +924,7 @@ def build_tasks_router(
     @router.get("/tasks/webhooks")
     async def list_webhooks() -> Dict[str, Any]:
         """List all registered webhooks."""
-        from src.tasks.webhooks import get_webhook_manager
+        from src.tasks.orchestration.webhooks import get_webhook_manager
         
         manager = get_webhook_manager()
         webhooks = manager.list_webhooks()
@@ -967,7 +967,7 @@ def build_tasks_router(
             max_retries: Maximum retry attempts (default: 3)
             enabled: Whether webhook is active (default: True)
         """
-        from src.tasks.webhooks import WebhookConfig, WebhookEvent, get_webhook_manager
+        from src.tasks.orchestration.webhooks import WebhookConfig, WebhookEvent, get_webhook_manager
         
         url = request.get("url")
         if not url:
@@ -1008,7 +1008,7 @@ def build_tasks_router(
     @router.get("/tasks/webhooks/{webhook_id}")
     async def get_webhook(webhook_id: str) -> Dict[str, Any]:
         """Get details of a specific webhook."""
-        from src.tasks.webhooks import get_webhook_manager
+        from src.tasks.orchestration.webhooks import get_webhook_manager
         
         manager = get_webhook_manager()
         webhook = manager.get_webhook(webhook_id)
@@ -1035,7 +1035,7 @@ def build_tasks_router(
             secret: New secret (optional)
             enabled: Enable/disable (optional)
         """
-        from src.tasks.webhooks import WebhookEvent, get_webhook_manager
+        from src.tasks.orchestration.webhooks import WebhookEvent, get_webhook_manager
         
         manager = get_webhook_manager()
         
@@ -1074,7 +1074,7 @@ def build_tasks_router(
     @router.delete("/tasks/webhooks/{webhook_id}")
     async def delete_webhook(webhook_id: str) -> Dict[str, Any]:
         """Delete a webhook."""
-        from src.tasks.webhooks import get_webhook_manager
+        from src.tasks.orchestration.webhooks import get_webhook_manager
         
         manager = get_webhook_manager()
         deleted = manager.unregister_webhook(webhook_id)
@@ -1093,7 +1093,7 @@ def build_tasks_router(
         limit: int = 50,
     ) -> Dict[str, Any]:
         """Get delivery history for a webhook."""
-        from src.tasks.webhooks import get_webhook_manager
+        from src.tasks.orchestration.webhooks import get_webhook_manager
         
         manager = get_webhook_manager()
         webhook = manager.get_webhook(webhook_id)
@@ -1115,7 +1115,7 @@ def build_tasks_router(
     @router.post("/tasks/webhooks/{webhook_id}/test")
     async def test_webhook(webhook_id: str) -> Dict[str, Any]:
         """Send a test event to a webhook."""
-        from src.tasks.webhooks import WebhookEvent, get_webhook_manager
+        from src.tasks.orchestration.webhooks import WebhookEvent, get_webhook_manager
         
         manager = get_webhook_manager()
         webhook = manager.get_webhook(webhook_id)
@@ -1154,7 +1154,7 @@ def build_tasks_router(
     @router.get("/tasks/schedules")
     async def list_schedules() -> Dict[str, Any]:
         """List all scheduled tasks."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         schedules = scheduler.list_schedules()
@@ -1200,7 +1200,7 @@ def build_tasks_router(
         - cron: Cron-like schedule (specify cron_minute, cron_hour, cron_day_of_week)
         - once: Run once at specified time (specify run_at as ISO datetime)
         """
-        from src.tasks.scheduler import (
+        from src.tasks.orchestration.scheduler import (
             ScheduleConfig, ScheduleType, get_task_scheduler
         )
         from src.task_registry import TASK_REGISTRY
@@ -1258,7 +1258,7 @@ def build_tasks_router(
     @router.get("/tasks/schedules/{schedule_id}")
     async def get_schedule(schedule_id: str) -> Dict[str, Any]:
         """Get details of a specific schedule."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         schedule = scheduler.get_schedule(schedule_id)
@@ -1277,7 +1277,7 @@ def build_tasks_router(
         request: Dict[str, Any] = Body(...),
     ) -> Dict[str, Any]:
         """Update a schedule configuration."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         updated = scheduler.update_schedule(schedule_id, request)
@@ -1296,7 +1296,7 @@ def build_tasks_router(
     @router.delete("/tasks/schedules/{schedule_id}")
     async def delete_schedule(schedule_id: str) -> Dict[str, Any]:
         """Delete a schedule."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         deleted = scheduler.delete_schedule(schedule_id)
@@ -1312,7 +1312,7 @@ def build_tasks_router(
     @router.post("/tasks/schedules/{schedule_id}/run")
     async def run_schedule_now(schedule_id: str) -> Dict[str, Any]:
         """Run a scheduled task immediately."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         execution = scheduler.run_now(schedule_id)
@@ -1331,7 +1331,7 @@ def build_tasks_router(
     @router.post("/tasks/schedules/{schedule_id}/enable")
     async def enable_schedule(schedule_id: str) -> Dict[str, Any]:
         """Enable a schedule."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         if not scheduler.enable_schedule(schedule_id):
@@ -1345,7 +1345,7 @@ def build_tasks_router(
     @router.post("/tasks/schedules/{schedule_id}/disable")
     async def disable_schedule(schedule_id: str) -> Dict[str, Any]:
         """Disable a schedule."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         if not scheduler.disable_schedule(schedule_id):
@@ -1362,7 +1362,7 @@ def build_tasks_router(
         limit: int = 50,
     ) -> Dict[str, Any]:
         """Get execution history for a schedule."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         schedule = scheduler.get_schedule(schedule_id)
@@ -1384,7 +1384,7 @@ def build_tasks_router(
     @router.post("/tasks/scheduler/start")
     async def start_scheduler() -> Dict[str, Any]:
         """Start the background task scheduler."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         scheduler.start()
@@ -1397,7 +1397,7 @@ def build_tasks_router(
     @router.post("/tasks/scheduler/stop")
     async def stop_scheduler() -> Dict[str, Any]:
         """Stop the background task scheduler."""
-        from src.tasks.scheduler import get_task_scheduler
+        from src.tasks.orchestration.scheduler import get_task_scheduler
         
         scheduler = get_task_scheduler()
         scheduler.stop()

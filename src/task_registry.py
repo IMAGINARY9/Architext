@@ -129,7 +129,7 @@ def run_task(
         Task result dictionary
     """
     from src.tasks.cache import get_task_cache
-    from src.tasks.history import get_task_history
+    from src.tasks.orchestration.history import get_task_history
     import time
     
     handler = get_task_handler(task_name)

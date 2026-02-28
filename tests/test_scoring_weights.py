@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
 
-from src.tasks.recommendations import (
+from src.tasks.orchestration.recommendations import (
     ScoringWeights,
     ScoringWeightsStore,
     RecommendationConfig,
@@ -210,9 +210,9 @@ class TestRecommendationConfig:
 class TestTaskRecommendationEngineWeights:
     """Tests for TaskRecommendationEngine scoring weight support."""
     
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None, "task-b": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a", "task-b"]})
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None, "task-b": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a", "task-b"]})
     def test_get_weights(self, mock_categories, mock_registry, mock_history):
         """Test getting current weights."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
@@ -222,15 +222,15 @@ class TestTaskRecommendationEngineWeights:
         
         assert isinstance(weights, ScoringWeights)
     
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
     def test_set_weights(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test setting weights."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
         
         # Use temp path for weights file
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             engine = TaskRecommendationEngine()
             
             new_weights = ScoringWeights(never_run_boost=60.0)
@@ -238,14 +238,14 @@ class TestTaskRecommendationEngineWeights:
             
             assert engine.get_weights().never_run_boost == 60.0
     
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
     def test_update_weights(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test updating specific weights."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
         
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             engine = TaskRecommendationEngine()
             
             updated = engine.update_weights(persist=False, never_run_boost=45.0)
@@ -253,14 +253,14 @@ class TestTaskRecommendationEngineWeights:
             assert updated.never_run_boost == 45.0
             assert engine.get_weights().never_run_boost == 45.0
     
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
     def test_apply_preset(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test applying a preset."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
         
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             engine = TaskRecommendationEngine()
             
             result = engine.apply_preset("aggressive", persist=False)
@@ -268,14 +268,14 @@ class TestTaskRecommendationEngineWeights:
             assert result is not None
             assert result.never_run_boost == 50.0
     
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
     def test_get_presets(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test getting preset list."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
         
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             engine = TaskRecommendationEngine()
             
             presets = engine.get_presets()
@@ -288,9 +288,9 @@ class TestTaskRecommendationEngineWeights:
 class TestWeightEffectOnScoring:
     """Tests verifying weights actually affect scoring."""
     
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"new-task": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["new-task"]})
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"new-task": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["new-task"]})
     def test_never_run_boost_affects_score(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test that never_run_boost affects score for new tasks."""
         mock_history.return_value = MagicMock(
@@ -298,7 +298,7 @@ class TestWeightEffectOnScoring:
             get_analytics=lambda x: None,
         )
         
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             # Low boost
             engine1 = TaskRecommendationEngine(weights=ScoringWeights(never_run_boost=10.0))
             recs1 = engine1.get_recommendations(limit=1)
@@ -314,29 +314,29 @@ class TestWeightEffectOnScoring:
 class TestConvenienceFunctions:
     """Tests for module-level convenience functions."""
     
-    @patch("src.tasks.recommendations._recommendation_engine", None)
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
+    @patch("src.tasks.orchestration.recommendations._recommendation_engine", None)
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
     def test_get_scoring_weights_func(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test get_scoring_weights function."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
         
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             result = get_scoring_weights()
             
             assert isinstance(result, dict)
             assert "never_run_boost" in result
     
-    @patch("src.tasks.recommendations._recommendation_engine", None)
-    @patch("src.tasks.recommendations.get_task_history")
-    @patch("src.tasks.recommendations._get_task_registry", return_value={"task-a": lambda: None})
-    @patch("src.tasks.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
+    @patch("src.tasks.orchestration.recommendations._recommendation_engine", None)
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations._get_task_registry", return_value={"task-a": lambda: None})
+    @patch("src.tasks.orchestration.recommendations._get_task_categories", return_value={"cat1": ["task-a"]})
     def test_get_weight_presets_func(self, mock_categories, mock_registry, mock_history, tmp_path):
         """Test get_weight_presets function."""
         mock_history.return_value = MagicMock(get_history=lambda: [], get_analytics=lambda x: None)
         
-        with patch("src.tasks.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
+        with patch("src.tasks.orchestration.recommendations.WEIGHTS_FILE", tmp_path / "weights.json"):
             result = get_weight_presets()
             
             assert isinstance(result, dict)

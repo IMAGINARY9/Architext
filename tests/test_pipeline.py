@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.tasks.pipeline import (
+from src.tasks.orchestration.pipeline import (
     PipelineStep,
     ParallelGroup,
     TaskPipeline,
@@ -473,7 +473,7 @@ class TestSingletons:
     
     def test_get_pipeline_store_singleton(self, tmp_path):
         """Test that get_pipeline_store returns singleton."""
-        import src.tasks.pipeline as pipeline_module
+        import src.tasks.orchestration.pipeline as pipeline_module
         pipeline_module._pipeline_store_instance = None
         
         with patch.object(pipeline_module, '_pipeline_store_instance', None):

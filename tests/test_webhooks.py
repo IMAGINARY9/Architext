@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.tasks.webhooks import (
+from src.tasks.orchestration.webhooks import (
     WebhookConfig,
     WebhookDelivery,
     WebhookEvent,
@@ -254,7 +254,7 @@ class TestWebhookManager:
         result = manager.update_webhook("nonexistent", {"enabled": False})
         assert result is None
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_emit_event(self, mock_urlopen, manager):
         """Test emitting an event."""
         mock_response = MagicMock()
@@ -279,7 +279,7 @@ class TestWebhookManager:
         assert len(deliveries) == 1
         assert deliveries[0].success is True
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_emit_event_no_matching_webhook(self, mock_urlopen, manager):
         """Test emitting event with no matching webhooks."""
         config = WebhookConfig(
@@ -297,7 +297,7 @@ class TestWebhookManager:
         assert len(deliveries) == 0
         mock_urlopen.assert_not_called()
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_emit_disabled_webhook(self, mock_urlopen, manager):
         """Test disabled webhooks don't receive events."""
         config = WebhookConfig(
@@ -316,7 +316,7 @@ class TestWebhookManager:
         assert len(deliveries) == 0
         mock_urlopen.assert_not_called()
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_emit_to_specific_webhooks(self, mock_urlopen, manager):
         """Test emitting to specific webhook IDs only."""
         mock_response = MagicMock()
@@ -414,7 +414,7 @@ class TestSignatureGeneration:
         ).hexdigest()
         assert signature == f"sha256={expected}"
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_signature_in_headers(self, mock_urlopen, manager):
         """Test signature is included in request headers when secret is set."""
         mock_response = MagicMock()
@@ -449,7 +449,7 @@ class TestSignatureGeneration:
 class TestConvenienceFunctions:
     """Tests for convenience emit functions."""
     
-    @patch("src.tasks.webhooks.get_webhook_manager")
+    @patch("src.tasks.orchestration.webhooks.get_webhook_manager")
     def test_emit_task_started(self, mock_get_manager):
         """Test emit_task_started function."""
         mock_manager = MagicMock()
@@ -464,7 +464,7 @@ class TestConvenienceFunctions:
         assert payload.event == WebhookEvent.TASK_STARTED
         assert payload.data["task_name"] == "health-score"
     
-    @patch("src.tasks.webhooks.get_webhook_manager")
+    @patch("src.tasks.orchestration.webhooks.get_webhook_manager")
     def test_emit_task_completed(self, mock_get_manager):
         """Test emit_task_completed function."""
         mock_manager = MagicMock()
@@ -484,7 +484,7 @@ class TestConvenienceFunctions:
         assert payload.event == WebhookEvent.TASK_COMPLETED
         assert payload.data["duration_seconds"] == 5.5
     
-    @patch("src.tasks.webhooks.get_webhook_manager")
+    @patch("src.tasks.orchestration.webhooks.get_webhook_manager")
     def test_emit_task_failed(self, mock_get_manager):
         """Test emit_task_failed function."""
         mock_manager = MagicMock()
@@ -507,7 +507,7 @@ class TestRetryLogic:
         """Create a manager with temporary storage."""
         return WebhookManager(storage_path=tmp_path / "webhooks")
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_retry_on_failure(self, mock_urlopen, manager):
         """Test retries on delivery failure."""
         # Create successful response mock
@@ -544,7 +544,7 @@ class TestRetryLogic:
         # Should eventually succeed after retries
         assert delivery.attempts == 3
     
-    @patch("src.tasks.webhooks.urlopen")
+    @patch("src.tasks.orchestration.webhooks.urlopen")
     def test_max_retries_exceeded(self, mock_urlopen, manager):
         """Test failure after max retries exceeded."""
         mock_urlopen.side_effect = Exception("Connection refused")

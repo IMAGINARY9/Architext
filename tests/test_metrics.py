@@ -5,7 +5,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from src.tasks.metrics import (
+from src.tasks.orchestration.metrics import (
     ExecutionTrend,
     TaskMetrics,
     DashboardMetrics,
@@ -13,7 +13,7 @@ from src.tasks.metrics import (
     get_metrics_dashboard,
     get_dashboard_metrics,
 )
-from src.tasks.history import TaskExecution
+from src.tasks.orchestration.history import TaskExecution
 
 
 class TestExecutionTrend:
@@ -159,7 +159,7 @@ class TestDashboardMetrics:
 class TestMetricsDashboard:
     """Tests for MetricsDashboard class."""
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_get_dashboard_returns_metrics(self, mock_history):
         """Test that get_dashboard returns DashboardMetrics."""
         mock_history_instance = MagicMock()
@@ -171,7 +171,7 @@ class TestMetricsDashboard:
         
         assert isinstance(metrics, DashboardMetrics)
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_get_dashboard_with_history(self, mock_history):
         """Test dashboard with execution history."""
         now = datetime.now().timestamp()
@@ -214,7 +214,7 @@ class TestMetricsDashboard:
         assert metrics.total_tasks_run == 2  # 2 unique tasks
         assert len(metrics.task_metrics) == 2
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_get_task_details(self, mock_history):
         """Test getting details for specific task."""
         now = datetime.now().timestamp()
@@ -241,7 +241,7 @@ class TestMetricsDashboard:
         assert "duration" in details
         assert "recent_executions" in details
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_get_task_details_no_history(self, mock_history):
         """Test getting details when no history exists."""
         mock_history_instance = MagicMock()
@@ -254,7 +254,7 @@ class TestMetricsDashboard:
         assert details["task_name"] == "nonexistent-task"
         assert "message" in details
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_calculates_category_metrics(self, mock_history):
         """Test that category metrics are calculated."""
         now = datetime.now().timestamp()
@@ -278,7 +278,7 @@ class TestMetricsDashboard:
         
         assert len(metrics.category_metrics) > 0
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_calculates_daily_trends(self, mock_history):
         """Test that daily trends are calculated."""
         now = datetime.now().timestamp()
@@ -312,7 +312,7 @@ class TestMetricsDashboard:
         
         assert len(metrics.daily_trends) == 2  # Two different days
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_identifies_failing_tasks(self, mock_history):
         """Test that failing tasks are identified."""
         now = datetime.now().timestamp()
@@ -343,7 +343,7 @@ class TestMetricsDashboard:
 class TestSingletonAndConvenienceFunctions:
     """Tests for singleton and convenience functions."""
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_get_metrics_dashboard_singleton(self, mock_history):
         """Test that singleton returns same instance."""
         mock_history_instance = MagicMock()
@@ -351,7 +351,7 @@ class TestSingletonAndConvenienceFunctions:
         mock_history.return_value = mock_history_instance
         
         # Reset singleton
-        import src.tasks.metrics as metrics_module
+        import src.tasks.orchestration.metrics as metrics_module
         metrics_module._dashboard = None
         
         dashboard1 = get_metrics_dashboard()
@@ -359,7 +359,7 @@ class TestSingletonAndConvenienceFunctions:
         
         assert dashboard1 is dashboard2
     
-    @patch("src.tasks.metrics.get_task_history")
+    @patch("src.tasks.orchestration.metrics.get_task_history")
     def test_get_dashboard_metrics_returns_dict(self, mock_history):
         """Test convenience function returns dictionary."""
         mock_history_instance = MagicMock()

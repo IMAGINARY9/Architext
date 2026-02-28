@@ -11,7 +11,7 @@ This subpackage re-exports from existing orchestration modules:
 from __future__ import annotations
 
 # Re-export from history module
-from src.tasks.history import (
+from src.tasks.orchestration.history import (
     TaskExecution,
     TaskAnalytics,
     TaskExecutionHistory,
@@ -20,7 +20,7 @@ from src.tasks.history import (
 )
 
 # Re-export from metrics module
-from src.tasks.metrics import (
+from src.tasks.orchestration.metrics import (
     ExecutionTrend,
     TaskMetrics,
     DashboardMetrics,
@@ -30,7 +30,7 @@ from src.tasks.metrics import (
 )
 
 # Re-export from pipeline module
-from src.tasks.pipeline import (
+from src.tasks.orchestration.pipeline import (
     PipelineStep,
     ParallelGroup,
     TaskPipeline,
@@ -44,7 +44,7 @@ from src.tasks.pipeline import (
 )
 
 # Re-export from recommendations module
-from src.tasks.recommendations import (
+from src.tasks.orchestration.recommendations import (
     TaskRecommendation,
     ScoringWeights,
     ScoringWeightsStore,
@@ -60,7 +60,7 @@ from src.tasks.recommendations import (
 )
 
 # Re-export from scheduler module
-from src.tasks.scheduler import (
+from src.tasks.orchestration.scheduler import (
     ScheduleType,
     ScheduleConfig,
     ScheduleExecution,
@@ -72,7 +72,7 @@ from src.tasks.scheduler import (
 )
 
 # Re-export from webhooks module
-from src.tasks.webhooks import (
+from src.tasks.orchestration.webhooks import (
     WebhookEvent,
     WebhookConfig,
     WebhookPayload,

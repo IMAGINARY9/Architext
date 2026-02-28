@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.tasks.history import (
+from src.tasks.orchestration.history import (
     TaskExecution,
     TaskAnalytics,
     TaskExecutionHistory,
@@ -328,7 +328,7 @@ class TestSingleton:
     def test_get_task_history_singleton(self, tmp_path):
         """Test that get_task_history returns singleton."""
         # Reset singleton for test
-        import src.tasks.history as history_module
+        import src.tasks.orchestration.history as history_module
         history_module._task_history_instance = None
         
         # Get singleton

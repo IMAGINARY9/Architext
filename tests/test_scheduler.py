@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.tasks.scheduler import (
+from src.tasks.orchestration.scheduler import (
     ScheduleConfig,
     ScheduleExecution,
     ScheduleType,

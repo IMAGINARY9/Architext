@@ -5,7 +5,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from src.tasks.recommendations import (
+from src.tasks.orchestration.recommendations import (
     TaskRecommendation,
     RecommendationConfig,
     TaskRecommendationEngine,
@@ -64,7 +64,7 @@ class TestRecommendationConfig:
     
     def test_custom_values(self):
         """Test custom configuration."""
-        from src.tasks.recommendations import ScoringWeights
+        from src.tasks.orchestration.recommendations import ScoringWeights
         custom_weights = ScoringWeights(never_run_boost=50.0)
         config = RecommendationConfig(
             stale_threshold_hours=12,
@@ -78,7 +78,7 @@ class TestRecommendationConfig:
 class TestTaskRecommendationEngine:
     """Tests for TaskRecommendationEngine."""
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_recommendations_returns_list(self, mock_history):
         """Test that recommendations returns a list."""
         mock_history_instance = MagicMock()
@@ -91,7 +91,7 @@ class TestTaskRecommendationEngine:
         assert isinstance(recommendations, list)
         assert len(recommendations) <= 5
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_recommendations_sorted_by_score(self, mock_history):
         """Test that recommendations are sorted by score descending."""
         mock_history_instance = MagicMock()
@@ -104,7 +104,7 @@ class TestTaskRecommendationEngine:
         scores = [r.score for r in recommendations]
         assert scores == sorted(scores, reverse=True)
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_never_run_tasks_boosted(self, mock_history):
         """Test that tasks never run get a boost."""
         mock_history_instance = MagicMock()
@@ -118,7 +118,7 @@ class TestTaskRecommendationEngine:
         for rec in recommendations:
             assert "Never been executed" in rec.reasons
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_exclude_tasks(self, mock_history):
         """Test that excluded tasks are not recommended."""
         mock_history_instance = MagicMock()
@@ -134,7 +134,7 @@ class TestTaskRecommendationEngine:
         assert "analyze-structure" not in task_names
         assert "tech-stack" not in task_names
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_prefer_category_boosts_tasks(self, mock_history):
         """Test that preferred category tasks get a boost."""
         mock_history_instance = MagicMock()
@@ -156,7 +156,7 @@ class TestTaskRecommendationEngine:
                 for r in quality_tasks
             )
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_quick_scan_recommendation(self, mock_history):
         """Test quick scan recommendations."""
         mock_history_instance = MagicMock()
@@ -172,7 +172,7 @@ class TestTaskRecommendationEngine:
             assert rec.score == 100.0
             assert "Essential" in rec.reasons[0] or "quick" in rec.reasons[0].lower()
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_category_recommendations(self, mock_history):
         """Test category-specific recommendations."""
         mock_history_instance = MagicMock()
@@ -186,7 +186,7 @@ class TestTaskRecommendationEngine:
         for rec in recommendations:
             assert rec.category == "security"
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_category_recommendations_invalid_category(self, mock_history):
         """Test that invalid category returns empty list."""
         mock_history_instance = MagicMock()
@@ -197,7 +197,7 @@ class TestTaskRecommendationEngine:
         
         assert recommendations == []
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_related_recommendations(self, mock_history):
         """Test related task recommendations."""
         mock_history_instance = MagicMock()
@@ -215,7 +215,7 @@ class TestTaskRecommendationEngine:
 class TestSingletonAndConvenienceFunctions:
     """Tests for singleton and convenience functions."""
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_recommendation_engine_singleton(self, mock_history):
         """Test that singleton returns same instance."""
         mock_history_instance = MagicMock()
@@ -223,7 +223,7 @@ class TestSingletonAndConvenienceFunctions:
         mock_history.return_value = mock_history_instance
         
         # Reset singleton
-        import src.tasks.recommendations as rec_module
+        import src.tasks.orchestration.recommendations as rec_module
         rec_module._recommendation_engine = None
         
         engine1 = get_recommendation_engine()
@@ -231,7 +231,7 @@ class TestSingletonAndConvenienceFunctions:
         
         assert engine1 is engine2
     
-    @patch("src.tasks.recommendations.get_task_history")
+    @patch("src.tasks.orchestration.recommendations.get_task_history")
     def test_get_task_recommendations_returns_dicts(self, mock_history):
         """Test that convenience function returns dictionaries."""
         mock_history_instance = MagicMock()
