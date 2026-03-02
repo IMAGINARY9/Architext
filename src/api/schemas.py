@@ -6,6 +6,7 @@ Server routes and routers import schemas from this module.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
+from pydantic import ConfigDict
 
 from pydantic import BaseModel, Field
 
@@ -445,9 +446,9 @@ class TaskStatusResponse(BaseModel):
         None, description="Task creation timestamp"
     )
 
-    model_config = {
-        "exclude_none": True,
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        exclude_none=True,
+        json_schema_extra={
             "examples": [
                 {
                     "task_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -470,7 +471,7 @@ class TaskStatusResponse(BaseModel):
                 },
             ]
         },
-    }
+    )
 
 
 class TaskListResponse(BaseModel):
@@ -502,7 +503,7 @@ class TaskSummaryResponse(BaseModel):
         None, description="Task creation timestamp"
     )
 
-    model_config = {"exclude_none": True}
+    model_config = ConfigDict(exclude_none=True)
 
 
 class TaskListSummaryResponse(BaseModel):
@@ -544,9 +545,9 @@ class IndexStartResponse(BaseModel):
         None, description="Task creation timestamp"
     )
 
-    model_config = {
-        "exclude_none": True,
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        exclude_none=True,
+        json_schema_extra={
             "examples": [
                 {
                     "task_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -557,7 +558,7 @@ class IndexStartResponse(BaseModel):
                 }
             ]
         },
-    }
+    )
 
 
 class QueryDiagnosticsResult(BaseModel):

@@ -111,11 +111,11 @@ def load_settings(env_file: Optional[str] = None, config_file: Optional[str] = N
             settings = settings.model_copy(update=cfg)
         except ValidationError as exc:
             # Extract unknown field names from the validation error
-            unknown_fields = []
+            unknown_fields: List[str] = []
             for error in exc.errors():
                 if error.get("type") == "extra_forbidden":
                     field_name = error.get("loc", ["unknown"])[0]
-                    unknown_fields.append(field_name)
+                    unknown_fields.append(str(field_name))
             
             if unknown_fields:
                 known_fields = [field.alias or field_name for field_name, field in ArchitextSettings.model_fields.items()]

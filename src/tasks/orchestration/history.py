@@ -475,10 +475,11 @@ class ExecutionTracker:
         completed_at = time.time()
         
         if exc_type is not None:
-            status = "error"
+            # we know status must be one of the three literals
+            status: Literal["success", "error", "timeout"] = "error"
             self.error_message = str(exc_val)
         else:
-            status = "success"
+            status: Literal["success", "error", "timeout"] = "success"
         
         self.history.record(
             task_name=self.task_name,
@@ -521,11 +522,11 @@ def _extract_result_summary(result: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(value, (int, float, bool)) and key not in summary:
             summary[key] = value
         elif key == "summary" and isinstance(value, dict):
-            summary["summary"] = value
-    
-    return summary
-
-
+            # only preserve if the incoming summary is itself a simple type
+            # otherwise leave it out (the analysis results already contain a
+            # string summary earlier)
+            if isinstance(value, (int, float, str, bool)):
+                summary["summary"] = value
 # Global history instance
 _global_history: Optional[TaskExecutionHistory] = None
 _history_lock = threading.Lock()

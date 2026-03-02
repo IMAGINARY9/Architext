@@ -117,7 +117,7 @@ class SilentFailuresTask(BaseTask):
     
     def _analyze_js_ts(self, file: FileInfo) -> List[Dict[str, Any]]:
         """Analyze JS/TS file for empty catch blocks."""
-        findings = []
+        findings: List[Dict[str, Any]] = []
         
         # file.content may be None when the BaseTask did not load contents
         if not file.content:

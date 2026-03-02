@@ -83,9 +83,11 @@ def build_webhooks_router() -> APIRouter:
             url=url,
             events=events,
             secret=request.get("secret"),
-            max_retries=request.get("max_retries", 3),
             enabled=request.get("enabled", True),
         )
+        if "max_retries" in request:
+            # set attribute separately to avoid constructor mismatch
+            config.max_retries = request.get("max_retries", 3)
 
         manager = get_webhook_manager()
         manager.register_webhook(config)

@@ -81,7 +81,8 @@ class SecurityHeuristicsTask(BaseTask):
         """Analyze Python AST for security issues."""
         findings: List[Dict[str, Any]] = []
         
-        for node in ast.walk(f.ast_tree):
+        if f.ast_tree:  # guard against Optional
+            for node in ast.walk(f.ast_tree):
             if not isinstance(node, ast.Call):
                 continue
             

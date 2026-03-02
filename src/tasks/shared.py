@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover - fallbacks for lightweight testing
         class PersistentClient:
             def __init__(self, *args, **kwargs):
                 raise RuntimeError("chromadb is required to use the persistent client")
-    chromadb = _DummyChroma()
+    chromadb: Any = _DummyChroma()
 
 from src.file_filters import should_skip_path
 
