@@ -399,10 +399,12 @@ class TaskRecommendationEngine:
         # Get category
         category = self._task_to_category.get(task_name)
         
-        # Last run time
+        # Last run time (convert from timestamp to datetime)
         last_run: Optional[datetime] = None
         if task_history:
-            last_run = max(h.started_at for h in task_history)
+            last_ts = max(h.started_at for h in task_history)
+            # record as datetime for downstream calculations
+            last_run = datetime.fromtimestamp(last_ts)
         
         # Never run boost
         if not task_history:
@@ -422,7 +424,9 @@ class TaskRecommendationEngine:
         
         # Success rate analysis
         if task_history:
-            analytics = self._history.get_analytics(task_name)
+            analytics_dict = self._history.get_analytics(task_name)
+            # get_analytics returns a dict even when filtering by name
+            analytics = analytics_dict.get(task_name) if analytics_dict else None
             if analytics:
                 if analytics.success_rate >= config.success_rate_high:
                     score += weights.high_success_rate_boost
@@ -606,7 +610,9 @@ def get_scoring_weights() -> Dict[str, float]:
 def update_scoring_weights(**kwargs: float) -> Dict[str, float]:
     """Update scoring weights and return new values."""
     engine = get_recommendation_engine()
-    updated = engine.update_weights(**kwargs)
+    # explicitly pass persist flag to avoid the first float being
+    # interpreted as the boolean parameter by static checkers
+    updated = engine.update_weights(persist=True, **kwargs)
     return updated.to_dict()
 
 

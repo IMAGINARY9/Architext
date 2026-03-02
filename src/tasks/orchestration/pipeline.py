@@ -131,7 +131,9 @@ class TaskPipeline:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskPipeline":
-        steps = []
+        # `steps` can contain either PipelineStep or ParallelGroup instances;
+        # annotate explicitly so the type checker allows both kinds when appending.
+        steps: List[Union[PipelineStep, ParallelGroup]] = []
         for step_data in data.get("steps", []):
             if step_data.get("type") == "parallel":
                 steps.append(ParallelGroup.from_dict(step_data))

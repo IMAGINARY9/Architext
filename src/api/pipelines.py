@@ -92,8 +92,8 @@ def build_pipelines_router() -> APIRouter:
     async def create_pipeline(
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "simple": {
+            examples=[
+                {
                     "summary": "Simple sequential pipeline",
                     "value": {
                         "name": "my-scan",
@@ -104,7 +104,7 @@ def build_pipelines_router() -> APIRouter:
                         ],
                     },
                 },
-                "with_parallel": {
+                {
                     "summary": "Pipeline with parallel steps",
                     "value": {
                         "name": "full-scan",
@@ -120,7 +120,7 @@ def build_pipelines_router() -> APIRouter:
                         ],
                     },
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         """Create a custom pipeline.
@@ -201,12 +201,12 @@ def build_pipelines_router() -> APIRouter:
         pipeline_id: str,
         request: Dict[str, Any] = Body(
             default={},
-            examples={
-                "basic": {
+            examples=[
+                {
                     "summary": "Run with source path",
                     "value": {"source": "./src"},
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         """Execute a pipeline.

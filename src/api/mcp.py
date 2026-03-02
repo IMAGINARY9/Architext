@@ -30,10 +30,10 @@ def build_mcp_router(
         return {"tools": mcp_tools_schema()}
 
     @router.post("/mcp/run")
-    async def mcp_run(request: Dict[str, Any] = Body(..., examples={
-        "query": {"summary": "Run architext.query", "value": {"tool": "architext.query", "arguments": {"text": "How does auth work?", "mode": "agent", "storage": "./my-index"}}},
-        "task": {"summary": "Run architext.task inline", "value": {"tool": "architext.task", "arguments": {"task": "analyze-structure", "source": "./src", "output_format": "json", "background": False}}}
-    })) -> Dict[str, Any]:
+    async def mcp_run(request: Dict[str, Any] = Body(..., examples=[
+        {"summary": "Run architext.query", "value": {"tool": "architext.query", "arguments": {"text": "How does auth work?", "mode": "agent", "storage": "./my-index"}}},
+        {"summary": "Run architext.task inline", "value": {"tool": "architext.task", "arguments": {"task": "analyze-structure", "source": "./src", "output_format": "json", "background": False}}}
+    ])) -> Dict[str, Any]:
         payload = mcp_run_request_type.model_validate(request)
         tool = payload.tool
         args = payload.arguments or {}

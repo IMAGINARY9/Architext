@@ -159,6 +159,7 @@ SKIP_STEMS = {"__init__", "conftest", "__main__", "setup", "config", "settings"}
 
 
 class TestMappingTask(BaseTask):
+    __test__ = False  # prevent pytest from treating this utility class as a test
     """
     Map test files to source files based on naming conventions.
     

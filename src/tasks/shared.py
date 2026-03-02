@@ -9,7 +9,19 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-import chromadb
+
+# `chromadb` is an optional runtime dependency used by many tasks.  In
+# test environments it may not be installed; wrap the import so failing
+# imports do not break module importation.  Functions that actually need
+# chromadb will raise an error at use time, and tests can mock them.
+try:
+    import chromadb
+except ImportError:  # pragma: no cover - fallbacks for lightweight testing
+    class _DummyChroma:
+        class PersistentClient:
+            def __init__(self, *args, **kwargs):
+                raise RuntimeError("chromadb is required to use the persistent client")
+    chromadb = _DummyChroma()
 
 from src.file_filters import should_skip_path
 

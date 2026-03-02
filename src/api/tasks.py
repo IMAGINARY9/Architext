@@ -45,16 +45,16 @@ def build_tasks_router(
     async def analyze_structure_task(
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "inline": {
+            examples=[
+                {
                     "summary": "Run inline",
                     "value": {"source": "./src", "output_format": "json", "background": False},
                 },
-                "background": {
+                {
                     "summary": "Run as background task",
                     "value": {"source": "./src", "output_format": "json", "background": True},
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         payload = _parse_request(request)
@@ -67,10 +67,10 @@ def build_tasks_router(
     async def tech_stack_task(
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "inline": {"summary": "Inline tech stack", "value": {"source": "./src", "background": False}},
-                "background": {"summary": "Background", "value": {"source": "./src", "background": True}},
-            },
+            examples=[
+                {"summary": "Inline tech stack", "value": {"source": "./src", "background": False}},
+                {"summary": "Background", "value": {"source": "./src", "background": True}},
+            ],
         ),
     ) -> Dict[str, Any]:
         payload = _parse_request(request)
@@ -178,8 +178,8 @@ def build_tasks_router(
     async def run_parallel_tasks(
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "multiple_tasks": {
+            examples=[
+                {
                     "summary": "Run multiple tasks in parallel",
                     "value": {
                         "tasks": ["analyze-structure", "tech-stack", "detect-patterns"],
@@ -187,7 +187,7 @@ def build_tasks_router(
                         "max_workers": 4,
                     },
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         """Run multiple tasks in parallel with shared file caching.
@@ -225,12 +225,12 @@ def build_tasks_router(
         category: str,
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "quality": {
+            examples=[
+                {
                     "summary": "Run all quality tasks",
                     "value": {"source": "./src"},
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         """Run all tasks in a category in parallel.
@@ -285,10 +285,10 @@ def build_tasks_router(
     async def clear_cache(
         request: Dict[str, Any] = Body(
             default={},
-            examples={
-                "clear_all": {"summary": "Clear all cache", "value": {}},
-                "clear_task": {"summary": "Clear specific task", "value": {"task_name": "analyze-structure"}},
-            },
+            examples=[
+                {"summary": "Clear all cache", "value": {}},
+                {"summary": "Clear specific task", "value": {"task_name": "analyze-structure"}},
+            ],
         ),
     ) -> Dict[str, Any]:
         """Clear task result cache.

@@ -32,8 +32,8 @@ def build_scheduling_router() -> APIRouter:
     async def create_schedule(
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "interval": {
+            examples=[
+                {
                     "summary": "Run every 30 minutes",
                     "value": {
                         "task_name": "health-score",
@@ -42,7 +42,7 @@ def build_scheduling_router() -> APIRouter:
                         "source_path": "./src",
                     },
                 },
-                "cron": {
+                {
                     "summary": "Daily at 2am",
                     "value": {
                         "task_name": "detect-anti-patterns",
@@ -52,7 +52,7 @@ def build_scheduling_router() -> APIRouter:
                         "source_path": "./src",
                     },
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         """Create a scheduled task.

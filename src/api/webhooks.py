@@ -31,15 +31,15 @@ def build_webhooks_router() -> APIRouter:
     async def register_webhook(
         request: Dict[str, Any] = Body(
             ...,
-            examples={
-                "all_events": {
+            examples=[
+                {
                     "summary": "Subscribe to all events",
                     "value": {
                         "url": "https://example.com/webhook",
                         "events": ["task.started", "task.completed", "task.failed"],
                     },
                 },
-                "with_secret": {
+                {
                     "summary": "With HMAC signature",
                     "value": {
                         "url": "https://example.com/webhook",
@@ -47,7 +47,7 @@ def build_webhooks_router() -> APIRouter:
                         "secret": "my-secret-key",
                     },
                 },
-            },
+            ],
         ),
     ) -> Dict[str, Any]:
         """Register a new webhook.

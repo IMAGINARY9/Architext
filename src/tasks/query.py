@@ -3,7 +3,16 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import chromadb
+
+# optional import for same reason as in shared.py
+try:
+    import chromadb
+except ImportError:  # pragma: no cover
+    class _DummyChroma:
+        class PersistentClient:
+            def __init__(self, *args, **kwargs):
+                raise RuntimeError("chromadb required")
+    chromadb = _DummyChroma()
 
 
 def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:

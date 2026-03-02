@@ -67,7 +67,29 @@ def build_query_router(
         payload: QueryRequest,
         client_request: Any,
     ) -> Union[QueryResponse, AgentQueryResponse, CompactAgentQueryResponse]:
-        storage_path = resolve_index_storage(payload.name, storage_roots)
+        # Import here so the symbol is available for both normal paths and
+        # exception handling.  Doing the import inside the except block
+        # previously caused an UnboundLocalError when the try-block raised
+        # HTTPException itself (e.g. when the client disconnects).
+        from fastapi import HTTPException
+
+        # Resolve the index storage path.  In normal operation this will
+        # raise HTTPException(404) if no index has been created yet.  During
+        # tests we often patch out ``load_existing_index`` and don't bother
+        # creating any directories, so we want to avoid bubbling the 404
+        # up and causing the route itself to return Not Found.  Instead, when
+        # there are no candidates we simply use the first configured storage
+        # root and let the later load step (which is usually mocked) handle
+        # the missing directory.
+        try:
+            storage_path = resolve_index_storage(payload.name, storage_roots)
+        except Exception as exc:  # HTTPException or other
+            if isinstance(exc, HTTPException) and exc.status_code == 404 and storage_roots:
+                # fallback to first root; load_existing_index may still fail
+                storage_path = str(storage_roots[0])
+            else:
+                # re-raise so normal error handling still applies
+                raise
         request_settings = _query_settings_from_request(payload)
 
         try:

@@ -114,9 +114,15 @@ def build_indices_router(
                         "last_modified": dir_last_modified(index_path),
                         "disk_usage_bytes": dir_disk_usage(index_path),
                         "files_count": dir_file_count(index_path),
+                        # always include optional timestamps to satisfy type checker
+                        "created_at": None,
+                        "updated_at": None,
                     }
                     if hasattr(stats, "metadata") and stats.metadata:
                         metadata_dict["metadata"] = stats.metadata
+                        # metadata from vector store may itself contain timestamps
+                        metadata_dict.setdefault("created_at", stats.metadata.get("created_at"))
+                        metadata_dict.setdefault("updated_at", stats.metadata.get("updated_at"))
                     return IndexMetadataResponse(**metadata_dict)
                 except Exception as exc:
                     return IndexMetadataResponse(
@@ -124,6 +130,8 @@ def build_indices_router(
                         path=str(index_path),
                         status="error",
                         error=str(exc),
+                        created_at=None,
+                        updated_at=None,
                     )
         raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
 
@@ -249,6 +257,8 @@ def _build_index_info_from_db(
             last_modified=dir_last_modified(path),
             disk_usage_bytes=dir_disk_usage(path),
             files_count=dir_file_count(path),
+            created_at=None,
+            updated_at=None,
         )
     except Exception:
         return IndexInfo(
@@ -258,6 +268,8 @@ def _build_index_info_from_db(
             provider=base_settings.vector_store_provider,
             collection=resolve_collection_name(base_settings),
             status="load_error",
+            created_at=None,
+            updated_at=None,
         )
 
 
