@@ -10,7 +10,7 @@ import io
 import keyword
 import tokenize
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from src.tasks.core.base import BaseTask, FileInfo, CODE_EXTENSIONS, PYTHON_EXTENSIONS
 
@@ -207,7 +207,7 @@ class SemanticDuplicationTask(BaseTask):
             for digest, occ in fingerprints.items()
             if len(occ) >= 2
         ]
-        findings.sort(key=lambda x: x["occurrence_count"], reverse=True)
+        findings.sort(key=lambda x: cast(int, x["occurrence_count"]), reverse=True)
         
         return {
             "count": len(findings),

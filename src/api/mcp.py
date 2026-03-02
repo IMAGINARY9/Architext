@@ -1,7 +1,7 @@
 """MCP endpoints for Architext."""
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Dict, List, Type
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
 
 from fastapi import APIRouter, Body, HTTPException
 
@@ -20,7 +20,7 @@ def build_mcp_router(
     query_request_type: Type[Any],
     task_request_type: Type[Any],
     mcp_run_request_type: Type[Any],
-    storage_roots: List[Any] = None,
+    storage_roots: Optional[List[Any]] = None,
     base_settings: Any = None,
 ) -> APIRouter:
     router = APIRouter()

@@ -323,6 +323,8 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 status="queued",
                 storage_path=storage_path,
                 documents=len(file_paths),
+                result=None,
+                error=None,
                 created_at=task_store.get(task_id, {}).get("created_at"),
             )
 

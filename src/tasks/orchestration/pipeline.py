@@ -307,6 +307,9 @@ class PipelineExecutor:
         
         total_duration = time.time() - started_at
         
+        # `pipeline.id` is optional in the dataclass but required for results
+        if pipeline.id is None:
+            raise ValueError("Pipeline ID is required to produce a result")
         return PipelineResult(
             pipeline_id=pipeline.id,
             success=tasks_failed == 0,
@@ -373,6 +376,8 @@ class PipelineStore:
     
     def save(self, pipeline: TaskPipeline) -> None:
         """Save a pipeline to disk."""
+        if pipeline.id is None:
+            raise ValueError("Cannot save pipeline without an ID")
         with self._lock:
             with open(self._pipeline_file(pipeline.id), "w", encoding="utf-8") as f:
                 json.dump(pipeline.to_dict(), f, indent=2)

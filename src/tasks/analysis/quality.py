@@ -75,6 +75,9 @@ class SilentFailuresTask(BaseTask):
     def _analyze_python(self, file: FileInfo) -> List[Dict[str, Any]]:
         """Analyze Python file for silent exception handlers."""
         findings = []
+        # file.content is Optional[str] according to FileInfo; guard against None
+        if not file.content:
+            return findings
         lines = file.content.splitlines()
         
         for idx, line in enumerate(lines):
@@ -116,6 +119,9 @@ class SilentFailuresTask(BaseTask):
         """Analyze JS/TS file for empty catch blocks."""
         findings = []
         
+        # file.content may be None when the BaseTask did not load contents
+        if not file.content:
+            return findings
         # Match empty catch blocks (allowing comments inside)
         pattern = r"catch\s*\([^\)]*\)\s*\{\s*(?:\/\*.*?\*\/\s*|\/\/.*?\n\s*)*\}"
         
