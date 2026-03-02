@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 
 # optional chromadb import: some environments may not have it installed
@@ -12,7 +13,7 @@ except ImportError:  # pragma: no cover
         class PersistentClient:
             def __init__(self, *args, **kwargs):
                 raise RuntimeError("chromadb required to build vector store")
-    chromadb = _DummyChroma()  # type: Any  # type: ignore[no-redef]
+    chromadb: Any = _DummyChroma()  # type: ignore[no-redef]
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
