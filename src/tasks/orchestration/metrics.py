@@ -39,19 +39,19 @@ class ExecutionTrend:
     failed: int
     cached: int
     total_duration_seconds: float
-    
+
     @property
     def success_rate(self) -> float:
         if self.total_executions == 0:
             return 0.0
         return (self.successful / self.total_executions) * 100
-    
+
     @property
     def cache_hit_rate(self) -> float:
         if self.total_executions == 0:
             return 0.0
         return (self.cached / self.total_executions) * 100
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "period": self.period,
@@ -77,19 +77,19 @@ class TaskMetrics:
     average_duration_seconds: float
     last_execution: Optional[datetime]
     category: Optional[str]
-    
+
     @property
     def success_rate(self) -> float:
         if self.total_executions == 0:
             return 0.0
         return (self.successful / self.total_executions) * 100
-    
+
     @property
     def cache_hit_rate(self) -> float:
         if self.total_executions == 0:
             return 0.0
         return (self.cached / self.total_executions) * 100
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "task_name": self.task_name,
@@ -115,27 +115,27 @@ class DashboardMetrics:
     total_duration_seconds: float
     overall_success_rate: float
     overall_cache_hit_rate: float
-    
+
     # Per-task metrics
     task_metrics: List[TaskMetrics]
-    
+
     # Per-category metrics
     category_metrics: Dict[str, Dict[str, Any]]
-    
+
     # Trends
     daily_trends: List[ExecutionTrend]
-    
+
     # Top performers
     most_run_tasks: List[str]
     fastest_tasks: List[str]
     slowest_tasks: List[str]
-    
+
     # Health indicators
     never_run_tasks: List[str]
     failing_tasks: List[str]  # Tasks with < 50% success rate
-    
+
     generated_at: datetime = field(default_factory=datetime.now)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "summary": {
@@ -167,12 +167,12 @@ class MetricsDashboard:
     
     Aggregates execution history into useful metrics and visualizations.
     """
-    
+
     def __init__(self):
         """Initialize the dashboard."""
         self._history = get_task_history()
         self._task_to_category = self._build_task_category_map()
-    
+
     def _build_task_category_map(self) -> Dict[str, str]:
         """Build mapping from task name to category."""
         mapping = {}
@@ -180,7 +180,7 @@ class MetricsDashboard:
             for task in tasks:
                 mapping[task] = category
         return mapping
-    
+
     def get_dashboard(self, days: int = 30) -> DashboardMetrics:
         """
         Generate complete dashboard metrics.
@@ -194,38 +194,38 @@ class MetricsDashboard:
         cutoff = datetime.now() - timedelta(days=days)
         cutoff_ts = cutoff.timestamp()
         all_history = self._history.get_history()
-        
+
         # Filter to time range (started_at is a float timestamp)
         history = [h for h in all_history if h.started_at >= cutoff_ts]
-        
+
         # Calculate summary metrics
         total = len(history)
         successful = sum(1 for h in history if h.status == "success")
         cached = sum(1 for h in history if h.cached)
         total_duration = sum(h.duration_seconds or 0 for h in history)
-        
+
         tasks_run = set(h.task_name for h in history)
-        
+
         # Per-task metrics
         task_metrics = self._calculate_task_metrics(history)
-        
+
         # Category metrics
         category_metrics = self._calculate_category_metrics(history)
-        
+
         # Daily trends
         daily_trends = self._calculate_daily_trends(history, days)
-        
+
         # Top performers
         sorted_by_count = sorted(task_metrics, key=lambda m: m.total_executions, reverse=True)
         sorted_by_speed = sorted(
             [m for m in task_metrics if m.average_duration_seconds > 0],
             key=lambda m: m.average_duration_seconds
         )
-        
+
         # Health indicators
         never_run = [t for t in _get_task_registry() if t not in tasks_run]
         failing = [m.task_name for m in task_metrics if m.success_rate < 50]
-        
+
         return DashboardMetrics(
             total_executions=total,
             total_tasks_run=len(tasks_run),
@@ -241,14 +241,14 @@ class MetricsDashboard:
             never_run_tasks=never_run,
             failing_tasks=failing,
         )
-    
+
     def _calculate_task_metrics(self, history: List[TaskExecution]) -> List[TaskMetrics]:
         """Calculate per-task metrics."""
         task_data: Dict[str, List[TaskExecution]] = defaultdict(list)
-        
+
         for h in history:
             task_data[h.task_name].append(h)
-        
+
         metrics = []
         for task_name, executions in task_data.items():
             total = len(executions)
@@ -257,11 +257,11 @@ class MetricsDashboard:
             durations = [h.duration_seconds for h in executions if h.duration_seconds]
             total_duration = sum(durations)
             avg_duration = total_duration / len(durations) if durations else 0
-            
+
             # Convert float timestamp to datetime
             last_exec_ts = max((h.started_at for h in executions), default=None)
             last_exec = datetime.fromtimestamp(last_exec_ts) if last_exec_ts else None
-            
+
             metrics.append(TaskMetrics(
                 task_name=task_name,
                 total_executions=total,
@@ -273,31 +273,31 @@ class MetricsDashboard:
                 last_execution=last_exec,
                 category=self._task_to_category.get(task_name),
             ))
-        
+
         return sorted(metrics, key=lambda m: m.total_executions, reverse=True)
-    
+
     def _calculate_category_metrics(
         self,
         history: List[TaskExecution],
     ) -> Dict[str, Dict[str, Any]]:
         """Calculate per-category metrics."""
         category_data: Dict[str, List[TaskExecution]] = defaultdict(list)
-        
+
         for h in history:
             category = self._task_to_category.get(h.task_name, "uncategorized")
             category_data[category].append(h)
-        
+
         metrics = {}
         for category, executions in category_data.items():
             total = len(executions)
             successful = sum(1 for h in executions if h.status == "success")
             cached = sum(1 for h in executions if h.cached)
             total_duration = sum(h.duration_seconds or 0 for h in executions)
-            
+
             tasks_run = set(h.task_name for h in executions)
             category_tasks = set(_get_task_categories().get(category, []))
             coverage = len(tasks_run) / len(category_tasks) * 100 if category_tasks else 0
-            
+
             metrics[category] = {
                 "total_executions": total,
                 "successful": successful,
@@ -309,9 +309,9 @@ class MetricsDashboard:
                 "tasks_run": list(tasks_run),
                 "task_coverage": round(coverage, 1),
             }
-        
+
         return metrics
-    
+
     def _calculate_daily_trends(
         self,
         history: List[TaskExecution],
@@ -319,19 +319,19 @@ class MetricsDashboard:
     ) -> List[ExecutionTrend]:
         """Calculate daily execution trends."""
         daily_data: Dict[str, List[TaskExecution]] = defaultdict(list)
-        
+
         for h in history:
             # started_at is a float timestamp
             day = datetime.fromtimestamp(h.started_at).strftime("%Y-%m-%d")
             daily_data[day].append(h)
-        
+
         trends = []
         for day, executions in sorted(daily_data.items()):
             total = len(executions)
             successful = sum(1 for h in executions if h.status == "success")
             cached = sum(1 for h in executions if h.cached)
             total_duration = sum(h.duration_seconds or 0 for h in executions)
-            
+
             trends.append(ExecutionTrend(
                 period=day,
                 total_executions=total,
@@ -340,9 +340,9 @@ class MetricsDashboard:
                 cached=cached,
                 total_duration_seconds=total_duration,
             ))
-        
+
         return trends
-    
+
     def get_task_details(self, task_name: str, days: int = 30) -> Dict[str, Any]:
         """
         Get detailed metrics for a specific task.
@@ -358,27 +358,27 @@ class MetricsDashboard:
         cutoff_ts = cutoff.timestamp()
         all_history = self._history.get_history(task_name=task_name)
         history = [h for h in all_history if h.started_at >= cutoff_ts]
-        
+
         if not history:
             return {
                 "task_name": task_name,
                 "message": "No execution history found",
                 "category": self._task_to_category.get(task_name),
             }
-        
+
         total = len(history)
         successful = sum(1 for h in history if h.status == "success")
         cached = sum(1 for h in history if h.cached)
         durations = [h.duration_seconds for h in history if h.duration_seconds]
-        
+
         # Calculate duration statistics
         avg_duration = sum(durations) / len(durations) if durations else 0
         min_duration = min(durations) if durations else 0
         max_duration = max(durations) if durations else 0
-        
+
         # Recent executions
         recent = sorted(history, key=lambda h: h.started_at, reverse=True)[:10]
-        
+
         return {
             "task_name": task_name,
             "category": self._task_to_category.get(task_name),

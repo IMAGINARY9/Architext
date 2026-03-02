@@ -41,16 +41,16 @@ class WebhookConfig:
     retry_count: int = 3
     retry_delay_seconds: float = 1.0
     headers: Dict[str, str] = field(default_factory=dict)
-    
+
     # Alias for retry_count
     @property
     def max_retries(self) -> int:
         return self.retry_count
-    
+
     @max_retries.setter
     def max_retries(self, value: int) -> None:
         self.retry_count = value
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -63,7 +63,7 @@ class WebhookConfig:
             "retry_count": self.retry_count,
             "headers": self.headers,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WebhookConfig":
         """Create from dictionary."""
@@ -88,7 +88,7 @@ class WebhookPayload:
     data: Dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
     webhook_id: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -111,7 +111,7 @@ class WebhookDelivery:
     delivered_at: datetime = field(default_factory=datetime.now)
     attempts: int = 1
     success: bool = False
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -133,9 +133,9 @@ class WebhookManager:
     Webhooks can be registered to receive notifications for specific
     task execution events.
     """
-    
+
     DEFAULT_STORAGE_PATH = Path.home() / ".architext" / "webhooks"
-    
+
     def __init__(
         self,
         storage_path: Optional[Path] = None,
@@ -151,14 +151,14 @@ class WebhookManager:
         self.storage_path = storage_path or self.DEFAULT_STORAGE_PATH
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.async_delivery = async_delivery
-        
+
         self._webhooks: Dict[str, WebhookConfig] = {}
         self._deliveries: List[WebhookDelivery] = []
         self._callbacks: List[Callable[[WebhookPayload], None]] = []
         self._lock = threading.Lock()
-        
+
         self._load_webhooks()
-    
+
     def _load_webhooks(self) -> None:
         """Load webhooks from storage."""
         config_file = self.storage_path / "webhooks.json"
@@ -171,7 +171,7 @@ class WebhookManager:
                     self._webhooks[webhook.id] = webhook
             except Exception:
                 pass  # Ignore load errors
-    
+
     def _save_webhooks(self) -> None:
         """Save webhooks to storage."""
         config_file = self.storage_path / "webhooks.json"
@@ -183,7 +183,7 @@ class WebhookManager:
         }
         with open(config_file, "w") as f:
             json.dump(data, f, indent=2)
-    
+
     def register(self, config: WebhookConfig) -> WebhookConfig:
         """
         Register a new webhook.
@@ -198,7 +198,7 @@ class WebhookManager:
             self._webhooks[config.id] = config
             self._save_webhooks()
         return config
-    
+
     def unregister(self, webhook_id: str) -> bool:
         """
         Unregister a webhook.
@@ -215,15 +215,15 @@ class WebhookManager:
                 self._save_webhooks()
                 return True
         return False
-    
+
     def get(self, webhook_id: str) -> Optional[WebhookConfig]:
         """Get a webhook by ID."""
         return self._webhooks.get(webhook_id)
-    
+
     def list_webhooks(self) -> List[WebhookConfig]:
         """List all registered webhooks."""
         return list(self._webhooks.values())
-    
+
     def update(self, webhook_id: str, updates: Dict[str, Any]) -> Optional[WebhookConfig]:
         """
         Update a webhook configuration.
@@ -238,9 +238,9 @@ class WebhookManager:
         with self._lock:
             if webhook_id not in self._webhooks:
                 return None
-            
+
             webhook = self._webhooks[webhook_id]
-            
+
             if "url" in updates:
                 webhook.url = updates["url"]
             if "events" in updates:
@@ -255,31 +255,31 @@ class WebhookManager:
                 webhook.headers = updates["headers"]
             if "max_retries" in updates:
                 webhook.retry_count = updates["max_retries"]
-            
+
             self._save_webhooks()
             return webhook
-    
+
     # Alias methods for cleaner API
     def register_webhook(self, config: WebhookConfig) -> WebhookConfig:
         """Alias for register()."""
         return self.register(config)
-    
+
     def unregister_webhook(self, webhook_id: str) -> bool:
         """Alias for unregister()."""
         return self.unregister(webhook_id)
-    
+
     def get_webhook(self, webhook_id: str) -> Optional[WebhookConfig]:
         """Alias for get()."""
         return self.get(webhook_id)
-    
+
     def update_webhook(self, webhook_id: str, updates: Dict[str, Any]) -> Optional[WebhookConfig]:
         """Alias for update()."""
         return self.update(webhook_id, updates)
-    
+
     def get_deliveries(self, webhook_id: Optional[str] = None, limit: int = 50) -> List[WebhookDelivery]:
         """Alias for get_recent_deliveries()."""
         return self.get_recent_deliveries(limit=limit, webhook_id=webhook_id)
-    
+
     def add_callback(self, callback: Callable[[WebhookPayload], None]) -> None:
         """
         Add a local callback for webhook events.
@@ -287,7 +287,7 @@ class WebhookManager:
         Useful for in-process notifications without HTTP.
         """
         self._callbacks.append(callback)
-    
+
     def emit(
         self,
         event: Optional[WebhookEvent] = None,
@@ -321,14 +321,14 @@ class WebhookManager:
                 event=event,
                 data=data or {},
             )
-        
+
         # Notify local callbacks
         for callback in self._callbacks:
             try:
                 callback(payload)
             except Exception:
                 pass  # Don't fail on callback errors
-        
+
         # Find matching webhooks
         if webhook_ids:
             matching = [
@@ -340,13 +340,13 @@ class WebhookManager:
                 w for w in self._webhooks.values()
                 if w.enabled and payload.event in w.events
             ]
-        
+
         if not matching:
             return []
-        
+
         # Determine delivery mode
         use_async = async_delivery if async_delivery is not None else self.async_delivery
-        
+
         # Deliver webhooks
         if use_async:
             thread = threading.Thread(
@@ -358,7 +358,7 @@ class WebhookManager:
             return []
         else:
             return self._deliver_all_sync(matching, payload)
-    
+
     def _deliver_all(
         self,
         webhooks: List[WebhookConfig],
@@ -367,7 +367,7 @@ class WebhookManager:
         """Deliver payload to multiple webhooks (async version, no return)."""
         for webhook in webhooks:
             self._deliver(webhook, payload)
-    
+
     def _deliver_all_sync(
         self,
         webhooks: List[WebhookConfig],
@@ -379,7 +379,7 @@ class WebhookManager:
             delivery = self._deliver(webhook, payload)
             deliveries.append(delivery)
         return deliveries
-    
+
     def _deliver_to_webhook(
         self,
         webhook: WebhookConfig,
@@ -387,7 +387,7 @@ class WebhookManager:
     ) -> WebhookDelivery:
         """Alias for _deliver for tests."""
         return self._deliver(webhook, payload)
-    
+
     def _deliver(
         self,
         webhook: WebhookConfig,
@@ -396,21 +396,21 @@ class WebhookManager:
         """Deliver payload to a single webhook with retries."""
         payload_dict = payload.to_dict()
         body = json.dumps(payload_dict).encode("utf-8")
-        
+
         delivery = WebhookDelivery(
             webhook_id=webhook.id,
             event=payload.event,
             url=webhook.url,
             payload=payload_dict,
         )
-        
+
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "Architext-Webhook/1.0",
             "X-Webhook-Event": payload.event.value,
             **webhook.headers,
         }
-        
+
         if webhook.secret:
             import hashlib
             import hmac
@@ -420,10 +420,10 @@ class WebhookManager:
                 hashlib.sha256,
             ).hexdigest()
             headers["X-Webhook-Signature"] = f"sha256={signature}"
-        
+
         for attempt in range(webhook.retry_count):
             delivery.attempts = attempt + 1
-            
+
             try:
                 request = Request(
                     webhook.url,
@@ -431,32 +431,32 @@ class WebhookManager:
                     headers=headers,
                     method="POST",
                 )
-                
+
                 with urlopen(request, timeout=webhook.timeout_seconds) as response:
                     delivery.status_code = response.status
                     delivery.response_body = response.read().decode("utf-8")[:1000]
                     delivery.success = 200 <= response.status < 300
-                    
+
                 if delivery.success:
                     break
-                    
+
             except URLError as e:
                 delivery.error = str(e)
             except Exception as e:
                 delivery.error = str(e)
-            
+
             # Wait before retry
             if attempt < webhook.retry_count - 1:
                 time.sleep(webhook.retry_delay_seconds * (attempt + 1))
-        
+
         with self._lock:
             self._deliveries.append(delivery)
             # Keep only recent deliveries
             if len(self._deliveries) > 1000:
                 self._deliveries = self._deliveries[-500:]
-        
+
         return delivery
-    
+
     def get_recent_deliveries(
         self,
         limit: int = 50,
@@ -477,7 +477,7 @@ class WebhookManager:
             if webhook_id:
                 deliveries = [d for d in deliveries if d.webhook_id == webhook_id]
             return deliveries[-limit:]
-    
+
     def _generate_signature(self, body: bytes, secret: str) -> str:
         """Generate HMAC signature for webhook payload."""
         import hashlib

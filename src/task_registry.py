@@ -51,7 +51,7 @@ TASK_DEPENDENCIES: Dict[str, Set[str]] = {
     # synthesis-roadmap depends on these tasks (runs them internally)
     "synthesis-roadmap": {
         "detect-anti-patterns",
-        "health-score", 
+        "health-score",
         "identify-silent-failures",
         "security-heuristics",
         "detect-duplication",
@@ -131,7 +131,7 @@ def run_task(
     from src.tasks.cache import get_task_cache
     from src.tasks.orchestration.history import get_task_history
     import time
-    
+
     handler = get_task_handler(task_name)
     signature = inspect.signature(handler)
     filtered = {
@@ -139,7 +139,7 @@ def run_task(
         for name, value in kwargs.items()
         if name in signature.parameters and value is not None
     }
-    
+
     # Try cache if enabled
     if use_cache:
         cache = get_task_cache()
@@ -163,7 +163,7 @@ def run_task(
                     cached=True,
                 )
             return cached_result
-    
+
     # Execute task with history tracking
     if track_history:
         history = get_task_history()
@@ -180,7 +180,7 @@ def run_task(
                 raise
     else:
         result = handler(**filtered)
-    
+
     # Store in cache if enabled
     if use_cache:
         cache.set(
@@ -190,7 +190,7 @@ def run_task(
             storage_path=filtered.get("storage_path"),
             ttl=cache_ttl,
         )
-    
+
     return result
 
 
@@ -229,14 +229,14 @@ def run_tasks_parallel(
     for name in task_names:
         if name not in TASK_REGISTRY:
             raise ValueError(f"Unknown task: {name}")
-    
+
     results: Dict[str, Dict[str, Any]] = {}
-    
+
     # Create shared context and pre-warm file cache BEFORE starting threads
     # This avoids thread-local storage issues with ThreadPoolExecutor
     ctx = TaskContext(storage_path=storage_path, source_path=source_path)
     cached_files = ctx.get_files()  # Pre-warm cache synchronously
-    
+
     def run_single_task(task_name: str) -> tuple[str, Dict[str, Any]]:
         """Run a single task with explicit context (no thread-local dependency)."""
         if progress_callback:
@@ -260,11 +260,11 @@ def run_tasks_parallel(
         finally:
             # Clean up thread-local context
             set_current_context(None)
-    
+
     # Run tasks in parallel with explicit context passing
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(run_single_task, name): name for name in task_names}
-        
+
         for future in as_completed(futures, timeout=timeout_per_task * len(task_names) if timeout_per_task else None):
             try:
                 task_name, result = future.result(timeout=timeout_per_task)
@@ -275,7 +275,7 @@ def run_tasks_parallel(
             except Exception as e:
                 task_name = futures[future]
                 results[task_name] = {"error": str(e), "task": task_name}
-    
+
     return results
 
 
@@ -304,7 +304,7 @@ def run_category(
     """
     if category not in TASK_CATEGORIES:
         raise ValueError(f"Unknown category: {category}. Valid: {list(TASK_CATEGORIES.keys())}")
-    
+
     task_names = TASK_CATEGORIES[category]
     return run_tasks_parallel(
         task_names,

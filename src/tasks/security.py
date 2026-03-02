@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import ast
-import re
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional

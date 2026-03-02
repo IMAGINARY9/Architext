@@ -54,7 +54,7 @@ class TaskRecommendation:
     reasons: List[str]
     category: Optional[str] = None
     last_run: Optional[datetime] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -78,20 +78,20 @@ class ScoringWeights:
     never_run_boost: float = 30.0  # Boost for tasks never executed
     stale_boost: float = 20.0  # Boost for tasks not run recently
     very_stale_boost: float = 25.0  # Additional boost for very old tasks
-    
+
     # Performance-based weights
     high_success_rate_boost: float = 10.0  # Boost for reliable tasks
     low_success_rate_penalty: float = -15.0  # Penalty for failing tasks
     fast_execution_boost: float = 5.0  # Boost for quick tasks
-    
+
     # Coverage weights
     category_coverage_boost: float = 15.0  # Boost for underrepresented categories
     dependency_boost: float = 10.0  # Boost for tasks with dependencies ready
-    
+
     def to_dict(self) -> Dict[str, float]:
         """Convert to dictionary."""
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ScoringWeights":
         """Create from dictionary."""
@@ -99,7 +99,7 @@ class ScoringWeights:
         valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in data.items() if k in valid_fields}
         return cls(**filtered)
-    
+
     def update(self, **kwargs: float) -> "ScoringWeights":
         """Update weights and return new instance."""
         current = self.to_dict()
@@ -113,15 +113,15 @@ class RecommendationConfig:
     # Time-based thresholds
     stale_threshold_hours: int = 24  # Consider task stale after this
     very_stale_threshold_hours: int = 168  # One week
-    
+
     # Performance thresholds
     success_rate_high: float = 90.0
     success_rate_low: float = 50.0
     fast_execution_seconds: float = 5.0
-    
+
     # Scoring weights (customizable)
     weights: ScoringWeights = field(default_factory=ScoringWeights)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -132,7 +132,7 @@ class RecommendationConfig:
             "fast_execution_seconds": self.fast_execution_seconds,
             "weights": self.weights.to_dict(),
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RecommendationConfig":
         """Create from dictionary."""
@@ -147,21 +147,21 @@ class ScoringWeightsStore:
     
     Allows users to save and load custom weight configurations.
     """
-    
+
     def __init__(self, path: Optional[Path] = None):
         """Initialize the store."""
         self.path = path or WEIGHTS_FILE
         self._ensure_dir()
-    
+
     def _ensure_dir(self) -> None:
         """Ensure the storage directory exists."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     def save(self, weights: ScoringWeights) -> None:
         """Save weights to disk."""
         with open(self.path, "w") as f:
             json.dump(weights.to_dict(), f, indent=2)
-    
+
     def load(self) -> ScoringWeights:
         """Load weights from disk, or return defaults."""
         if not self.path.exists():
@@ -172,20 +172,20 @@ class ScoringWeightsStore:
             return ScoringWeights.from_dict(data)
         except Exception:
             return ScoringWeights()
-    
+
     def reset(self) -> ScoringWeights:
         """Reset to default weights."""
         defaults = ScoringWeights()
         self.save(defaults)
         return defaults
-    
+
     def update(self, **kwargs: float) -> ScoringWeights:
         """Update specific weights and save."""
         current = self.load()
         updated = current.update(**kwargs)
         self.save(updated)
         return updated
-    
+
     def get_presets(self) -> Dict[str, ScoringWeights]:
         """Get predefined weight presets."""
         return {
@@ -227,7 +227,7 @@ class ScoringWeightsStore:
                 category_coverage_boost=25.0,
             ),
         }
-    
+
     def apply_preset(self, preset_name: str) -> Optional[ScoringWeights]:
         """Apply a predefined preset."""
         presets = self.get_presets()
@@ -247,7 +247,7 @@ class TaskRecommendationEngine:
     
     Supports customizable scoring weights that can be persisted and loaded.
     """
-    
+
     def __init__(
         self,
         config: Optional[RecommendationConfig] = None,
@@ -261,17 +261,17 @@ class TaskRecommendationEngine:
             weights: Scoring weights (optional, loaded from disk if not provided)
         """
         self._weights_store = ScoringWeightsStore()
-        
+
         if config:
             self.config = config
         else:
             # Load weights from disk if not provided
             loaded_weights = weights or self._weights_store.load()
             self.config = RecommendationConfig(weights=loaded_weights)
-        
+
         self._history = get_task_history()
         self._task_to_category = self._build_task_category_map()
-    
+
     def _build_task_category_map(self) -> Dict[str, str]:
         """Build mapping from task name to category."""
         mapping = {}
@@ -279,11 +279,11 @@ class TaskRecommendationEngine:
             for task in tasks:
                 mapping[task] = category
         return mapping
-    
+
     def get_weights(self) -> ScoringWeights:
         """Get current scoring weights."""
         return self.config.weights
-    
+
     def set_weights(self, weights: ScoringWeights, persist: bool = True) -> None:
         """
         Set scoring weights.
@@ -295,7 +295,7 @@ class TaskRecommendationEngine:
         self.config.weights = weights
         if persist:
             self._weights_store.save(weights)
-    
+
     def update_weights(self, persist: bool = True, **kwargs: float) -> ScoringWeights:
         """
         Update specific weights.
@@ -313,7 +313,7 @@ class TaskRecommendationEngine:
         if persist:
             self._weights_store.save(updated)
         return updated
-    
+
     def reset_weights(self, persist: bool = True) -> ScoringWeights:
         """Reset weights to defaults."""
         defaults = ScoringWeights()
@@ -321,7 +321,7 @@ class TaskRecommendationEngine:
         if persist:
             self._weights_store.save(defaults)
         return defaults
-    
+
     def apply_preset(self, preset_name: str, persist: bool = True) -> Optional[ScoringWeights]:
         """
         Apply a predefined weight preset.
@@ -337,11 +337,11 @@ class TaskRecommendationEngine:
             preset = presets[preset_name]
         self.config.weights = preset
         return preset
-    
+
     def get_presets(self) -> Dict[str, Dict[str, float]]:
         """Get available weight presets."""
         return {name: w.to_dict() for name, w in self._weights_store.get_presets().items()}
-    
+
     def get_recommendations(
         self,
         limit: int = 5,
@@ -361,26 +361,26 @@ class TaskRecommendationEngine:
         """
         exclude_tasks = exclude_tasks or set()
         recommendations = []
-        
+
         # Get history and analytics for all tasks
         all_history = self._history.get_history()
-        
+
         for task_name in _get_task_registry():
             if task_name in exclude_tasks:
                 continue
-            
+
             recommendation = self._score_task(
                 task_name,
                 all_history,
                 prefer_category,
             )
             recommendations.append(recommendation)
-        
+
         # Sort by score descending
         recommendations.sort(key=lambda r: r.score, reverse=True)
-        
+
         return recommendations[:limit]
-    
+
     def _score_task(
         self,
         task_name: str,
@@ -392,20 +392,20 @@ class TaskRecommendationEngine:
         weights = config.weights
         score = 50.0  # Base score
         reasons: List[str] = []
-        
+
         # Get task-specific history
         task_history = [h for h in all_history if h.task_name == task_name]
-        
+
         # Get category
         category = self._task_to_category.get(task_name)
-        
+
         # Last run time (convert from timestamp to datetime)
         last_run: Optional[datetime] = None
         if task_history:
             last_ts = max(h.started_at for h in task_history)
             # record as datetime for downstream calculations
             last_run = datetime.fromtimestamp(last_ts)
-        
+
         # Never run boost
         if not task_history:
             score += weights.never_run_boost
@@ -413,7 +413,7 @@ class TaskRecommendationEngine:
         else:
             # Time since last run
             hours_since = self._hours_since(last_run)
-            
+
             if hours_since > config.very_stale_threshold_hours:
                 score += weights.very_stale_boost
                 days = int(hours_since / 24)
@@ -421,7 +421,7 @@ class TaskRecommendationEngine:
             elif hours_since > config.stale_threshold_hours:
                 score += weights.stale_boost
                 reasons.append(f"Not run in {int(hours_since)} hours")
-        
+
         # Success rate analysis
         if task_history:
             analytics_dict = self._history.get_analytics(task_name)
@@ -434,17 +434,17 @@ class TaskRecommendationEngine:
                 elif analytics.success_rate < config.success_rate_low:
                     score += weights.low_success_rate_penalty
                     reasons.append(f"Low reliability ({analytics.success_rate:.0f}% success)")
-                
+
                 # Fast execution boost
                 if analytics.average_duration_seconds < config.fast_execution_seconds:
                     score += weights.fast_execution_boost
                     reasons.append("Quick to execute")
-        
+
         # Category preference boost
         if prefer_category and category == prefer_category:
             score += weights.category_coverage_boost
             reasons.append(f"Matches preferred category: {prefer_category}")
-        
+
         # Category coverage - boost tasks in underrepresented categories
         if category:
             category_tasks = _get_task_categories().get(category, [])
@@ -455,7 +455,7 @@ class TaskRecommendationEngine:
             if category_runs == 0:
                 score += weights.category_coverage_boost / 2
                 reasons.append(f"Category '{category}' not recently analyzed")
-        
+
         return TaskRecommendation(
             task_name=task_name,
             score=max(0, min(100, score)),  # Clamp to 0-100
@@ -463,7 +463,7 @@ class TaskRecommendationEngine:
             category=category,
             last_run=last_run,
         )
-    
+
     @staticmethod
     def _hours_since(dt: Optional[datetime]) -> float:
         """Calculate hours since a datetime."""
@@ -471,7 +471,7 @@ class TaskRecommendationEngine:
             return float("inf")
         delta = datetime.now() - dt
         return delta.total_seconds() / 3600
-    
+
     def get_quick_scan_recommendation(self) -> List[TaskRecommendation]:
         """
         Get recommendations for a quick codebase scan.
@@ -480,16 +480,16 @@ class TaskRecommendationEngine:
         """
         quick_tasks = {"analyze-structure", "tech-stack", "health-score"}
         recommendations = []
-        
+
         for task_name in quick_tasks:
             if task_name in _get_task_registry():
                 rec = self._score_task(task_name, [], None)
                 rec.score = 100.0  # Max score for quick scan
                 rec.reasons = ["Essential for quick overview"]
                 recommendations.append(rec)
-        
+
         return recommendations
-    
+
     def get_category_recommendations(
         self,
         category: str,
@@ -507,14 +507,14 @@ class TaskRecommendationEngine:
         """
         if category not in _get_task_categories():
             return []
-        
+
         category_tasks = set(_get_task_categories()[category])
         return self.get_recommendations(
             limit=limit,
             exclude_tasks=set(_get_task_registry().keys()) - category_tasks,
             prefer_category=category,
         )
-    
+
     def get_related_recommendations(
         self,
         task_name: str,
@@ -526,26 +526,26 @@ class TaskRecommendationEngine:
         Uses task dependencies and category membership.
         """
         related: Set[str] = set()
-        
+
         # Add tasks in the same category
         category = self._task_to_category.get(task_name)
         if category:
             related.update(_get_task_categories().get(category, []))
-        
+
         # Add dependent tasks
         for task, deps in _get_task_dependencies().items():
             if task_name in deps:
                 related.add(task)
-        
+
         # Add tasks that this task depends on
         related.update(_get_task_dependencies().get(task_name, set()))
-        
+
         # Remove the original task
         related.discard(task_name)
-        
+
         if not related:
             return []
-        
+
         # Get recommendations for related tasks only
         return self.get_recommendations(
             limit=limit,

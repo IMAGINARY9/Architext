@@ -119,7 +119,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
     def _run_index(task_id: str, req: IndexRequest, storage_path: str):
         def progress_update(info: Dict[str, Any]):
             task_service.update_task(task_id, {"progress": info})
-        
+
         task_service.update_task(task_id, {"status": "running", "storage_path": storage_path})
         try:
             task_settings = _settings_with_overrides(req)
@@ -347,23 +347,23 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         try:
             resolved_path = resolve_source(request.source, use_cache=not request.no_cache)
             validate_source_dir(resolved_path, source_roots)
-            
+
             # Gather files to analyze
             file_paths = gather_index_files(str(resolved_path))
-            
+
             # Analyze file types
             file_types: Dict[str, int] = {}
             for file_path in file_paths:
                 ext = Path(file_path).suffix.lower()
                 file_types[ext] = file_types.get(ext, 0) + 1
-            
+
             # Check for potential issues
             warnings = []
             if len(file_paths) > 10000:
                 warnings.append("Large number of files detected - indexing may be slow")
             if len(file_paths) == 0:
                 warnings.append("No indexable files found")
-            
+
             return IndexPreviewResponse(
                 source=request.source,
                 resolved_path=str(resolved_path),
@@ -470,11 +470,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     app = create_app()
-    
+
     if args.reload:
         print("ERROR: Use 'uvicorn src.server:app --reload' for development with auto-reload.")
         print("The --reload flag with 'python -m src.server' is not supported.")
         import sys
         sys.exit(1)
-    
+
     uvicorn.run(app, host=args.host, port=args.port)

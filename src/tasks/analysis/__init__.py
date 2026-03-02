@@ -88,7 +88,7 @@ __all__ = [
     "detect_anti_patterns_v2",
     # Architecture
     "ArchitecturePatternTask",
-    "ImpactAnalysisTask", 
+    "ImpactAnalysisTask",
     "DependencyGraphTask",
     "architecture_pattern_detection_v2",
     "impact_analysis_v2",

@@ -28,11 +28,11 @@ class CacheEntry:
     created_at: float
     source_hash: str  # Hash of source file modification times
     ttl_seconds: float = 3600.0  # Default 1 hour TTL
-    
+
     def is_expired(self) -> bool:
         """Check if this entry has expired based on TTL."""
         return time.time() > (self.created_at + self.ttl_seconds)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize to dictionary for JSON storage."""
         return {
@@ -42,7 +42,7 @@ class CacheEntry:
             "source_hash": self.source_hash,
             "ttl_seconds": self.ttl_seconds,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CacheEntry":
         """Deserialize from dictionary."""
@@ -76,7 +76,7 @@ class TaskResultCache:
         result = compute_expensive_analysis()
         cache.set("analyze-structure", source_path="src", result=result)
     """
-    
+
     def __init__(
         self,
         cache_dir: Optional[str] = None,
@@ -93,17 +93,17 @@ class TaskResultCache:
         """
         if cache_dir is None:
             cache_dir = str(Path.home() / ".architext" / "cache")
-        
+
         self.cache_dir = Path(cache_dir)
         self.default_ttl = default_ttl
         self.enabled = enabled
         self._lock = threading.Lock()
         self._memory_cache: Dict[str, CacheEntry] = {}
-        
+
         # Create cache directory if needed
         if self.enabled:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def _compute_source_hash(self, source_path: Optional[str]) -> str:
         """
         Compute a hash of source file modification times.
@@ -112,11 +112,11 @@ class TaskResultCache:
         """
         if not source_path:
             return "no-source"
-        
+
         source = Path(source_path)
         if not source.exists():
             return "source-not-found"
-        
+
         # Collect modification times of top-level files (for performance)
         mtimes = []
         try:
@@ -128,11 +128,11 @@ class TaskResultCache:
                     mtimes.append(f"{item.name}/:{item.stat().st_mtime}")
         except Exception:
             return f"source-error-{time.time()}"
-        
+
         mtimes.sort()
         content = "\n".join(mtimes)
         return hashlib.sha256(content.encode()).hexdigest()[:16]
-    
+
     def _cache_key(
         self,
         task_name: str,
@@ -150,14 +150,14 @@ class TaskResultCache:
         for k, v in sorted(kwargs.items()):
             if v is not None:
                 parts.append(f"{k}:{v}")
-        
+
         key = "|".join(parts)
         return hashlib.sha256(key.encode()).hexdigest()[:32]
-    
+
     def _cache_file_path(self, cache_key: str) -> Path:
         """Get the file path for a cache key."""
         return self.cache_dir / f"{cache_key}.json"
-    
+
     def get(
         self,
         task_name: str,
@@ -176,9 +176,9 @@ class TaskResultCache:
         """
         if not self.enabled:
             return None
-        
+
         cache_key = self._cache_key(task_name, source_path, storage_path, **kwargs)
-        
+
         # Check memory cache first
         with self._lock:
             if cache_key in self._memory_cache:
@@ -189,38 +189,38 @@ class TaskResultCache:
                         return entry.result
                 # Invalid - remove from memory cache
                 del self._memory_cache[cache_key]
-        
+
         # Check disk cache
         cache_file = self._cache_file_path(cache_key)
         if not cache_file.exists():
             return None
-        
+
         try:
             with open(cache_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             entry = CacheEntry.from_dict(data)
-            
+
             # Validate entry
             if entry.is_expired():
                 cache_file.unlink(missing_ok=True)
                 return None
-            
+
             current_hash = self._compute_source_hash(source_path)
             if entry.source_hash != current_hash:
                 cache_file.unlink(missing_ok=True)
                 return None
-            
+
             # Valid - store in memory cache too
             with self._lock:
                 self._memory_cache[cache_key] = entry
-            
+
             return entry.result
-            
+
         except Exception:
             # Corrupted cache file - remove it
             cache_file.unlink(missing_ok=True)
             return None
-    
+
     def set(
         self,
         task_name: str,
@@ -243,10 +243,10 @@ class TaskResultCache:
         """
         if not self.enabled:
             return
-        
+
         cache_key = self._cache_key(task_name, source_path, storage_path, **kwargs)
         source_hash = self._compute_source_hash(source_path)
-        
+
         entry = CacheEntry(
             task_name=task_name,
             result=result,
@@ -254,11 +254,11 @@ class TaskResultCache:
             source_hash=source_hash,
             ttl_seconds=ttl if ttl is not None else self.default_ttl,
         )
-        
+
         # Store in memory
         with self._lock:
             self._memory_cache[cache_key] = entry
-        
+
         # Store on disk
         cache_file = self._cache_file_path(cache_key)
         try:
@@ -266,7 +266,7 @@ class TaskResultCache:
                 json.dump(entry.to_dict(), f, indent=2)
         except Exception:
             pass  # Disk write failure shouldn't break the application
-    
+
     def invalidate(
         self,
         task_name: Optional[str] = None,
@@ -283,7 +283,7 @@ class TaskResultCache:
             Number of entries invalidated
         """
         count = 0
-        
+
         # Invalidate memory cache
         with self._lock:
             keys_to_remove = []
@@ -296,11 +296,11 @@ class TaskResultCache:
                         keys_to_remove.append(key)
                         continue
                 keys_to_remove.append(key)
-            
+
             for key in keys_to_remove:
                 del self._memory_cache[key]
                 count += 1
-        
+
         # Invalidate disk cache
         if task_name is None and source_path is None:
             # Clear all
@@ -322,19 +322,19 @@ class TaskResultCache:
                     count += 1
                 except Exception:
                     pass
-        
+
         return count
-    
+
     def clear(self) -> int:
         """Clear all cache entries. Returns the number of entries cleared."""
         return self.invalidate()
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
         memory_count = len(self._memory_cache)
         disk_count = len(list(self.cache_dir.glob("*.json")))
         total_size = sum(f.stat().st_size for f in self.cache_dir.glob("*.json"))
-        
+
         return {
             "enabled": self.enabled,
             "cache_dir": str(self.cache_dir),
@@ -361,7 +361,7 @@ def get_task_cache(
     Creates the cache on first call, reuses it on subsequent calls.
     """
     global _global_cache
-    
+
     with _cache_lock:
         if _global_cache is None:
             _global_cache = TaskResultCache(
@@ -398,14 +398,14 @@ def cached_task(
         ) -> Dict[str, Any]:
             cache = get_task_cache()
             task_name = func.__name__
-            
+
             # Build extra kwargs for cache key
             extra_kwargs = {}
             if cache_key_params:
                 for param in cache_key_params:
                     if param in kwargs:
                         extra_kwargs[param] = kwargs[param]
-            
+
             # Try to get from cache
             if use_cache:
                 cached_result = cache.get(
@@ -416,7 +416,7 @@ def cached_task(
                 )
                 if cached_result is not None:
                     return cached_result
-            
+
             # Execute the task
             result = func(
                 storage_path=storage_path,
@@ -424,7 +424,7 @@ def cached_task(
                 progress_callback=progress_callback,
                 **kwargs,
             )
-            
+
             # Cache the result
             if use_cache:
                 cache.set(
@@ -435,12 +435,12 @@ def cached_task(
                     ttl=ttl,
                     **extra_kwargs,
                 )
-            
+
             return result
-        
+
         # Preserve function metadata
         wrapper.__name__ = func.__name__
         wrapper.__doc__ = func.__doc__
         return wrapper
-    
+
     return decorator

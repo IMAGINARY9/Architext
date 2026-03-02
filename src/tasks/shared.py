@@ -49,14 +49,14 @@ class TaskContext:
     """
     storage_path: Optional[str] = None
     source_path: Optional[str] = None
-    
+
     # Cached data
     _files: Optional[List[str]] = field(default=None, repr=False)
     _file_contents: Dict[str, str] = field(default_factory=dict, repr=False)
     _parsed_asts: Dict[str, ast.AST] = field(default_factory=dict, repr=False)
     _import_graph: Optional[Dict[str, List[str]]] = field(default=None, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    
+
     def get_files(self) -> List[str]:
         """Get all file paths, with caching."""
         if self._files is None:
@@ -64,13 +64,13 @@ class TaskContext:
                 if self._files is None:
                     self._files = collect_file_paths(self.storage_path, self.source_path)
         return self._files
-    
+
     def get_file_content(self, path: str) -> str:
         """Get file content, with caching."""
         if path not in self._file_contents:
             self._file_contents[path] = _read_file_text(path)
         return self._file_contents[path]
-    
+
     def get_parsed_ast(self, path: str) -> Optional[ast.AST]:
         """Get parsed Python AST, with caching."""
         if path not in self._parsed_asts:
@@ -81,7 +81,7 @@ class TaskContext:
                 except Exception:
                     self._parsed_asts[path] = None  # type: ignore
         return self._parsed_asts.get(path)
-    
+
     def get_import_graph(self) -> Dict[str, List[str]]:
         """Get import graph, with caching."""
         if self._import_graph is None:
@@ -90,7 +90,7 @@ class TaskContext:
                     from src.tasks.graph import _build_import_graph
                     self._import_graph = _build_import_graph(self.get_files())
         return self._import_graph
-    
+
     def clear_cache(self) -> None:
         """Clear all cached data."""
         with self._lock:
@@ -126,12 +126,12 @@ class task_context:
     def __init__(self, storage_path: Optional[str] = None, source_path: Optional[str] = None):
         self.ctx = TaskContext(storage_path=storage_path, source_path=source_path)
         self._previous: Optional[TaskContext] = None
-    
+
     def __enter__(self) -> TaskContext:
         self._previous = get_current_context()
         set_current_context(self.ctx)
         return self.ctx
-    
+
     def __exit__(self, *args) -> None:
         set_current_context(self._previous)
 
@@ -419,7 +419,7 @@ def collect_file_paths(storage_path: Optional[str], source_path: Optional[str]) 
     if ctx is not None:
         if (ctx.source_path == source_path and ctx.storage_path == storage_path):
             return ctx.get_files()
-    
+
     # Fall back to cached functions
     if source_path:
         return list(_gather_files_cached(str(source_path)))

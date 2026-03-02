@@ -25,7 +25,7 @@ class DuplicateBlocksTask(BaseTask):
     
     Uses sliding window hash comparison to find duplicated code.
     """
-    
+
     def __init__(
         self,
         storage_path: Optional[str] = None,
@@ -45,27 +45,27 @@ class DuplicateBlocksTask(BaseTask):
         self.min_lines = min_lines
         self.max_findings = max_findings
         self.max_windows_per_file = max_windows_per_file
-    
+
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """Find duplicate code blocks."""
         self._report_progress("analyze", "Scanning for duplicate blocks")
-        
+
         duplicates: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         scanned = 0
-        
+
         for f in files:
             if f.extension not in {".py", ".js", ".ts", ".jsx", ".tsx"}:
                 continue
             if not f.content:
                 continue
-            
+
             raw_lines = f.content.splitlines()
             if len(raw_lines) < self.min_lines:
                 continue
-            
+
             normalized = [self._normalize_line(line, f.extension) for line in raw_lines]
             window_limit = min(self.max_windows_per_file, max(len(raw_lines) - self.min_lines + 1, 0))
-            
+
             for idx in range(min(window_limit, len(raw_lines) - self.min_lines + 1)):
                 window = normalized[idx:idx + self.min_lines]
                 if not all(window):
@@ -77,9 +77,9 @@ class DuplicateBlocksTask(BaseTask):
                     "start_line": idx + 1,
                     "end_line": idx + self.min_lines,
                 })
-            
+
             scanned += 1
-        
+
         # Filter to actual duplicates (2+ occurrences)
         findings = [
             {
@@ -91,14 +91,14 @@ class DuplicateBlocksTask(BaseTask):
             if len(occ) >= 2
         ]
         findings.sort(key=lambda x: x["occurrence_count"], reverse=True)
-        
+
         return {
             "count": len(findings),
             "scanned_files": scanned,
             "min_lines": self.min_lines,
             "findings": findings[:self.max_findings],
         }
-    
+
     @staticmethod
     def _normalize_line(line: str, suffix: str) -> str:
         """Normalize line for comparison."""
@@ -144,7 +144,7 @@ class SemanticDuplicationTask(BaseTask):
     
     Normalizes identifiers and literals to find structurally similar code.
     """
-    
+
     def __init__(
         self,
         storage_path: Optional[str] = None,
@@ -162,31 +162,31 @@ class SemanticDuplicationTask(BaseTask):
         )
         self.min_tokens = min_tokens
         self.max_findings = max_findings
-    
+
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """Find semantically similar functions."""
         self._report_progress("analyze", "Scanning for semantic duplication")
-        
+
         fingerprints: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         scanned = 0
-        
+
         for f in files:
             if not f.ast_tree or not f.content:
                 continue
-            
+
             for node in ast.walk(f.ast_tree):
                 if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                     continue
-                
+
                 segment = ast.get_source_segment(f.content, node) or ""
                 normalized = self._normalize_tokens(segment)
                 if not normalized:
                     continue
-                
+
                 token_count = len(normalized.split())
                 if token_count < self.min_tokens:
                     continue
-                
+
                 digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()
                 fingerprints[digest].append({
                     "file": f.path,
@@ -194,9 +194,9 @@ class SemanticDuplicationTask(BaseTask):
                     "line": getattr(node, "lineno", 0),
                     "tokens": token_count,
                 })
-            
+
             scanned += 1
-        
+
         # Filter to actual duplicates
         findings = [
             {
@@ -208,14 +208,14 @@ class SemanticDuplicationTask(BaseTask):
             if len(occ) >= 2
         ]
         findings.sort(key=lambda x: cast(int, x["occurrence_count"]), reverse=True)
-        
+
         return {
             "count": len(findings),
             "scanned_files": scanned,
             "min_tokens": self.min_tokens,
             "findings": findings[:self.max_findings],
         }
-    
+
     @staticmethod
     def _normalize_tokens(segment: str) -> str:
         """Normalize Python tokens for semantic comparison."""

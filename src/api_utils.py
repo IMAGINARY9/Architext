@@ -44,11 +44,11 @@ def extract_sources(response: Any) -> List[Dict[str, Any]]:
                 metadata = getattr(node, "metadata", {})
                 text = getattr(node, "text", "") if hasattr(node, "text") else ""
                 score = getattr(node, "score", 0.0)
-            
+
             # Ensure text is a string
             if not isinstance(text, str):
                 text = ""
-            
+
             # Handle metadata which might be a dict or Mock
             file_path = ""
             start_line = None
@@ -73,11 +73,11 @@ def extract_sources(response: Any) -> List[Dict[str, Any]]:
                 file_path = ""
                 start_line = None
                 end_line = None
-            
+
             # Normalize Windows paths to forward slashes for consistency
             if file_path:
                 file_path = file_path.replace("\\", "/")
-            
+
             sources.append({
                 "file": file_path,
                 "score": score,
@@ -91,19 +91,19 @@ def extract_sources(response: Any) -> List[Dict[str, Any]]:
 def to_agent_response(response: Any, query: str) -> Dict[str, Any]:
     """Format a full agent response."""
     confidence = _calculate_confidence(response)
-    
+
     reranked = False
     if hasattr(response, "reranked"):
         rerank_val = getattr(response, "reranked", False)
         if isinstance(rerank_val, bool):
             reranked = rerank_val
-    
+
     hybrid_enabled = False
     if hasattr(response, "hybrid_enabled"):
         hybrid_val = getattr(response, "hybrid_enabled", False)
         if isinstance(hybrid_val, bool):
             hybrid_enabled = hybrid_val
-    
+
     return {
         "answer": str(response),
         "confidence": confidence,
@@ -134,10 +134,10 @@ class DryRunIndexer:
         """Perform a dry run indexing operation."""
         total_files = len(files)
         total_docs = total_files  # Simplified estimate
-        
+
         if self.logger:
             self.logger.info(f"Dry run: Would index {total_docs} documents from {total_files} files")
-        
+
         return {
             "files_processed": total_files,
             "documents_indexed": total_docs,

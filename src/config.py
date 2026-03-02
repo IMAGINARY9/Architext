@@ -3,7 +3,7 @@
 This module centralizes environment-driven settings using Pydantic
 BaseSettings so we can support .env files and type-safe defaults.
 """
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -116,7 +116,7 @@ def load_settings(env_file: Optional[str] = None, config_file: Optional[str] = N
                 if error.get("type") == "extra_forbidden":
                     field_name = error.get("loc", ["unknown"])[0]
                     unknown_fields.append(str(field_name))
-            
+
             if unknown_fields:
                 known_fields = [field.alias or field_name for field_name, field in ArchitextSettings.model_fields.items()]
                 raise RuntimeError(

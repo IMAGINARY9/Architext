@@ -39,20 +39,20 @@ class FileInfo:
     content: Optional[str] = None
     ast_tree: Optional[ast.AST] = None
     line_count: int = 0
-    
+
     @classmethod
     def from_path(cls, path: str, load_content: bool = False) -> "FileInfo":
         """Create FileInfo from a file path."""
         p = Path(path)
         ext = p.suffix.lower()
         lang = DEFAULT_EXTENSIONS.get(ext, "Other")
-        
+
         info = cls(
             path=path,
             extension=ext,
             language=lang,
         )
-        
+
         if load_content:
             info.content = _read_file_text(path)
             if info.content:
@@ -62,7 +62,7 @@ class FileInfo:
                         info.ast_tree = ast.parse(info.content)
                     except Exception:
                         pass
-        
+
         return info
 
 
@@ -72,7 +72,7 @@ class TaskResult:
     success: bool = True
     error: Optional[str] = None
     data: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to standard dictionary format."""
         if self.error:
@@ -106,7 +106,7 @@ class BaseTask(ABC):
         task = MyTask(source_path="src")
         result = task.run()
     """
-    
+
     def __init__(
         self,
         storage_path: Optional[str] = None,
@@ -131,25 +131,25 @@ class BaseTask(ABC):
         self.extensions = extensions
         self.load_content = load_content
         self._files: Optional[List[FileInfo]] = None
-    
+
     def _report_progress(self, stage: str, message: str, **extra: Any) -> None:
         """Report progress to callback if provided."""
         _progress(self.progress_callback, {"stage": stage, "message": message, **extra})
-    
+
     def _collect_files(self) -> List[str]:
         """Collect file paths, using context cache if available."""
         ctx = get_current_context()
         if ctx is not None:
             return ctx.get_files()
         return collect_file_paths(self.storage_path, self.source_path)
-    
+
     def _get_file_content(self, path: str) -> str:
         """Get file content, using context cache if available."""
         ctx = get_current_context()
         if ctx is not None:
             return ctx.get_file_content(path)
         return _read_file_text(path)
-    
+
     def get_files(self) -> List[FileInfo]:
         """
         Get list of files to analyze with metadata.
@@ -158,30 +158,30 @@ class BaseTask(ABC):
         """
         if self._files is not None:
             return self._files
-        
+
         self._report_progress("scan", "Collecting files")
         paths = self._collect_files()
-        
+
         files = []
         for path in paths:
             ext = Path(path).suffix.lower()
             if self.extensions and ext not in self.extensions:
                 continue
-            
+
             info = FileInfo.from_path(path, load_content=self.load_content)
             files.append(info)
-        
+
         self._files = files
         return files
-    
+
     def get_python_files(self) -> List[FileInfo]:
         """Get only Python files with content and AST loaded."""
         return [f for f in self.get_files() if f.extension == ".py"]
-    
+
     def get_js_ts_files(self) -> List[FileInfo]:
         """Get only JavaScript/TypeScript files."""
         return [f for f in self.get_files() if f.extension in JS_TS_EXTENSIONS]
-    
+
     @abstractmethod
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """
@@ -196,7 +196,7 @@ class BaseTask(ABC):
             Analysis results as a dictionary
         """
         pass
-    
+
     def run(self) -> Dict[str, Any]:
         """
         Execute the task.

@@ -5,7 +5,6 @@ Security scanning using regex and AST patterns.
 from __future__ import annotations
 
 import ast
-import re
 from collections import Counter
 from typing import Any, Callable, Dict, List, Optional
 
@@ -23,7 +22,7 @@ class SecurityHeuristicsTask(BaseTask):
     Detects common security issues like hardcoded secrets, command injection,
     and dangerous function usage.
     """
-    
+
     def __init__(
         self,
         storage_path: Optional[str] = None,
@@ -39,24 +38,24 @@ class SecurityHeuristicsTask(BaseTask):
             load_content=True,
         )
         self.max_findings = max_findings
-    
+
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """Run security heuristics scan."""
         self._report_progress("analyze", "Running security heuristics")
-        
+
         findings: List[Dict[str, Any]] = []
-        
+
         for f in files:
             if not f.content:
                 continue
-            
+
             lines = f.content.splitlines()
             for idx, line in enumerate(lines, start=1):
                 for rule in SECURITY_PATTERNS:
                     extensions = rule.get("extensions")
                     if extensions and f.extension not in extensions:
                         continue
-                    
+
                     pattern = rule.get("pattern")
                     if pattern and pattern.search(line):
                         findings.append({
@@ -67,44 +66,44 @@ class SecurityHeuristicsTask(BaseTask):
                             "line": idx,
                             "snippet": line.strip()[:300],
                         })
-                        
+
                         if len(findings) >= self.max_findings:
                             return self._format_result(findings)
-            
+
             # AST analysis for Python
             if f.extension == ".py" and f.ast_tree:
                 findings.extend(self._analyze_python_ast(f))
-        
+
         return self._format_result(findings)
-    
+
     def _analyze_python_ast(self, f: FileInfo) -> List[Dict[str, Any]]:
         """Analyze Python AST for security issues."""
         findings: List[Dict[str, Any]] = []
-        
+
         if f.ast_tree:  # guard against Optional
             for node in ast.walk(f.ast_tree):
-            if not isinstance(node, ast.Call):
-                continue
-            
-            name = None
-            if isinstance(node.func, ast.Name):
-                name = node.func.id
-            elif isinstance(node.func, ast.Attribute):
-                if isinstance(node.func.value, ast.Name):
-                    name = f"{node.func.value.id}.{node.func.attr}"
-            
-            if name in {"eval", "exec"}:
-                findings.append({
-                    "rule_id": "py-ast-eval-exec",
-                    "severity": "high",
-                    "description": "Dynamic code execution detected (AST)",
-                    "file": f.path,
-                    "line": getattr(node, "lineno", 0),
-                    "snippet": name,
-                })
-        
+                if not isinstance(node, ast.Call):
+                    continue
+
+                name = None
+                if isinstance(node.func, ast.Name):
+                    name = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Name):
+                        name = f"{node.func.value.id}.{node.func.attr}"
+
+                if name in {"eval", "exec"}:
+                    findings.append({
+                        "rule_id": "py-ast-eval-exec",
+                        "severity": "high",
+                        "description": "Dynamic code execution detected (AST)",
+                        "file": f.path,
+                        "line": getattr(node, "lineno", 0),
+                        "snippet": name,
+                    })
+
         return findings
-    
+
     def _format_result(self, findings: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Format security scan results."""
         by_severity = Counter(f["severity"] for f in findings)

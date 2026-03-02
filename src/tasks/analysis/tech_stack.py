@@ -40,7 +40,7 @@ class TechStackTask(BaseTask):
     
     Scans for framework patterns in imports and code.
     """
-    
+
     def __init__(
         self,
         storage_path: Optional[str] = None,
@@ -56,19 +56,19 @@ class TechStackTask(BaseTask):
             load_content=True,
         )
         self.output_format = output_format
-    
+
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """Detect tech stack from files."""
         self._report_progress("analyze", "Scanning for framework usage")
-        
+
         extensions = Counter(f.extension for f in files)
         languages: Counter[str] = Counter()
         for f in files:
             languages[f.language] += 1
-        
+
         framework_hits: Dict[str, int] = defaultdict(int)
         framework_files: Dict[str, List[str]] = defaultdict(list)
-        
+
         for f in files:
             if not f.content:
                 continue
@@ -78,14 +78,14 @@ class TechStackTask(BaseTask):
                     framework_hits[framework] += 1
                     if len(framework_files[framework]) < 10:
                         framework_files[framework].append(f.path)
-        
+
         result = {
             "languages": dict(languages),
             "extensions": dict(extensions.most_common(15)),
             "frameworks": dict(framework_hits),
             "examples": framework_files,
         }
-        
+
         if self.output_format == "markdown":
             lines = [
                 "# Technology Stack", "",
@@ -93,7 +93,7 @@ class TechStackTask(BaseTask):
                 "## Frameworks", json.dumps(dict(framework_hits), indent=2)
             ]
             return {"format": "markdown", "content": "\n".join(lines)}
-        
+
         return {"format": "json", "data": result}
 
 

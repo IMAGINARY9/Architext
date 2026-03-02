@@ -91,10 +91,10 @@ def build_mcp_router(
             index_name = args.get("index_name")
             if not index_name:
                 raise HTTPException(status_code=400, detail="index_name is required")
-            
+
             # Import necessary components
             from src.indexer import load_existing_index
-            
+
             for root in storage_roots or []:
                 index_path = root / index_name
                 if index_path.exists() and index_path.is_dir():
@@ -104,7 +104,7 @@ def build_mcp_router(
                             resolve_collection_name(base_settings)
                         )
                         doc_count = stats.count if hasattr(stats, 'count') else 0
-                        
+
                         metadata = {
                             "name": index_name,
                             "path": str(index_path),
@@ -113,11 +113,11 @@ def build_mcp_router(
                             "collection": resolve_collection_name(base_settings) if base_settings else "unknown",
                             "status": "available",
                         }
-                        
+
                         # Add any additional metadata if available
                         if hasattr(stats, 'metadata'):
                             metadata.update(stats.metadata)
-                        
+
                         return metadata
                     except Exception as exc:
                         return {
@@ -126,7 +126,7 @@ def build_mcp_router(
                             "status": "error",
                             "error": str(exc),
                         }
-            
+
             raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
 
         raise HTTPException(status_code=400, detail="Unknown MCP tool")

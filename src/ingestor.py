@@ -61,12 +61,12 @@ def resolve_source(source: str, use_cache: bool = True, ssh_key: Optional[str] =
         RuntimeError: If GitPython is not installed or cloning fails.
     """
     source = source.strip()
-    
+
     # Check if it's a local path
     local_path = Path(source).expanduser()
     if local_path.exists() and local_path.is_dir():
         return local_path.resolve()
-    
+
     # Check if it looks like a remote URL
     if _is_github_like_url(source):
         if not HAS_GIT:
@@ -74,18 +74,18 @@ def resolve_source(source: str, use_cache: bool = True, ssh_key: Optional[str] =
                 "GitPython is required for remote repo support. "
                 "Install: pip install GitPython"
             )
-        
+
         if not use_cache:
             raise ValueError(
                 f"Remote source not allowed without cache: {source}"
             )
-        
+
         return _clone_to_cache(source, ssh_key=ssh_key)
-    
+
     # Not found locally, not a recognized remote format
     if local_path.exists():
         raise ValueError(f"Source exists but is not a directory: {source}")
-    
+
     raise ValueError(
         f"Source not found and not a recognized git URL: {source}\n"
         f"Expected: local path, GitHub URL, or git@host:repo format"
@@ -99,7 +99,7 @@ def _clone_to_cache(url: str, ssh_key: Optional[str] = None) -> Path:
     repo_path = cache_dir / repo_hash
 
     env = _build_git_env(ssh_key)
-    
+
     # If already cached, update it
     if repo_path.exists():
         logger.info("Updating cached repo: %s", repo_path)
@@ -117,7 +117,7 @@ def _clone_to_cache(url: str, ssh_key: Optional[str] = None) -> Path:
             Repo.clone_from(url, repo_path, env=env)
         except GitCommandError as e:
             raise RuntimeError(f"Failed to clone {url}: {e}")
-    
+
     return repo_path
 
 
@@ -143,21 +143,21 @@ def cleanup_cache(max_age_days: int = 30) -> int:
         Number of repos removed.
     """
     import time
-    
+
     if not CACHE_DIR.exists():
         return 0
-    
+
     now = time.time()
     removed = 0
-    
+
     for repo_dir in CACHE_DIR.iterdir():
         if not repo_dir.is_dir():
             continue
-        
+
         # Check last access time
         atime = repo_dir.stat().st_atime
         age_days = (now - atime) / (24 * 3600)
-        
+
         if age_days > max_age_days:
             logger.info("Removing cached repo: %s (unused for %.0f days)", repo_dir.name, age_days)
             try:
@@ -166,10 +166,10 @@ def cleanup_cache(max_age_days: int = 30) -> int:
                     import stat
                     os.chmod(path, stat.S_IWRITE)
                     func(path)
-                
+
                 shutil.rmtree(repo_dir, onerror=handle_remove_readonly)
                 removed += 1
             except Exception as e:
                 logger.warning("Could not remove %s: %s", repo_dir.name, e)
-    
+
     return removed

@@ -27,7 +27,7 @@ def synthesis_roadmap(
     # Use shared context to cache file collection across all sub-tasks
     with task_context(storage_path=storage_path, source_path=source_path):
         _progress(progress_callback, {"stage": "analyze", "message": "Gathering structural signals"})
-        
+
         # All these tasks will share the cached file list from the context
         anti_patterns = detect_anti_patterns(storage_path, source_path)
         health = health_score(storage_path, source_path)

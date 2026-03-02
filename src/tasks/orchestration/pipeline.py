@@ -28,7 +28,7 @@ class PipelineStep:
     transform: Optional[str] = None  # Python expression to transform result
     params: Dict[str, Any] = field(default_factory=dict)
     on_error: Literal["stop", "continue", "skip"] = "stop"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "task_name": self.task_name,
@@ -37,7 +37,7 @@ class PipelineStep:
             "params": self.params,
             "on_error": self.on_error,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PipelineStep":
         return cls(
@@ -54,14 +54,14 @@ class ParallelGroup:
     """A group of steps to execute in parallel."""
     steps: List[PipelineStep]
     merge_strategy: Literal["dict", "list", "first"] = "dict"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "type": "parallel",
             "steps": [s.to_dict() for s in self.steps],
             "merge_strategy": self.merge_strategy,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ParallelGroup":
         return cls(
@@ -104,14 +104,14 @@ class TaskPipeline:
     description: str = ""
     version: str = "1.0"
     created_at: Optional[datetime] = None
-    
+
     def __post_init__(self):
         if self.id is None:
             # Generate ID from name
             self.id = "".join(c if c.isalnum() or c == "-" else "-" for c in self.name.lower())
         if self.created_at is None:
             self.created_at = datetime.now()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         steps_data = []
         for step in self.steps:
@@ -119,7 +119,7 @@ class TaskPipeline:
                 steps_data.append(step.to_dict())
             else:
                 steps_data.append({"type": "step", **step.to_dict()})
-        
+
         return {
             "id": self.id,
             "name": self.name,
@@ -128,7 +128,7 @@ class TaskPipeline:
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "steps": steps_data,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskPipeline":
         # `steps` can contain either PipelineStep or ParallelGroup instances;
@@ -141,11 +141,11 @@ class TaskPipeline:
                 # Remove type field before creating PipelineStep
                 step_dict = {k: v for k, v in step_data.items() if k != "type"}
                 steps.append(PipelineStep.from_dict(step_dict))
-        
+
         created_at = data.get("created_at")
         if created_at and isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
-        
+
         return cls(
             id=data.get("id"),
             name=data["name"],
@@ -154,7 +154,7 @@ class TaskPipeline:
             created_at=created_at,
             steps=steps,
         )
-    
+
     def validate(self, available_tasks: List[str]) -> List[str]:
         """
         Validate the pipeline configuration.
@@ -162,7 +162,7 @@ class TaskPipeline:
         Returns list of validation errors (empty if valid).
         """
         errors = []
-        
+
         for i, step in enumerate(self.steps):
             if isinstance(step, ParallelGroup):
                 for j, sub_step in enumerate(step.steps):
@@ -171,7 +171,7 @@ class TaskPipeline:
             else:
                 if step.task_name not in available_tasks:
                     errors.append(f"Step {i}: Unknown task '{step.task_name}'")
-        
+
         return errors
 
 
@@ -185,7 +185,7 @@ class PipelineResult:
     tasks_failed: int
     results: Dict[str, Any]
     errors: Dict[str, str] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "pipeline_id": self.pipeline_id,
@@ -206,7 +206,7 @@ class PipelineExecutor:
         executor = PipelineExecutor(source_path="src")
         result = executor.execute(pipeline)
     """
-    
+
     def __init__(
         self,
         source_path: Optional[str] = None,
@@ -224,7 +224,7 @@ class PipelineExecutor:
         self.source_path = source_path
         self.storage_path = storage_path
         self.max_workers = max_workers
-    
+
     def execute(
         self,
         pipeline: TaskPipeline,
@@ -247,21 +247,21 @@ class PipelineExecutor:
         errors: Dict[str, str] = {}
         tasks_executed = 0
         tasks_failed = 0
-        
+
         if progress_callback:
             progress_callback({
                 "type": "pipeline_start",
                 "pipeline": pipeline.name,
                 "total_steps": len(pipeline.steps),
             })
-        
+
         for i, step in enumerate(pipeline.steps):
             if progress_callback:
                 progress_callback({
                     "type": "step_start",
                     "step_index": i,
                 })
-            
+
             try:
                 if isinstance(step, ParallelGroup):
                     step_results = self._run_parallel_group(step, progress_callback)
@@ -277,36 +277,36 @@ class PipelineExecutor:
                     result = self._run_step(step, progress_callback)
                     results[step.task_name] = result
                     tasks_executed += 1
-                
+
                 if progress_callback:
                     progress_callback({
                         "type": "step_complete",
                         "step_index": i,
                     })
-                    
+
             except Exception as e:
                 error_msg = str(e)
                 task_name = step.task_name if isinstance(step, PipelineStep) else f"parallel-group-{i}"
                 errors[task_name] = error_msg
                 tasks_failed += 1
-                
+
                 if progress_callback:
                     progress_callback({
                         "type": "step_error",
                         "step_index": i,
                         "error": error_msg,
                     })
-                
+
                 # Check if we should stop
                 should_continue = False
                 if isinstance(step, PipelineStep) and step.on_error == "continue":
                     should_continue = True
-                
+
                 if stop_on_error and not should_continue:
                     break
-        
+
         total_duration = time.time() - started_at
-        
+
         # `pipeline.id` is optional in the dataclass but required for results
         if pipeline.id is None:
             raise ValueError("Pipeline ID is required to produce a result")
@@ -319,7 +319,7 @@ class PipelineExecutor:
             results=results,
             errors=errors,
         )
-    
+
     def _run_step(
         self,
         step: PipelineStep,
@@ -327,16 +327,16 @@ class PipelineExecutor:
     ) -> Dict[str, Any]:
         """Run a single pipeline step."""
         from src.task_registry import run_task
-        
+
         # Merge params
         params = {
             "storage_path": self.storage_path,
             "source_path": self.source_path,
             **step.params,
         }
-        
+
         return run_task(step.task_name, **params)
-    
+
     def _run_parallel_group(
         self,
         group: ParallelGroup,
@@ -344,7 +344,7 @@ class PipelineExecutor:
     ) -> Dict[str, Dict[str, Any]]:
         """Run a parallel group of steps."""
         from src.task_registry import run_tasks_parallel
-        
+
         task_names = [s.task_name for s in group.steps]
         return run_tasks_parallel(
             task_names,
@@ -360,20 +360,20 @@ class PipelineStore:
     
     Pipelines are persisted to disk as JSON files.
     """
-    
+
     def __init__(self, storage_path: Optional[Union[str, Path]] = None):
         if storage_path is None:
             storage_path = Path.home() / ".architext" / "pipelines"
-        
+
         self.store_dir = Path(storage_path)
         self.store_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-    
+
     def _pipeline_file(self, pipeline_id: str) -> Path:
         """Get the file path for a pipeline."""
         safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in pipeline_id)
         return self.store_dir / f"{safe_name}.json"
-    
+
     def save(self, pipeline: TaskPipeline) -> None:
         """Save a pipeline to disk."""
         if pipeline.id is None:
@@ -381,24 +381,24 @@ class PipelineStore:
         with self._lock:
             with open(self._pipeline_file(pipeline.id), "w", encoding="utf-8") as f:
                 json.dump(pipeline.to_dict(), f, indent=2)
-    
+
     def get(self, pipeline_id: str) -> Optional[TaskPipeline]:
         """Get a pipeline by ID."""
         path = self._pipeline_file(pipeline_id)
         if not path.exists():
             return None
-        
+
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             return TaskPipeline.from_dict(data)
         except Exception:
             return None
-    
+
     def load(self, name: str) -> Optional[TaskPipeline]:
         """Load a pipeline from disk. Alias for get()."""
         return self.get(name)
-    
+
     def list_pipelines(self) -> List[TaskPipeline]:
         """List all saved pipelines."""
         pipelines = []
@@ -410,7 +410,7 @@ class PipelineStore:
             except Exception:
                 continue
         return pipelines
-    
+
     def list(self) -> List[Dict[str, Any]]:
         """List all saved pipelines as dicts."""
         pipelines = []
@@ -427,7 +427,7 @@ class PipelineStore:
             except Exception:
                 continue
         return pipelines
-    
+
     def delete(self, name: str) -> bool:
         """Delete a pipeline."""
         path = self._pipeline_file(name)
@@ -534,10 +534,10 @@ _pipeline_store_lock = threading.Lock()
 def get_pipeline_store(storage_path: Optional[str] = None) -> PipelineStore:
     """Get the singleton PipelineStore instance."""
     global _pipeline_store_instance
-    
+
     if _pipeline_store_instance is None:
         with _pipeline_store_lock:
             if _pipeline_store_instance is None:
                 _pipeline_store_instance = PipelineStore(storage_path)
-    
+
     return _pipeline_store_instance

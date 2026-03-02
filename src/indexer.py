@@ -301,27 +301,27 @@ def load_documents(path: str, progress_callback=None):
 def create_index(documents, storage_path="./storage", progress_callback=None):
     """Create and persist a vector index from documents."""
     print(f"Initializing ChromaDB and Vector Store at {storage_path}...")
-    
+
     if progress_callback:
         progress_callback({"stage": "indexing", "message": "Initializing vector store..."})
-    
+
     settings = load_settings()
     vector_store = _build_vector_store(settings, storage_path)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
-    
+
     print("Creating VectorStoreIndex (this may take a while)...")
     if progress_callback:
         progress_callback({"stage": "indexing", "message": f"Embedding {len(documents)} documents..."})
-    
+
     index = VectorStoreIndex.from_documents(
         documents,
         storage_context=storage_context,
         show_progress=True
     )
-    
+
     if progress_callback:
         progress_callback({"stage": "indexing", "message": "Index created successfully", "completed": True})
-    
+
     return index
 
 
@@ -385,7 +385,7 @@ def load_existing_index(storage_path="./storage"):
     settings = load_settings()
     print(f"Loading existing index from {storage_path} (provider={settings.vector_store_provider})...")
     vector_store = _build_vector_store(settings, storage_path)
-    
+
     index = VectorStoreIndex.from_vector_store(
         vector_store=vector_store,
     )

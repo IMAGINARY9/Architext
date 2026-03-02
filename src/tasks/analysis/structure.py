@@ -19,7 +19,7 @@ class StructureAnalysisTask(BaseTask):
     
     Generates file trees, language breakdowns, and import cluster analysis.
     """
-    
+
     def __init__(
         self,
         storage_path: Optional[str] = None,
@@ -38,22 +38,22 @@ class StructureAnalysisTask(BaseTask):
         self.depth = depth
         self.output_format = output_format
         self._depth_map = {"shallow": 2, "detailed": 4, "exhaustive": 8}
-    
+
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """Analyze repository structure."""
         self._report_progress("analyze", "Building structure tree")
-        
+
         paths = [f.path for f in files]
         tree = self._build_tree(paths)
         max_depth = self._depth_map.get(self.depth, 2)
         pruned = self._prune_tree(tree, max_depth)
-        
+
         # Count extensions and languages
         extensions = Counter(f.extension for f in files)
         languages: Counter[str] = Counter()
         for f in files:
             languages[f.language] += 1
-        
+
         # Import cluster analysis
         import_cluster_counts: Counter[str] = Counter()
         for f in files:
@@ -61,7 +61,7 @@ class StructureAnalysisTask(BaseTask):
                 imports = _extract_imports(f.path, f.content)
                 clusters = _classify_import_clusters(imports)
                 import_cluster_counts.update(clusters)
-        
+
         summary = {
             "total_files": len(files),
             "total_extensions": len(extensions),
@@ -69,7 +69,7 @@ class StructureAnalysisTask(BaseTask):
             "top_extensions": dict(extensions.most_common(10)),
             "import_clusters": dict(import_cluster_counts),
         }
-        
+
         if self.output_format == "markdown":
             lines = [
                 "# Repository Structure", "",
@@ -78,13 +78,13 @@ class StructureAnalysisTask(BaseTask):
             ]
             lines.extend(self._tree_to_markdown(pruned))
             return {"format": "markdown", "content": "\n".join(lines)}
-        
+
         if self.output_format == "mermaid":
             diagram = self._tree_to_mermaid(pruned)
             return {"format": "mermaid", "content": diagram, "summary": summary}
-        
+
         return {"format": "json", "summary": summary, "tree": pruned}
-    
+
     @staticmethod
     def _build_tree(paths: List[str]) -> Dict[str, Any]:
         """Build nested dictionary tree from paths."""
@@ -96,13 +96,13 @@ class StructureAnalysisTask(BaseTask):
                 cursor = cursor.setdefault(part, {})
             cursor.setdefault("__files__", []).append(parts[-1])
         return tree
-    
+
     @staticmethod
     def _prune_tree(tree: Dict[str, Any], max_depth: int, depth: int = 0) -> Dict[str, Any]:
         """Prune tree to max depth."""
         if depth >= max_depth:
             return {"...": "truncated"}
-        
+
         pruned: Dict[str, Any] = {}
         for key, value in tree.items():
             if key == "__files__":
@@ -110,7 +110,7 @@ class StructureAnalysisTask(BaseTask):
             elif isinstance(value, dict):
                 pruned[key] = StructureAnalysisTask._prune_tree(value, max_depth, depth + 1)
         return pruned
-    
+
     @staticmethod
     def _tree_to_markdown(tree: Dict[str, Any], indent: int = 0) -> List[str]:
         """Convert tree to markdown list."""
@@ -123,13 +123,13 @@ class StructureAnalysisTask(BaseTask):
                 lines.append("  " * indent + f"- {key}/")
                 lines.extend(StructureAnalysisTask._tree_to_markdown(value, indent + 1))
         return lines
-    
+
     @staticmethod
     def _tree_to_mermaid(tree: Dict[str, Any], root_label: str = "root") -> str:
         """Convert tree to Mermaid diagram."""
         lines = ["graph TD", f"  {root_label}[{root_label}]"]
         node_id = 0
-        
+
         def walk(node: Dict[str, Any], parent: str):
             nonlocal node_id
             for key, value in node.items():
@@ -145,7 +145,7 @@ class StructureAnalysisTask(BaseTask):
                     lines.append(f"  {dir_id}[{key}/]")
                     lines.append(f"  {parent} --> {dir_id}")
                     walk(value, dir_id)
-        
+
         walk(tree, root_label)
         return "\n".join(lines)
 

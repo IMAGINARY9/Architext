@@ -184,7 +184,7 @@ def code_knowledge_graph(
         content = _read_file_text(path)
         if not content:
             continue
-        
+
         if suffix == ".py":
             _parse_python_knowledge_graph(path, content, nodes, edges, max_edges)
             languages_parsed["python"] += 1
@@ -289,23 +289,23 @@ def _parse_js_ts_knowledge_graph(
     parser = _get_ts_parser(language)
     if not parser:
         return False
-    
+
     try:
         tree = parser.parse(content.encode("utf-8", errors="ignore"))
     except Exception:
         return False
-    
+
     root = tree.root_node
     function_stack: List[str] = []
     lang_name = "typescript" if language in ("typescript", "tsx") else "javascript"
-    
+
     def get_node_text(node) -> str:
         return content[node.start_byte:node.end_byte]
-    
+
     def walk(node):
         if len(edges) >= max_edges:
             return
-            
+
         # Class declarations
         if node.type == "class_declaration":
             name_node = node.child_by_field_name("name")
@@ -324,7 +324,7 @@ def _parse_js_ts_knowledge_graph(
                     walk(child)
                 function_stack.pop()
                 return
-        
+
         # Function declarations and arrow functions
         if node.type in ("function_declaration", "method_definition", "arrow_function"):
             name = None
@@ -343,7 +343,7 @@ def _parse_js_ts_knowledge_graph(
                     name_node = parent.child_by_field_name("name")
                     if name_node:
                         name = get_node_text(name_node)
-            
+
             if name:
                 parent_ctx = function_stack[-1] if function_stack else None
                 node_id = f"{path}:{name}"
@@ -361,7 +361,7 @@ def _parse_js_ts_knowledge_graph(
                     walk(child)
                 function_stack.pop()
                 return
-        
+
         # Function calls
         if node.type == "call_expression":
             caller = function_stack[-1] if function_stack else f"{path}:<module>"
@@ -373,7 +373,7 @@ def _parse_js_ts_knowledge_graph(
                     "line": 1,
                     "language": lang_name,
                 }
-            
+
             func_node = node.child_by_field_name("function")
             if func_node:
                 callee = None
@@ -385,10 +385,10 @@ def _parse_js_ts_knowledge_graph(
                         callee = get_node_text(prop)
                 if callee:
                     edges.append({"source": caller, "target": callee, "type": "calls"})
-        
+
         # Recurse
         for child in node.children:
             walk(child)
-    
+
     walk(root)
     return True
