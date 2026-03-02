@@ -474,12 +474,13 @@ class ExecutionTracker:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         completed_at = time.time()
 
+        # we know status must be one of the three literals
+        status: Literal["success", "error", "timeout"]
         if exc_type is not None:
-            # we know status must be one of the three literals
-            status: Literal["success", "error", "timeout"] = "error"
+            status = "error"
             self.error_message = str(exc_val)
         else:
-            status: Literal["success", "error", "timeout"] = "success"
+            status = "success"
 
         self.history.record(
             task_name=self.task_name,
@@ -527,6 +528,7 @@ def _extract_result_summary(result: Dict[str, Any]) -> Dict[str, Any]:
             # string summary earlier)
             if isinstance(value, (int, float, str, bool)):
                 summary["summary"] = value
+    return summary
 # Global history instance
 _global_history: Optional[TaskExecutionHistory] = None
 _history_lock = threading.Lock()

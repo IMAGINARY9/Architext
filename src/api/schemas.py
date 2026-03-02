@@ -446,7 +446,7 @@ class TaskStatusResponse(BaseModel):
         None, description="Task creation timestamp"
     )
 
-    model_config = ConfigDict(
+    model_config: ConfigDict = ConfigDict(  # type: ignore[misc,typeddict-unknown-key]
         exclude_none=True,
         json_schema_extra={
             "examples": [
@@ -503,7 +503,7 @@ class TaskSummaryResponse(BaseModel):
         None, description="Task creation timestamp"
     )
 
-    model_config = ConfigDict(exclude_none=True)
+    model_config: ConfigDict = ConfigDict(exclude_none=True)  # type: ignore[misc,typeddict-unknown-key]
 
 
 class TaskListSummaryResponse(BaseModel):
@@ -545,7 +545,7 @@ class IndexStartResponse(BaseModel):
         None, description="Task creation timestamp"
     )
 
-    model_config = ConfigDict(
+    model_config: ConfigDict = ConfigDict(  # type: ignore[misc,typeddict-unknown-key]
         exclude_none=True,
         json_schema_extra={
             "examples": [

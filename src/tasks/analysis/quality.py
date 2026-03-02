@@ -74,7 +74,7 @@ class SilentFailuresTask(BaseTask):
 
     def _analyze_python(self, file: FileInfo) -> List[Dict[str, Any]]:
         """Analyze Python file for silent exception handlers."""
-        findings = []
+        findings: List[Dict[str, Any]] = []
         # file.content is Optional[str] according to FileInfo; guard against None
         if not file.content:
             return findings

@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -92,6 +92,7 @@ def build_indices_router(
                             collection=resolve_collection_name(base_settings),
                             status="available",
                             metadata=meta,
+                            error=None,
                             created_at=meta.get("created_at"),
                             updated_at=meta.get("updated_at"),
                             last_modified=dir_last_modified(index_path),
@@ -104,32 +105,40 @@ def build_indices_router(
                         resolve_collection_name(base_settings)
                     )
                     doc_count = stats.count if hasattr(stats, "count") else 0
-                    metadata_dict = {
-                        "name": index_name,
-                        "path": str(index_path),
-                        "documents": doc_count,
-                        "provider": base_settings.vector_store_provider,
-                        "collection": resolve_collection_name(base_settings),
-                        "status": "available",
-                        "last_modified": dir_last_modified(index_path),
-                        "disk_usage_bytes": dir_disk_usage(index_path),
-                        "files_count": dir_file_count(index_path),
-                        # always include optional timestamps to satisfy type checker
-                        "created_at": None,
-                        "updated_at": None,
-                    }
+
+                    # build response explicitly so mypy can see required fields
+                    metadata_val: Optional[Dict[str, Any]] = None
                     if hasattr(stats, "metadata") and stats.metadata:
-                        metadata_dict["metadata"] = stats.metadata
-                        # metadata from vector store may itself contain timestamps
-                        metadata_dict.setdefault("created_at", stats.metadata.get("created_at"))
-                        metadata_dict.setdefault("updated_at", stats.metadata.get("updated_at"))
-                    return IndexMetadataResponse(**metadata_dict)
+                        metadata_val = stats.metadata
+
+                    return IndexMetadataResponse(
+                        name=index_name,
+                        path=str(index_path),
+                        documents=doc_count,
+                        provider=base_settings.vector_store_provider,
+                        collection=resolve_collection_name(base_settings),
+                        status="available",
+                        metadata=metadata_val,
+                        error=None,
+                        last_modified=dir_last_modified(index_path),
+                        disk_usage_bytes=dir_disk_usage(index_path),
+                        files_count=dir_file_count(index_path),
+                        created_at=(metadata_val.get("created_at") if isinstance(metadata_val, dict) else None),
+                        updated_at=(metadata_val.get("updated_at") if isinstance(metadata_val, dict) else None),
+                    )
                 except Exception as exc:
                     return IndexMetadataResponse(
                         name=index_name,
                         path=str(index_path),
+                        documents=None,
+                        provider=base_settings.vector_store_provider,
+                        collection=resolve_collection_name(base_settings),
                         status="error",
+                        metadata=None,
                         error=str(exc),
+                        last_modified=None,
+                        disk_usage_bytes=None,
+                        files_count=None,
                         created_at=None,
                         updated_at=None,
                     )
@@ -268,6 +277,9 @@ def _build_index_info_from_db(
             provider=base_settings.vector_store_provider,
             collection=resolve_collection_name(base_settings),
             status="load_error",
+            last_modified=None,
+            disk_usage_bytes=None,
+            files_count=None,
             created_at=None,
             updated_at=None,
         )

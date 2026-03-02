@@ -2,6 +2,10 @@
 
 > **Architext** is a production-ready RAG-based "Codebase Architect" agent.
 > Python 3.11 · FastAPI · LlamaIndex · ChromaDB · Tree-sitter · Pydantic v2.
+>
+> **NOTE:** Every change must be validated locally by running the full test
+> suite (`python -m pytest`), linting with `ruff`, and type-checking with
+> `mypy`. CI enforces these tools, so ensure they pass before committing.
 
 ---
 

@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover
         class PersistentClient:
             def __init__(self, *args, **kwargs):
                 raise RuntimeError("chromadb required")
-    chromadb: Any = _DummyChroma()
+    chromadb = _DummyChroma()  # type: Any  # type: ignore[no-redef]
 
 
 def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:

@@ -90,7 +90,7 @@ class DuplicateBlocksTask(BaseTask):
             for digest, occ in duplicates.items()
             if len(occ) >= 2
         ]
-        findings.sort(key=lambda x: x["occurrence_count"], reverse=True)
+        findings.sort(key=lambda x: cast(int, x["occurrence_count"]), reverse=True)
 
         return {
             "count": len(findings),
