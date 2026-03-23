@@ -20,6 +20,10 @@ Move from campaign-style UX simulations to continuous release-based monitoring w
 2. Run KPI summarizer with thresholds:
 - `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --check-thresholds`
 
+Alternative one-command workflow:
+- `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py`
+- This writes text/json/csv outputs to `.local/ux/` (ignored by git) and performs threshold gating.
+
 3. If threshold check passes:
 - Mark release UX gate as GO.
 - Append results and deltas to simulation report.

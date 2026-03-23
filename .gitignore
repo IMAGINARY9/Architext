@@ -42,6 +42,12 @@ docs/tech-stack.md
 # Local evaluation outputs
 .local/
 
+# UX simulation generated exports (machine-generated artifacts)
+docs/research/generated/
+reports/ux/
+*.ux-summary.json
+*.ux-summary.csv
+
 # Temporary files created during manual testing
 *.tmp
 *.bak

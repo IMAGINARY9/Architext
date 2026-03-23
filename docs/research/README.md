@@ -13,9 +13,7 @@ Canonical plan:
 - `accessibility-checklist.md`: Inclusive UX checks for docs and API interaction flow.
 - `findings-log-template.md`: Standardized evidence capture format for each session.
 - `prioritized-ux-backlog-template.md`: Backlog schema and scoring model.
-- `heuristic-review-2026-03-23.md`: Initial expert heuristic findings for current cycle.
-- `ux-backlog-2026-03-23.md`: Prioritized backlog seeded from initial findings.
-- `internal-pilot-test2-test3-2026-03-23.md`: Internal dry-run evidence for Test 2/3 readiness.
+- `findings-summary.md`: Consolidated findings, KPI outcomes, and phase transition decisions.
 - `participant-screener.md`: Recruitment and selection criteria for moderated sessions.
 - `moderated-session-runbook.md`: Facilitator operations checklist for live sessions.
 - `session-tracker.csv`: Lightweight tabular tracker for per-task UX metrics.
@@ -23,7 +21,6 @@ Canonical plan:
 - `agent-simulation-prompts.md`: Prompt pack for operator, integrator, accessibility, and adversarial simulations.
 - `simulation-runbook.md`: End-to-end simulation execution protocol and acceptance gate.
 - `simulation-runs-2026-03-23.md`: Multi-cycle simulation results, deltas, and stability decisions.
-- `simulation-rerun-2026-03-23.md`: Post-fix targeted rerun evidence for simulation-derived backlog items.
 - `phase-2-continuous-improvement.md`: Continuous release-based UX monitoring and escalation model.
 
 ## Usage
@@ -43,3 +40,8 @@ Automation helper:
 - JSON output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format json`
 - CSV output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format csv`
 - Release gate check: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --check-thresholds`
+- One-command gate + export bundle: `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py`
+
+Generated output policy:
+- Write machine-generated exports to `.local/` or `reports/ux/`.
+- Do not commit generated export files unless explicitly required for a release artifact.
