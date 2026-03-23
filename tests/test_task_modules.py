@@ -106,3 +106,51 @@ def test_security_heuristics_zero_max_findings_returns_empty(tmp_path: Path) -> 
     assert result["counts"]["total"] == 0
     assert result["counts"]["by_rule"] == {}
     assert result["counts"]["by_severity"] == {}
+
+
+def test_security_heuristics_detects_subprocess_shell_true(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write(
+        repo / "cmd.py",
+        "import subprocess\n"
+        "def run(cmd):\n"
+        "    subprocess.run(cmd, shell=True)\n",
+    )
+
+    result = security_heuristics(source_path=str(repo))
+    by_rule = result["counts"].get("by_rule", {})
+
+    assert "py-ast-subprocess-shell-true" in by_rule
+
+
+def test_security_heuristics_detects_yaml_load_without_safe_loader(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write(
+        repo / "parse.py",
+        "import yaml\n"
+        "def parse(text):\n"
+        "    return yaml.load(text)\n",
+    )
+
+    result = security_heuristics(source_path=str(repo))
+    by_rule = result["counts"].get("by_rule", {})
+
+    assert "py-ast-yaml-unsafe-load" in by_rule
+
+
+def test_security_heuristics_detects_taint_in_keyword_argument(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write(
+        repo / "keyword_taint.py",
+        "def run(user_path):\n"
+        "    safe = user_path\n"
+        "    return open(file=safe)\n",
+    )
+
+    result = security_heuristics(source_path=str(repo))
+    rules = {finding.get("rule_id") for finding in result["findings"]}
+
+    assert "py-ast-taint-flow" in rules

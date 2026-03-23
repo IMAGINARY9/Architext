@@ -16,6 +16,25 @@ from src.tasks.shared import (
 )
 
 
+def _extract_call_name(node: ast.AST) -> Optional[str]:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        base_name = _extract_call_name(node.value)
+        if base_name:
+            return f"{base_name}.{node.attr}"
+        return node.attr
+    return None
+
+
+def _is_truthy_constant(node: ast.AST) -> bool:
+    if isinstance(node, ast.Constant):
+        return bool(node.value)
+    if isinstance(node, ast.NameConstant):
+        return bool(node.value)
+    return False
+
+
 def _scan_security_rules(files: List[str], max_findings: int = 500) -> List[Dict[str, Any]]:
     """Apply regex-based security rules against every source line."""
     findings: List[Dict[str, Any]] = []
@@ -57,15 +76,7 @@ def _scan_python_ast_security(path: str, content: str) -> List[Dict[str, Any]]:
 
     class Visitor(ast.NodeVisitor):
         def visit_Call(self, node: ast.Call) -> None:
-            name = None
-            if isinstance(node.func, ast.Name):
-                name = node.func.id
-            elif isinstance(node.func, ast.Attribute):
-                base = node.func.value
-                if isinstance(base, ast.Name):
-                    name = f"{base.id}.{node.func.attr}"
-                else:
-                    name = node.func.attr
+            name = _extract_call_name(node.func)
 
             if name in {"eval", "exec"}:
                 findings.append(
@@ -89,6 +100,39 @@ def _scan_python_ast_security(path: str, content: str) -> List[Dict[str, Any]]:
                         "snippet": name,
                     }
                 )
+
+            if name in {"subprocess.run", "subprocess.Popen"}:
+                for kw in node.keywords:
+                    if kw.arg == "shell" and _is_truthy_constant(kw.value):
+                        findings.append(
+                            {
+                                "rule_id": "py-ast-subprocess-shell-true",
+                                "severity": "high",
+                                "description": "subprocess call with shell=True detected (AST)",
+                                "file": path,
+                                "line": getattr(node, "lineno", 0),
+                                "snippet": name,
+                            }
+                        )
+                        break
+
+            if name == "yaml.load":
+                has_safe_loader = any(
+                    kw.arg == "Loader"
+                    and _extract_call_name(kw.value) in {"yaml.SafeLoader", "SafeLoader"}
+                    for kw in node.keywords
+                )
+                if not has_safe_loader:
+                    findings.append(
+                        {
+                            "rule_id": "py-ast-yaml-unsafe-load",
+                            "severity": "high",
+                            "description": "yaml.load call without SafeLoader detected (AST)",
+                            "file": path,
+                            "line": getattr(node, "lineno", 0),
+                            "snippet": name,
+                        }
+                    )
 
             self.generic_visit(node)
 
@@ -133,13 +177,7 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
         return any(token in lowered for token in source_keywords)
 
     def extract_name(node: ast.AST) -> Optional[str]:
-        if isinstance(node, ast.Name):
-            return node.id
-        if isinstance(node, ast.Attribute):
-            if isinstance(node.value, ast.Name):
-                return f"{node.value.id}.{node.attr}"
-            return node.attr
-        return None
+        return _extract_call_name(node)
 
     class Visitor(ast.NodeVisitor):
         def __init__(self) -> None:
@@ -170,9 +208,24 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         current.add(target.id)
+            if isinstance(node.value, ast.Name) and node.value.id in current:
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        current.add(target.id)
             if isinstance(node.value, ast.Call):
                 call_name = extract_name(node.value.func) or ""
                 if call_name in {"input"}:
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            current.add(target.id)
+            if isinstance(node.value, ast.JoinedStr):
+                has_tainted_part = False
+                for value in node.value.values:
+                    if isinstance(value, ast.FormattedValue) and isinstance(value.value, ast.Name):
+                        if value.value.id in current:
+                            has_tainted_part = True
+                            break
+                if has_tainted_part:
                     for target in node.targets:
                         if isinstance(target, ast.Name):
                             current.add(target.id)
@@ -190,6 +243,20 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
                     base = extract_name(arg)
                     if base and any(name in base for name in current):
                         tainted_args.append(base)
+                elif isinstance(arg, ast.JoinedStr):
+                    for value in arg.values:
+                        if isinstance(value, ast.FormattedValue) and isinstance(value.value, ast.Name):
+                            if value.value.id in current:
+                                tainted_args.append(value.value.id)
+
+            for kw in node.keywords:
+                if isinstance(kw.value, ast.Name) and kw.value.id in current:
+                    tainted_args.append(kw.value.id)
+                elif isinstance(kw.value, ast.JoinedStr):
+                    for value in kw.value.values:
+                        if isinstance(value, ast.FormattedValue) and isinstance(value.value, ast.Name):
+                            if value.value.id in current:
+                                tainted_args.append(value.value.id)
 
             if call_name in sinks and tainted_args:
                 findings.append(

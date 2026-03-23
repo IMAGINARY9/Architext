@@ -194,6 +194,7 @@ Output format:
 | Date | Batch | Change Summary | Tests | Ruff | Mypy | Verdict | Notes |
 |------|-------|----------------|-------|------|------|---------|-------|
 | 2026-03-23 | E | Added repeatable benchmark harness (`scripts/benchmark.py`) and generated matrix artifacts (`docs/benchmarks/*`) | PASS (309) | PASS | PASS | Continue | small index p50/p95: 4.5209/5.835s; medium index p50/p95: 35.1885/36.141s; query p50/p95: small 0.1333/0.1373s, medium 0.1307/0.1364s |
+| 2026-03-23 | A | Expanded AST-first security heuristics and taint-flow reliability checks with regression coverage | PASS (312) | PASS | PASS | Continue | Added detections for `subprocess(..., shell=True)` and unsafe `yaml.load(...)`; taint detection now includes keyword args and f-string sources |
 
 ## Suggested Batch Order
 
