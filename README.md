@@ -63,23 +63,23 @@ Use this sequence for the highest first-run success rate:
 1. Start the server and open `/docs`.
 2. Run `POST /index/preview` for your target path.
 3. Run `POST /index` only after preview confirms expected scope.
-4. Poll `GET /tasks/{id}` until the index task completes.
-5. Run `POST /query` (or `POST /ask`) against the same storage path.
+4. Poll `GET /status/{task_id}` until the index task completes.
+5. Run `POST /query` with the index `name` (from `GET /indices`).
 
 Example status check:
 
 ```bash
-curl http://localhost:8000/tasks/<task_id>
+curl http://localhost:8000/status/<task_id>
 ```
 
 Practical note:
-- `POST /index` returns a `task_id`; use that same value when polling `GET /tasks/{id}`.
+- `POST /index` returns a `task_id`; use that same value when polling `GET /status/{task_id}`.
 - Stop polling when status reaches a terminal state (`completed` or `failed`).
 - Anti-pattern to avoid: do not copy placeholder schema values (for example `"string"`) into live requests.
 
 Decision hint:
-- Use `POST /query` for full response options and broader query controls.
-- Use `POST /ask` for compact, agent-optimized response payloads.
+- Use `POST /query` for standard responses and broader query controls.
+- Use `POST /query` with `compact=true` when you need compact, agent-optimized payloads.
 
 For full request/response schemas and operator workflow details, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
@@ -102,7 +102,7 @@ Current thresholds:
 | Symptom | Likely cause | Fastest fix |
 |---|---|---|
 | Validation errors in Swagger | Placeholder schema values (for example `"string"`) were submitted | Use the "Examples" dropdown payloads before sending requests |
-| Query returns weak or empty results | Query was sent before index finished, or against a different storage path | Confirm task completion via `GET /tasks/{id}` and reuse the exact storage value |
+| Query returns weak or empty results | Query was sent before index finished, or against the wrong index `name` | Confirm task completion via `GET /status/{task_id}` and select the correct index from `GET /indices` |
 | Index scope is unexpectedly large | Source path was too broad for first run | Start with `./src` and use `POST /index/preview` before full indexing |
 
 #### Core API Endpoints
@@ -139,18 +139,18 @@ curl -X POST http://localhost:8000/index \
   -d '{"source": "git@github.com:user/private-repo.git", "ssh_key": "~/.ssh/id_rsa"}'
 ```
 
-If index response includes `task_id`, poll `GET /tasks/{id}` until `completed` or `failed` before querying.
+If index response includes `task_id`, poll `GET /status/{task_id}` until `completed` or `failed` before querying.
 
 - **Query an index** — Ask a question against an existing index.
 
 Schema-intent contrast:
-- Prefer `POST /query` when you want richer controls and response modes.
-- Prefer `POST /ask` when you want compact payloads for agent orchestration.
+- Prefer `POST /query` with `name` when you want standard controls and response modes.
+- Prefer `POST /query` with `compact=true` for compact payloads in agent orchestration.
 
 ```bash
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
-  -d '{"text": "How is authentication handled?", "storage": "./my-index", "format": "json"}'
+  -d '{"text": "How is authentication handled?", "name": "my-index", "mode": "rag"}'
 ```
 
 #### Analysis & task suite (advanced / experimental)

@@ -40,8 +40,8 @@ Run in parallel where possible.
 	- Execute lightweight cycle (16 runs) using prompt set in `agent-simulation-prompts.md`.
 	- If threshold fails, escalate to full cycle (32+ runs).
 2. API Tester stream:
-	- Validate index preview -> index -> poll task -> query/ask flows.
-	- Include negative cases: bad payload, wrong storage path, missing polling, endpoint confusion.
+	- Validate index preview -> index -> poll status -> indices discovery -> query flows.
+	- Include negative cases: bad payload, wrong index name, missing polling, endpoint confusion.
 3. Performance Benchmarker stream:
 	- Run `scripts/benchmark.py` to refresh local performance evidence.
 	- Compare p50/p95 index/query latency against recent baseline.
@@ -90,9 +90,9 @@ Commit checkpoint:
 - Path safety assumptions for source/storage path inputs.
 
 ### B. API Contract and Integration
-- `/index/preview`, `/index`, `/tasks/{id}`, `/query`, `/ask`, `/providers`, `/mcp/tools`.
+- `/index/preview`, `/index`, `/status/{task_id}`, `/indices`, `/query`, `/providers`, `/mcp/tools`.
 - Status code and schema validation for success and failure responses.
-- Endpoint-selection clarity (`/query` vs `/ask`) and wrong-endpoint recovery.
+- Endpoint-selection clarity (`/query` standard vs compact mode) and wrong-endpoint recovery.
 
 ### C. Performance
 - `scripts/benchmark.py` profile drift (index/query p50/p95).

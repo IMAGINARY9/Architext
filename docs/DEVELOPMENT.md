@@ -48,17 +48,18 @@ index = create_index(docs, storage_path="./storage")
 The project exposes a FastAPI server with centralized task handling.
 *   `POST /index`: Async indexing task.
 *   `POST /index/preview`: Preview indexing plan (stable JSON schema).
-*   `POST /query`: Semantic search query.
-*   `POST /ask`: Agent-optimized query (compact schemas).
-*   `GET /tasks/{id}`: Check status of async tasks.
+*   `POST /query`: Semantic search query (standard + compact modes).
+*   `GET /status/{task_id}`: Check status of async index tasks.
+*   `GET /indices`: List available index names for query selection.
 *   `GET /mcp/tools`: Discover available tools (MCP-style).
 
 ### Operator Workflow (Start Here)
 Use this flow for reliable day-to-day operation:
 1. Run `POST /index/preview` to verify file counts and warnings before indexing.
-2. Run `POST /index` and monitor progress through `GET /tasks/{id}`.
-3. Run `analyze-structure` and follow the `start_here` recommendations in the task output.
-4. Run deeper analysis tasks after structural orientation (`health-score`, `detect-vulnerabilities`, etc.).
+2. Run `POST /index` and monitor progress through `GET /status/{task_id}`.
+3. Run `GET /indices` and select the target `name` for `POST /query`.
+4. Run `analyze-structure` and follow the `start_here` recommendations in the task output.
+5. Run deeper analysis tasks after structural orientation (`health-score`, `detect-vulnerabilities`, etc.).
 
 ### Architecture Guardrails and Integration Patterns
 The `/providers` response now includes explicit guardrails and integration patterns so operators and agents can discover supported workflows programmatically.
@@ -176,7 +177,7 @@ Contract note: response schemas are preserved. In `analyze-structure`, constrain
 }
 ```
 
-**Compact Agent Mode** (`POST /ask` or `POST /query` with `compact=true`):
+**Compact Agent Mode** (`POST /query` with `compact=true`):
 ```json
 {
   "answer": "JWT authentication...",

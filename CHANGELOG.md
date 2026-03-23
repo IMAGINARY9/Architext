@@ -53,6 +53,7 @@ All notable changes to this project will be documented in this file.
 - Updated `docs/research/README.md` workflow to include full Testing Division quality sprint execution in addition to release-gate checks.
 - Updated benchmark and release-gate path references in docs to workspace-relative command/path style (no machine-specific absolute paths).
 - Expanded `.gitignore` to exclude generated benchmark markdown output (`docs/benchmarks/BENCHMARK_MATRIX.md`) from routine commits.
+- Updated operator and research testing documentation to match live API contracts: `GET /status/{task_id}`, `GET /indices`, and `POST /query` with `name` (including compact mode), removing stale `/ask` guidance.
 
 ### Removed
 - Removed deprecated migration guide `docs/MIGRATION_GUIDE.md` and retired references to it.

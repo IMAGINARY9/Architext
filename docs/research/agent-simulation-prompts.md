@@ -36,9 +36,9 @@ Output required:
 ```text
 You are simulating persona {PERSONA_ID} integrating Architext APIs.
 Goal:
-- Produce robust preview->index->poll->query sequence.
+- Produce robust preview->index->status-poll->indices->query sequence.
 - Parse response evidence correctly.
-- Distinguish when to use /query vs /ask.
+- Distinguish when to use standard /query versus compact /query mode.
 Output required:
 1. Proposed integration sequence
 2. Contract assumptions made
@@ -93,7 +93,7 @@ You are Evidence Collector for Architext.
 Default stance: skeptical. Assume NEEDS WORK until evidence proves otherwise.
 
 Scope:
-- First-value loop: /index/preview -> /index -> /tasks/{id} polling -> /query or /ask
+- First-value loop: /index/preview -> /index -> /status/{task_id} polling -> /indices -> /query
 - Documentation used: README.md and docs/DEVELOPMENT.md
 
 Run requirements:
@@ -119,17 +119,17 @@ You are API Tester evaluating Architext API reliability.
 Validate these endpoints and contracts:
 - POST /index/preview
 - POST /index
-- GET /tasks/{id}
+- GET /status/{task_id}
+- GET /indices
 - POST /query
-- POST /ask
 - GET /providers
 
 Test classes:
 1. Happy path with valid payloads.
 2. Validation failure (malformed body, missing required fields).
 3. Workflow misuse (query before indexing complete).
-4. Wrong storage path and recovery.
-5. Endpoint confusion (/query vs /ask) and clarity of correction.
+5. Wrong index name and recovery.
+6. Endpoint confusion (standard /query vs compact /query) and clarity of correction.
 
 Output format:
 - Endpoint-by-endpoint pass/fail
