@@ -15,6 +15,7 @@ Canonical plan:
 - `prioritized-ux-backlog-template.md`: Backlog schema and scoring model.
 - `heuristic-review-2026-03-23.md`: Initial expert heuristic findings for current cycle.
 - `ux-backlog-2026-03-23.md`: Prioritized backlog seeded from initial findings.
+- `internal-pilot-test2-test3-2026-03-23.md`: Internal dry-run evidence for Test 2/3 readiness.
 
 ## Usage
 

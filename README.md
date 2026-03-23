@@ -72,6 +72,10 @@ Example status check:
 curl http://localhost:8000/tasks/<task_id>
 ```
 
+Practical note:
+- `POST /index` returns a `task_id`; use that same value when polling `GET /tasks/{id}`.
+- Stop polling when status reaches a terminal state (`completed` or `failed`).
+
 Decision hint:
 - Use `POST /query` for full response options and broader query controls.
 - Use `POST /ask` for compact, agent-optimized response payloads.

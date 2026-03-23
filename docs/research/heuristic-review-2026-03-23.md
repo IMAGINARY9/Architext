@@ -18,7 +18,7 @@
 - Evidence: Users can execute `/index` but still miss `GET /tasks/{id}` follow-up behavior in README.
 - Affected persona: Operator, Agent Integrator
 - Recommendation: Add a concrete task-status polling example tied to `/index` output.
-- Status: In progress (implemented in current cycle)
+- Status: Done (implemented and verified in internal pilot)
 
 ### UX-H2 (High)
 
@@ -50,10 +50,10 @@
 - Evidence: Both are presented but trade-offs are not summarized in README.
 - Affected persona: Operator, Agent Integrator
 - Recommendation: Add a one-line decision hint for `/query` vs `/ask`.
-- Status: Planned
+- Status: Done (implemented in current cycle)
 
 ## Next Actions
 
-1. Complete UX-H1 verification after README polling snippet is merged.
-2. Implement UX-H5 in next documentation slice.
-3. Run moderated sessions with scripts in `docs/research/`.
+1. Run external moderated sessions with scripts in `docs/research/`.
+2. Compare external findings with internal pilot notes in `docs/research/internal-pilot-test2-test3-2026-03-23.md`.
+3. Re-score backlog items based on observed external frequency.
