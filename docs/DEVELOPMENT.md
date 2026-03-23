@@ -60,6 +60,19 @@ Use this flow for reliable day-to-day operation:
 3. Run `analyze-structure` and follow the `start_here` recommendations in the task output.
 4. Run deeper analysis tasks after structural orientation (`health-score`, `detect-vulnerabilities`, etc.).
 
+### Architecture Guardrails and Integration Patterns
+The `/providers` response now includes explicit guardrails and integration patterns so operators and agents can discover supported workflows programmatically.
+
+Guardrails:
+- server-first execution model
+- API-first integration surface
+- agent-native output schemas
+
+Integration patterns:
+- index preview before full index execution
+- task-driven orchestration via `/tasks`
+- MCP-style tool discovery via `/mcp/tools`
+
 ### Stable JSON Schemas
 
 Architext provides stable JSON schemas for agent integration. All responses follow these Pydantic models:

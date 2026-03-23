@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Added `start_here` onboarding recommendations to `analyze-structure` output and documented an operator workflow for index->analyze execution in `docs/DEVELOPMENT.md`.
 - Added constrained analysis mode support (`analysis_mode`, `constrained_max_files`) with schema-compatible output behavior for low-resource runs.
 - Added incremental indexing prototype helpers and benchmark script/report to compare manifest-diff updates versus full scans, including fallback heuristics.
+- Added explicit architecture guardrails and integration patterns to `/providers` response to strengthen API-first positioning and onboarding integration fit.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.

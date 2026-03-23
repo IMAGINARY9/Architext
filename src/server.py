@@ -277,6 +277,16 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             default_storage_path=settings.storage_path,
             allowed_source_roots=settings.allowed_source_roots.split(",") if settings.allowed_source_roots else None,
             allowed_storage_roots=settings.allowed_storage_roots.split(",") if settings.allowed_storage_roots else None,
+            architecture_guardrails=[
+                "server-first execution model",
+                "api-first integration surface",
+                "agent-native output schemas",
+            ],
+            integration_patterns=[
+                "index preview before index execution",
+                "task-driven analysis orchestration via /tasks",
+                "mcp-style tool discovery via /mcp/tools",
+            ],
         )
 
     if getattr(base_settings, "rate_limit_per_minute", 0) > 0:

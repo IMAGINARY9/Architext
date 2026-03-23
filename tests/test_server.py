@@ -69,9 +69,12 @@ def test_providers_endpoint(patched_settings):
     assert "default_llm_provider" in data
     assert "default_embedding_provider" in data
     assert "default_storage_path" in data
+    assert "architecture_guardrails" in data
+    assert "integration_patterns" in data
     assert data["llm_providers"] == ["openai", "local"]
     assert data["embedding_providers"] == ["huggingface", "openai"]
     assert data["vector_store_providers"] == ["chroma", "qdrant", "pinecone", "weaviate"]
+    assert "server-first execution model" in data["architecture_guardrails"]
 
 
 def test_query_endpoint_agent_mode(mocker, patched_settings):

@@ -258,6 +258,14 @@ class ProvidersResponse(BaseModel):
     allowed_storage_roots: Optional[List[str]] = Field(
         None, description="Allowed storage root directories (if configured)"
     )
+    architecture_guardrails: List[str] = Field(
+        default_factory=list,
+        description="Core architecture boundaries preserved by the platform.",
+    )
+    integration_patterns: List[str] = Field(
+        default_factory=list,
+        description="Recommended integration patterns for onboarding and orchestration.",
+    )
 
 
 class QuerySource(BaseModel):
