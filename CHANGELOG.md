@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Added a UX research asset pack under `docs/research/` with baseline rubric, moderated session scripts, accessibility checklist, findings template, and prioritized backlog template for execution of the active UX plan.
 - Added initial Test 1 outputs: `docs/research/heuristic-review-2026-03-23.md` and `docs/research/ux-backlog-2026-03-23.md`.
 - Added internal pilot evidence for Test 2/3 readiness in `docs/research/internal-pilot-test2-test3-2026-03-23.md`.
+- Added external-session operations assets: `docs/research/participant-screener.md`, `docs/research/moderated-session-runbook.md`, and `docs/research/session-tracker.csv`.
 
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.

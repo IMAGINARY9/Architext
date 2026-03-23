@@ -16,6 +16,9 @@ Canonical plan:
 - `heuristic-review-2026-03-23.md`: Initial expert heuristic findings for current cycle.
 - `ux-backlog-2026-03-23.md`: Prioritized backlog seeded from initial findings.
 - `internal-pilot-test2-test3-2026-03-23.md`: Internal dry-run evidence for Test 2/3 readiness.
+- `participant-screener.md`: Recruitment and selection criteria for moderated sessions.
+- `moderated-session-runbook.md`: Facilitator operations checklist for live sessions.
+- `session-tracker.csv`: Lightweight tabular tracker for per-task UX metrics.
 
 ## Usage
 
