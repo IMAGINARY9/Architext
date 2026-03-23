@@ -24,6 +24,7 @@ Canonical plan:
 - `simulation-runbook.md`: End-to-end simulation execution protocol and acceptance gate.
 - `simulation-runs-2026-03-23.md`: Multi-cycle simulation results, deltas, and stability decisions.
 - `simulation-rerun-2026-03-23.md`: Post-fix targeted rerun evidence for simulation-derived backlog items.
+- `phase-2-continuous-improvement.md`: Continuous release-based UX monitoring and escalation model.
 
 ## Usage
 
@@ -39,3 +40,6 @@ Current execution mode:
 Automation helper:
 - KPI summary script: `scripts/ux_simulation_kpi_summary.py`
 - Example run (Windows): `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py`
+- JSON output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format json`
+- CSV output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format csv`
+- Release gate check: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --check-thresholds`

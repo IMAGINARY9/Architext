@@ -339,7 +339,19 @@ At the end of this cycle, produce:
 - Before/after metric comparison
 - Next-cycle research recommendations
 
-## 11. Notes on Template Alignment
+## 11. Next Phase: Continuous Monitoring
+
+After completing planned cycles and simulation gate approval, move to release-based monitoring:
+
+- Run a lightweight simulation cycle each release.
+- Use KPI threshold checks to trigger escalation.
+- Escalate to full-cycle simulation when regression thresholds are crossed.
+- Keep backlog and documentation updates in the same change cycle.
+
+Reference:
+- `docs/research/phase-2-continuous-improvement.md`
+
+## 12. Notes on Template Alignment
 
 This plan mirrors the source UX template by preserving:
 - Methodology-first structure

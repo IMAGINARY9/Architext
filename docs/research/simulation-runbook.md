@@ -38,3 +38,19 @@ A fix is accepted when simulation reruns show:
 - Wrong-endpoint attempts decrease
 - Integration correctness is at least 3/4 median
 - No new High/Critical regressions
+
+## Phase 2 Release Cadence
+
+For ongoing releases, use a lightweight-first approach:
+
+- Lightweight cycle: 16 runs (6 operator, 6 integrator, 4 accessibility/adversarial)
+- Full cycle: 32+ runs when threshold checks fail
+
+Threshold checks:
+- completion rate >= 85%
+- time to first successful query <= 15 minutes
+- wrong-endpoint attempts <= 1 median
+- integration correctness >= 3/4
+
+Escalation rule:
+- If any threshold fails or a High/Critical regression appears, run full-cycle simulation and remediation reruns.
