@@ -36,6 +36,8 @@ class ArchitextSettings(BaseSettings):
     chunking_strategy: Literal["logical", "file"] = Field(
         default="logical", alias="CHUNKING_STRATEGY"
     )
+    index_max_files: int = Field(default=0, alias="INDEX_MAX_FILES")
+    index_include_extensions: Optional[str] = Field(default=None, alias="INDEX_INCLUDE_EXTENSIONS")
 
     # Retrieval enhancements
     enable_rerank: bool = Field(default=False, alias="ENABLE_RERANK")

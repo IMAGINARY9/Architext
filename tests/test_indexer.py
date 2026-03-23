@@ -3,7 +3,7 @@ import os
 import pytest
 
 from src.config import ArchitextSettings
-from src.indexer import initialize_settings, load_documents
+from src.indexer import gather_index_files, initialize_settings, load_documents
 
 def test_load_documents_security(temp_repo_path):
     """Ensure load_documents ignores hidden files and .git directories."""
@@ -62,3 +62,28 @@ def test_openai_embedding_builds(mocker):
     )
     mock_llm.assert_called_once_with(cfg)
     assert mock_settings.embed_model == mock_openai_embed.return_value
+
+
+def test_gather_index_files_respects_max_files(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "b.py").write_text("print('b')", encoding="utf-8")
+    (repo / "a.py").write_text("print('a')", encoding="utf-8")
+    (repo / "c.py").write_text("print('c')", encoding="utf-8")
+
+    files = gather_index_files(str(repo), max_files=2)
+
+    assert len(files) == 2
+    assert files == sorted(files)
+
+
+def test_gather_index_files_filters_extensions(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "a.py").write_text("print('a')", encoding="utf-8")
+    (repo / "b.md").write_text("# doc", encoding="utf-8")
+
+    files = gather_index_files(str(repo), include_extensions={".py"})
+
+    assert len(files) == 1
+    assert files[0].endswith("a.py")

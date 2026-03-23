@@ -2,7 +2,7 @@ import os
 import re
 import threading
 from pathlib import Path
-from typing import Optional, List, Dict, Iterator, Tuple, TYPE_CHECKING
+from typing import Optional, List, Dict, Iterator, Tuple, TYPE_CHECKING, Set
 
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, Settings, Document
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -123,7 +123,28 @@ def _is_indexable_file(file_path: Path) -> bool:
     return file_path.suffix.lower() in INDEXABLE_EXTENSIONS
 
 
-def gather_index_files(path: str, progress_callback=None) -> List[str]:
+def parse_index_extensions(raw_extensions: Optional[str]) -> Optional[Set[str]]:
+    """Parse a comma-separated extension list into normalized extension tokens."""
+    if not raw_extensions:
+        return None
+
+    extensions: Set[str] = set()
+    for token in raw_extensions.split(","):
+        candidate = token.strip().lower()
+        if not candidate:
+            continue
+        if not candidate.startswith("."):
+            candidate = f".{candidate}"
+        extensions.add(candidate)
+    return extensions or None
+
+
+def gather_index_files(
+    path: str,
+    progress_callback=None,
+    max_files: Optional[int] = None,
+    include_extensions: Optional[Set[str]] = None,
+) -> List[str]:
     """Collect indexable file paths from a directory."""
     if not os.path.exists(path):
         raise ValueError(f"Path does not exist: {path}")
@@ -141,7 +162,14 @@ def gather_index_files(path: str, progress_callback=None) -> List[str]:
             continue
         if not _is_indexable_file(file_path):
             continue
+        if include_extensions and file_path.suffix.lower() not in include_extensions:
+            continue
         all_files.append(str(file_path))
+
+    all_files.sort()
+
+    if max_files is not None and max_files > 0 and len(all_files) > max_files:
+        all_files = all_files[:max_files]
 
     if not all_files:
         raise ValueError(f"No indexable files found in {path}")

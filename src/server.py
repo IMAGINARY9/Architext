@@ -18,6 +18,7 @@ from src.indexer import (
     create_index_from_paths,
     gather_index_files,
     initialize_settings,
+    parse_index_extensions,
 )
 from src.ingestor import resolve_source, CACHE_DIR
 from src.indexer_components.factories import resolve_collection_name
@@ -128,7 +129,15 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             source_path = resolve_source(req.source, use_cache=not req.no_cache, ssh_key=req.ssh_key)
             validate_source_dir(source_path, source_roots)
 
-            file_paths = gather_index_files(str(source_path), progress_callback=progress_update)
+            allowed_extensions = parse_index_extensions(task_settings.index_include_extensions)
+            max_files = task_settings.index_max_files if task_settings.index_max_files > 0 else None
+
+            file_paths = gather_index_files(
+                str(source_path),
+                progress_callback=progress_update,
+                max_files=max_files,
+                include_extensions=allowed_extensions,
+            )
             # Ensure reindexing overwrites previous Chroma data for the same storage path.
             if task_settings.vector_store_provider == "chroma":
                 clear_chroma_storage(storage_path)
@@ -304,7 +313,13 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             initialize_settings(task_settings)
             source_path = resolve_source(request.source, use_cache=not request.no_cache, ssh_key=request.ssh_key)
             validate_source_dir(source_path, source_roots)
-            file_paths = gather_index_files(str(source_path))
+            allowed_extensions = parse_index_extensions(task_settings.index_include_extensions)
+            max_files = task_settings.index_max_files if task_settings.index_max_files > 0 else None
+            file_paths = gather_index_files(
+                str(source_path),
+                max_files=max_files,
+                include_extensions=allowed_extensions,
+            )
 
             # Check for potential issues that would prevent successful indexing
             if len(file_paths) == 0:
@@ -348,8 +363,15 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
             resolved_path = resolve_source(request.source, use_cache=not request.no_cache)
             validate_source_dir(resolved_path, source_roots)
 
+            allowed_extensions = parse_index_extensions(base_settings.index_include_extensions)
+            max_files = base_settings.index_max_files if base_settings.index_max_files > 0 else None
+
             # Gather files to analyze
-            file_paths = gather_index_files(str(resolved_path))
+            file_paths = gather_index_files(
+                str(resolved_path),
+                max_files=max_files,
+                include_extensions=allowed_extensions,
+            )
 
             # Analyze file types
             file_types: Dict[str, int] = {}

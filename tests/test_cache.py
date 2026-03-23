@@ -52,6 +52,7 @@ class TestCacheEntry:
         assert restored.result == original.result
         assert restored.created_at == original.created_at
         assert restored.source_hash == original.source_hash
+        assert restored.source_path is None
         assert restored.ttl_seconds == original.ttl_seconds
 
 
@@ -154,6 +155,23 @@ class TestTaskResultCache:
         assert cache.get("task-a", source_path=str(source_dir)) is None
         # task-b should remain
         assert cache.get("task-b", source_path=str(source_dir)) == {"b": 2}
+
+    def test_invalidate_by_source_path(self, cache, tmp_path):
+        source_a = tmp_path / "source-a"
+        source_b = tmp_path / "source-b"
+        source_a.mkdir()
+        source_b.mkdir()
+        (source_a / "a.py").write_text("print('a')")
+        (source_b / "b.py").write_text("print('b')")
+
+        cache.set("task-a", {"a": 1}, source_path=str(source_a))
+        cache.set("task-a", {"b": 2}, source_path=str(source_b))
+
+        removed = cache.invalidate(source_path=str(source_a))
+
+        assert removed >= 1
+        assert cache.get("task-a", source_path=str(source_a)) is None
+        assert cache.get("task-a", source_path=str(source_b)) == {"b": 2}
 
     def test_clear_removes_all(self, cache, source_dir):
         cache.set("task-a", {"a": 1}, source_path=str(source_dir))

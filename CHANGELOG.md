@@ -14,12 +14,14 @@ All notable changes to this project will be documented in this file.
 - Added `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` with temporary execution workflow and prompt templates.
 - Expanded comparative-analysis extraction with explicit strategic guardrails, metric targets, and execution batches/prompts in `docs/DEVELOPMENT.md` and `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`.
 - Expanded AST-first Python security heuristics to detect `subprocess(..., shell=True)` usage and unsafe `yaml.load(...)` calls without `SafeLoader`.
+- Added selective indexing controls via `INDEX_MAX_FILES` and `INDEX_INCLUDE_EXTENSIONS`, and wired them into `/index` and `/index/preview` file discovery.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.
 - Fixed `security_heuristics` edge-case behavior for non-positive `max_findings` values to return an empty, schema-consistent result.
 - Added regression tests for `max_findings` cap behavior, deterministic ordering, and zero-limit handling.
 - Improved taint-flow reliability by detecting tainted values in keyword arguments and f-string formatted sink inputs.
+- Corrected task cache selective invalidation to respect `source_path` boundaries, enabling reliable partial refresh behavior.
 
 ### Removed
 - Retired `docs/TASK_REFACTORING_PLAN.md` after consolidating authoritative task inventory and architecture references into `src/task_registry.py` and `docs/DEVELOPMENT.md`.

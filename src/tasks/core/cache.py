@@ -27,6 +27,7 @@ class CacheEntry:
     result: Dict[str, Any]
     created_at: float
     source_hash: str  # Hash of source file modification times
+    source_path: Optional[str] = None
     ttl_seconds: float = 3600.0  # Default 1 hour TTL
 
     def is_expired(self) -> bool:
@@ -40,6 +41,7 @@ class CacheEntry:
             "result": self.result,
             "created_at": self.created_at,
             "source_hash": self.source_hash,
+            "source_path": self.source_path,
             "ttl_seconds": self.ttl_seconds,
         }
 
@@ -51,6 +53,7 @@ class CacheEntry:
             result=data["result"],
             created_at=data["created_at"],
             source_hash=data["source_hash"],
+            source_path=data.get("source_path"),
             ttl_seconds=data.get("ttl_seconds", 3600.0),
         )
 
@@ -158,6 +161,12 @@ class TaskResultCache:
         """Get the file path for a cache key."""
         return self.cache_dir / f"{cache_key}.json"
 
+    @staticmethod
+    def _normalize_source_path(source_path: Optional[str]) -> Optional[str]:
+        if not source_path:
+            return None
+        return str(Path(source_path).resolve())
+
     def get(
         self,
         task_name: str,
@@ -252,6 +261,7 @@ class TaskResultCache:
             result=result,
             created_at=time.time(),
             source_hash=source_hash,
+            source_path=self._normalize_source_path(source_path),
             ttl_seconds=ttl if ttl is not None else self.default_ttl,
         )
 
@@ -285,16 +295,15 @@ class TaskResultCache:
         count = 0
 
         # Invalidate memory cache
+        normalized_source = self._normalize_source_path(source_path)
+
         with self._lock:
             keys_to_remove = []
             for key, entry in self._memory_cache.items():
                 if task_name and entry.task_name != task_name:
                     continue
-                if source_path:
-                    current_hash = self._compute_source_hash(source_path)
-                    if entry.source_hash != current_hash:
-                        keys_to_remove.append(key)
-                        continue
+                if normalized_source and entry.source_path != normalized_source:
+                    continue
                 keys_to_remove.append(key)
 
             for key in keys_to_remove:
@@ -317,6 +326,8 @@ class TaskResultCache:
                     with open(cache_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     if task_name and data.get("task_name") != task_name:
+                        continue
+                    if normalized_source and data.get("source_path") != normalized_source:
                         continue
                     cache_file.unlink()
                     count += 1
