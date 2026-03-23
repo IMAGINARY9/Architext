@@ -2,7 +2,7 @@
 
 **Last Updated:** March 23, 2026
 **Overall Status:** ✅ **Production-Ready & Feature Complete** (Phases 1, 2, 2.9, 3 delivered)
-**Test Coverage:** 309/309 Passing (`pytest`)
+**Test Coverage:** 319/319 Passing (`pytest`)
 
 ---
 
@@ -50,7 +50,7 @@ Recent refactors modularized tasks, centralized task dispatch, and extracted ind
 
 | Metric | Result | Notes |
 |--------|--------|-------|
-| **Test Pass Rate** | 100% (309/309) | High reliability on core paths |
+| **Test Pass Rate** | 100% (319/319) | High reliability on core paths |
 | **Indexing Speed** | ~3s (small) to ~45s (medium remote) | Efficient local caching |
 | **Query Latency** | 2-5s | Dependent on LLM provider |
 | **Security** | Hardened | Path traversal & input validation active |
