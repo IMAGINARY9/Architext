@@ -6,6 +6,7 @@ using query diagnostics retrieval for query timing.
 from __future__ import annotations
 
 import json
+import sys
 import shutil
 import statistics
 import time
@@ -15,9 +16,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from src.config import load_settings
-from src.indexer import create_index_from_paths, gather_index_files, initialize_settings
-from src.tasks.query import query_diagnostics
+# Support direct script execution (python scripts/benchmark.py) by adding repo root
+# to import resolution before importing project modules.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 @dataclass
@@ -45,6 +48,14 @@ class ProfileSummary:
     cpu_ratio_p95: float
 
 
+def _workspace_relative(path: Path) -> str:
+    try:
+        rel = path.resolve().relative_to(REPO_ROOT.resolve())
+        return f"./{rel.as_posix()}"
+    except ValueError:
+        return path.name
+
+
 def _percentile(values: Iterable[float], pct: float) -> float:
     seq = sorted(values)
     if not seq:
@@ -61,6 +72,9 @@ def _percentile(values: Iterable[float], pct: float) -> float:
 
 
 def _run_profile(profile: str, source_path: Path, root_storage: Path, iterations: int) -> tuple[list[IterationResult], ProfileSummary]:
+    from src.indexer import create_index_from_paths, gather_index_files
+    from src.tasks.query import query_diagnostics
+
     results: list[IterationResult] = []
     file_paths = gather_index_files(str(source_path))
 
@@ -117,7 +131,7 @@ def _run_profile(profile: str, source_path: Path, root_storage: Path, iterations
 
     summary = ProfileSummary(
         profile=profile,
-        path=str(source_path).replace("\\", "/"),
+        path=_workspace_relative(source_path),
         iterations=iterations,
         files_mean=round(statistics.mean(files), 2),
         index_p50=round(_percentile(index_vals, 0.5), 4),
@@ -131,6 +145,9 @@ def _run_profile(profile: str, source_path: Path, root_storage: Path, iterations
 
 
 def main() -> None:
+    from src.config import load_settings
+    from src.indexer import initialize_settings
+
     initialize_settings(load_settings())
 
     repo_root = Path(__file__).resolve().parents[1]

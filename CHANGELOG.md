@@ -51,6 +51,8 @@ All notable changes to this project will be documented in this file.
 - Added `.gitignore` rules for UX-generated exports and documented non-commit policy for machine-generated reports.
 - Revised `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` with current status, completed points, and explicit phase-2 remaining-points tracker.
 - Updated `docs/research/README.md` workflow to include full Testing Division quality sprint execution in addition to release-gate checks.
+- Updated benchmark and release-gate path references in docs to workspace-relative command/path style (no machine-specific absolute paths).
+- Expanded `.gitignore` to exclude generated benchmark markdown output (`docs/benchmarks/BENCHMARK_MATRIX.md`) from routine commits.
 
 ### Removed
 - Removed deprecated migration guide `docs/MIGRATION_GUIDE.md` and retired references to it.
@@ -65,6 +67,9 @@ All notable changes to this project will be documented in this file.
 	- `docs/research/ux-backlog-2026-03-23.md`
 
 ### Fixed
+- Fixed `scripts/benchmark.py` direct script execution on Windows (`python scripts/benchmark.py`) by stabilizing project import resolution.
+- Fixed generated release-gate command logging to avoid writing absolute local interpreter paths.
+- Fixed benchmark summary generation to emit workspace-relative source paths instead of absolute local filesystem paths.
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.
 - Fixed `security_heuristics` edge-case behavior for non-positive `max_findings` values to return an empty, schema-consistent result.
 - Added regression tests for `max_findings` cap behavior, deterministic ordering, and zero-limit handling.

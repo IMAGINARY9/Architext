@@ -159,7 +159,7 @@ def main() -> int:
     summary_json = json.loads(json_out.read_text(encoding="utf-8"))
     latest_metrics = summary_json["cycles"][-1]
     gate_command_text = (
-        f"{python_executable} scripts/run_ux_release_gate.py --release-tag {args.release_tag}"
+        f"python scripts/run_ux_release_gate.py --release-tag {args.release_tag}"
     )
 
     gate_result = _run(gate_cmd)
