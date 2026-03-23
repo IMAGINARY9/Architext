@@ -22,10 +22,18 @@ Architext is a production-ready RAG (Retrieval-Augmented Generation) tool design
 ## Documentation
 
 *   **[PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**: Detailed report on what has been delivered and tested.
-*   **[PROJECT_RETROSPECTIVE.md](docs/PROJECT_RETROSPECTIVE.md)**: Critical assessment, self-reflection, and "dogfooding" analysis.
 *   **[DEVELOPMENT.md](docs/DEVELOPMENT.md)**: Developer guide, API reference, and architecture roadmap.
 *   **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)**: Compatibility notes for the task and server refactor.
 *   **[RELEASE_NOTES.md](docs/RELEASE_NOTES.md)**: Highlights for the latest release.
+
+## Audit Findings Snapshot
+
+Key findings from internal retrospective and comparative review:
+
+*   **Resolved critical risks:** Path traversal hardening, streaming ingestion (OOM mitigation), and improved task error visibility.
+*   **Current strengths:** Strong task-based architecture, agent-native API outputs, and high reliability (`309/309` tests passing).
+*   **Known limitations:** Large monorepo indexing cost, static index refresh model (no live incremental updates), and partial regex limitations outside deeper AST-driven coverage.
+*   **Priority improvements:** Expand provider abstraction coverage, continue AST-first migration for heuristic checks, and improve fast onboarding workflows with clearer "start-here" outputs.
 
 ## Getting Started
 
@@ -155,5 +163,5 @@ For full schema documentation (index preview, query responses, index discovery, 
 Architext maintains a high standard of code quality with the full test suite green.
 
 ```bash
-pytest tests/ -v
+python -m pytest -q
 ```

@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - Made `security_heuristics` findings deterministic by sorting output by file, line, and rule id.
 - Standardized project documentation to align with server-only architecture and canonical task module paths in `docs/DEVELOPMENT.md` and `.github/copilot-instructions.md`.
 - Updated Phase 3 deliverable wording in `docs/PROJECT_STATUS.md` to match current active task names and API endpoints.
+- Migrated key retrospective and comparative-analysis improvement insights into `README.md` (audit snapshot) and `docs/DEVELOPMENT.md` (consolidated backlog).
+- Added `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` with temporary execution workflow and prompt templates.
+- Expanded comparative-analysis extraction with explicit strategic guardrails, metric targets, and execution batches/prompts in `docs/DEVELOPMENT.md` and `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.
@@ -19,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - Retired `docs/TASK_REFACTORING_PLAN.md` after consolidating authoritative task inventory and architecture references into `src/task_registry.py` and `docs/DEVELOPMENT.md`.
 - Removed completed `docs/RELEASE_HARDENING_EXECUTION_PLAYBOOK.md`.
+- Retired `docs/PROJECT_RETROSPECTIVE.md` after migrating actionable findings to canonical docs.
 
 ## 1.0.0 - 2026-01-23
 

@@ -194,5 +194,66 @@ pre-commit run --all-files
   - `src/tasks/analysis/`
   - `src/tasks/orchestration/`
 
+## 8. Improvement Backlog (Consolidated)
+
+This backlog consolidates useful findings from internal retrospective work and comparative market analysis.
+
+### Strategic Positioning and Guardrails
+
+1. Keep Architext server-first and API-first; do not drift into CLI-first product behavior.
+2. Prioritize agent-native outputs and orchestration use cases (enterprise automation, governance, AI toolchains).
+3. Preserve complementarity with lightweight onboarding tools by improving integration surfaces, not by duplicating their UX model.
+4. Treat portability and fallback behavior as reliability concerns, not only feature requests.
+
+### Baseline Metrics and Targets
+
+Comparative analysis highlighted practical operating expectations.
+
+- Baseline references:
+  - small repo indexing: ~3s
+  - medium repo indexing: ~20-45s
+  - query latency: ~2-5s
+  - memory pressure risk grows materially on larger repositories
+- Target direction (next iterations):
+  1. keep small-repo indexing at or below current baseline.
+  2. reduce medium-repo indexing tail latency.
+  3. reduce peak memory during indexing and reranking workflows.
+  4. document reproducible benchmark scenarios and results in release artifacts.
+
+### P0/P1 Reliability and Architecture
+
+1. Continue migrating heuristic/regex-heavy checks to AST-first analysis where feasible.
+2. Keep strict path/input validation and rate limiting controls as non-negotiable defaults.
+3. Improve performance strategy for very large repositories (batching, selective indexing, and better cache invalidation).
+
+### P1/P2 Product and Developer Experience
+
+1. Improve onboarding-oriented outputs (clear entry-point and "start-here" guidance for large codebases).
+2. Define and document practical performance expectations for small/medium repositories.
+3. Expand provider abstraction support and operational guidance for mixed local/cloud LLM setups.
+
+### P2 Strategic Enhancements
+
+1. Explore incremental re-indexing (file watcher/event-driven) to reduce full re-index frequency.
+2. Improve dependency reasoning in dynamic import/injection scenarios.
+3. Evaluate tighter IDE workflow integration patterns while preserving server-first architecture.
+4. Expand provider abstraction path (including broader compatibility strategy such as LiteLLM-style routing).
+5. Define optional lightweight analysis path for constrained environments while preserving core semantic mode.
+
+### Comparative Analysis Action Mapping
+
+| Comparative Finding | Architext Action |
+|---|---|
+| RAG depth is a strength, but setup/resource cost is high | Improve performance profile and operational defaults; publish benchmark matrix |
+| Lightweight competitors win on onboarding ergonomics | Improve "start-here" recommendations and operator docs |
+| Offline/heuristic fallback is a competitive advantage elsewhere | Investigate constrained-mode pathway without degrading primary semantic quality |
+| Clear differentiation matters (platform vs onboarding tool) | Keep API-first architecture and focus on agent-intelligence workflows |
+
+## 9. Temporary Execution Prompt Templates
+
+For a temporary, repeatable execution workflow, see:
+
+- `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`
+
 ---
 *For high-level project status, see [PROJECT_STATUS.md](PROJECT_STATUS.md).*
