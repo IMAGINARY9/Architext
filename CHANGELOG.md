@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - Added simulation-only UX execution assets: `docs/research/synthetic-personas.md`, `docs/research/agent-simulation-prompts.md`, `docs/research/simulation-runbook.md`, and `docs/research/simulation-runs-2026-03-23.md`.
 - Added post-fix simulation rerun evidence in `docs/research/simulation-rerun-2026-03-23.md`.
 - Added full cycle-2 simulation results and KPI deltas in `docs/research/simulation-runs-2026-03-23.md`.
+- Added cycle-3 simulation results with increased adversarial weighting and a three-cycle stability section in `docs/research/simulation-runs-2026-03-23.md`.
+- Added `scripts/ux_simulation_kpi_summary.py` to automatically summarize cycle metrics, deltas, and stability ranges from the simulation report.
 
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.

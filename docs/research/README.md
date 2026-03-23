@@ -35,3 +35,7 @@ Canonical plan:
 
 Current execution mode:
 - Simulation-only (agent-driven), no live participant sessions.
+
+Automation helper:
+- KPI summary script: `scripts/ux_simulation_kpi_summary.py`
+- Example run (Windows): `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py`

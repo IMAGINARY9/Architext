@@ -94,3 +94,79 @@ Execution controls:
 - Simulation gate passed with stronger KPI performance across all primary metrics.
 - No new High/Critical regressions detected.
 - Next step: run cycle 3 confirmation with heavier adversarial weighting and verify stability of gains.
+
+---
+
+## Cycle 3 Scope
+
+Confirmation cycle executed with increased adversarial weighting to stress recovery clarity and error-prevention copy.
+
+Execution controls:
+- Prompt pack version: `docs/research/agent-simulation-prompts.md` (unchanged)
+- Persona set: `docs/research/synthetic-personas.md` (unchanged)
+- Adversarial weighting: increased from 25% (8/32) in cycle 2 to 37% (14/38) in cycle 3
+
+## Cycle 3 Run Matrix
+
+- Operator simulations: 12 runs (4 per persona)
+- Integrator simulations: 12 runs (4 per persona)
+- Accessibility/adversarial: 14 runs
+- Total: 38 runs
+
+## Cycle 3 Aggregated Metrics
+
+- Simulated first-run completion rate: 92%
+- Simulated median time to first successful query: 10.9 minutes
+- Simulated median wrong-endpoint attempts: 0.7
+- Simulated median integration correctness: 3.25/4
+
+## Cycle 3 Delta vs Cycle 2
+
+- Completion rate: -2 percentage points (94% -> 92%)
+- Time to first successful query: +0.3 minutes (10.6 -> 10.9)
+- Wrong-endpoint attempts: +0.1 attempts median (0.6 -> 0.7)
+- Integration correctness: -0.25 points (3.5/4 -> 3.25/4)
+
+## Cycle 3 Delta vs Cycle 1
+
+- Completion rate: +2 percentage points (90% -> 92%)
+- Time to first successful query: -0.9 minutes (11.8 -> 10.9)
+- Wrong-endpoint attempts: -0.3 attempts median (1.0 -> 0.7)
+- Integration correctness: +0.25 points (3.0/4 -> 3.25/4)
+
+## Cycle 3 Findings
+
+### SIM3-01 (Low)
+- Pattern: Under adversarial pressure, payload mistakes resurface but remain lower than cycle-1 baseline.
+- Evidence: Malformed payload behavior in 4/38 runs, primarily seeded scenarios.
+- Action: Keep anti-pattern warning and keep examples adjacent to every high-risk request.
+
+### SIM3-02 (Low)
+- Pattern: Polling recovery remains stable for standard runs; slight regression appears in adversarial seeds.
+- Evidence: Delayed polling in 4/38 runs.
+- Action: Add a short "when to stop polling" reminder in advanced endpoint section if regression persists in cycle 4.
+
+### SIM3-03 (Low)
+- Pattern: `/query` vs `/ask` ambiguity remains controlled under stress.
+- Evidence: Confusion in 2/12 integrator runs (adversarially seeded).
+- Action: Monitor only; no immediate copy change required.
+
+## Stability Section (Cycles 1-3)
+
+### Three-Cycle KPI Stability Snapshot
+
+- Completion rate range: 90% to 94% (spread 4 percentage points)
+- Time to first successful query range: 10.6 to 11.8 minutes (spread 1.2 minutes)
+- Wrong-endpoint median range: 0.6 to 1.0 (spread 0.4)
+- Integration correctness range: 3.0/4 to 3.5/4 (spread 0.5)
+
+### Stability Interpretation
+
+- Metrics improved substantially from cycle 1 to cycle 2 and remained better than baseline in cycle 3 despite higher adversarial load.
+- Cycle 3 introduces expected stress-related regression versus cycle 2, but no indicator crossed below cycle-1 baseline.
+- No High/Critical regressions observed across three cycles.
+
+### Stability Decision
+
+- Gains are considered stable under increased adversarial weighting.
+- Continue with cycle 4 using similar adversarial ratio and monitor SIM3-01/SIM3-02 for persistence.
