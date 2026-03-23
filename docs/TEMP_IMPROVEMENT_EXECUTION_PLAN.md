@@ -193,7 +193,7 @@ Output format:
 
 | Date | Batch | Change Summary | Tests | Ruff | Mypy | Verdict | Notes |
 |------|-------|----------------|-------|------|------|---------|-------|
-| YYYY-MM-DD | A | [summary] | PASS/FAIL | PASS/FAIL | PASS/FAIL | Continue/Hold | [notes] |
+| 2026-03-23 | E | Added repeatable benchmark harness (`scripts/benchmark.py`) and generated matrix artifacts (`docs/benchmarks/*`) | PASS (309) | PASS | PASS | Continue | small index p50/p95: 4.5209/5.835s; medium index p50/p95: 35.1885/36.141s; query p50/p95: small 0.1333/0.1373s, medium 0.1307/0.1364s |
 
 ## Suggested Batch Order
 
