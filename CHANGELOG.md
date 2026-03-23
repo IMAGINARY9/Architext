@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Added phase-2 continuous monitoring plan in `docs/research/phase-2-continuous-improvement.md` and linked it from `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`.
 - Added consolidated UX findings summary in `docs/research/findings-summary.md`.
 - Added `scripts/run_ux_release_gate.py` for one-command release UX gating with generated output written to `.local/ux/`.
+- Enhanced `scripts/run_ux_release_gate.py` to auto-append release gate entries and collect candidate improvements from latest cycle findings.
 - Added release gate logging assets: `docs/research/release-gate-log-template.md` and `docs/research/release-gate-log.md`.
 
 ### Changed

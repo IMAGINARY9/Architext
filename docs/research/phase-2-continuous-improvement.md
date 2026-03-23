@@ -22,7 +22,7 @@ Move from campaign-style UX simulations to continuous release-based monitoring w
 
 Alternative one-command workflow:
 - `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py`
-- This writes text/json/csv outputs to `.local/ux/` (ignored by git) and performs threshold gating.
+- This writes text/json/csv outputs to `.local/ux/` (ignored by git), performs threshold gating, appends a gate entry to `docs/research/release-gate-log.md`, and collects candidate improvements from latest cycle findings.
 
 3. If threshold check passes:
 - Mark release UX gate as GO.
@@ -34,6 +34,10 @@ Alternative one-command workflow:
 - Open or update backlog items.
 - Apply fixes and rerun targeted scenarios.
 - Record NO-GO/CONDITIONAL GO decision and required actions in `docs/research/release-gate-log.md`.
+
+Automation note:
+- Use `--release-tag` for traceable log entries per release candidate.
+- Use `--skip-log` only for local dry runs.
 
 ## Trigger Rules
 

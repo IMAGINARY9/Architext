@@ -43,6 +43,8 @@ Automation helper:
 - CSV output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format csv`
 - Release gate check: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --check-thresholds`
 - One-command gate + export bundle: `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py`
+- Tagged gate run: `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py --release-tag vX.Y.Z-rc1`
+- Local dry run without log write: `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py --skip-log`
 
 Generated output policy:
 - Write machine-generated exports to `.local/` or `reports/ux/`.

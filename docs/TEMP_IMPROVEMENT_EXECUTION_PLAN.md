@@ -365,11 +365,11 @@ Completed points:
 - Consolidated findings created and stale one-off filled artifacts retired.
 
 Remaining points (phase-2 execution backlog):
-1. Run release-gate check for each release candidate and append a gate log entry.
+1. Run release-gate check for each release candidate and rely on automated gate-log appends.
 2. Recalibrate thresholds after three additional release cycles if KPI drift appears.
 3. Escalate to full-cycle simulation automatically on any threshold failure.
 4. Keep generated exports out of commits unless explicitly required for release artifacts.
-5. Quarterly cleanup of research workspace to keep only canonical templates and summaries.
+5. Collect candidate improvements from latest cycle findings into gate logs and promote only validated items into canonical docs.
 
 Immediate next actions:
 1. Use `scripts/run_ux_release_gate.py` during each release candidate review.
