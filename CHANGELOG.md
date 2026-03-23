@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+_No unreleased entries yet._
+
+## 1.0.0 - 2026-03-24
+
+### Breaking Changes
+- Removed direct CLI calls. The tool now focuses exclusively on the server API. Use `python -m src.server` to start the server and interact via HTTP endpoints.
+- Removed `src/cli.py` and `src/cli_utils.py`.
+- Removed console script entry point.
+
 ### Added
 - Added a UX research asset pack under `docs/research/` with baseline rubric, moderated session scripts, accessibility checklist, findings template, and prioritized backlog template for execution of the active UX plan.
 - Added initial Test 1 outputs: `docs/research/heuristic-review-2026-03-23.md` and `docs/research/ux-backlog-2026-03-23.md`.
@@ -95,19 +104,6 @@ All notable changes to this project will be documented in this file.
 - Retired `docs/TASK_REFACTORING_PLAN.md` after consolidating authoritative task inventory and architecture references into `src/task_registry.py` and `docs/DEVELOPMENT.md`.
 - Removed completed `docs/RELEASE_HARDENING_EXECUTION_PLAYBOOK.md`.
 - Retired `docs/PROJECT_RETROSPECTIVE.md` after migrating actionable findings to canonical docs.
-
-## 1.0.0 - 2026-01-23
-
-### Breaking Changes
-- Removed direct CLI calls. The tool now focuses exclusively on the server API. Use `python -m src.server` to start the server and interact via HTTP endpoints.
-- Removed `src/cli.py` and `src/cli_utils.py`.
-- Removed console script entry point.
-
-### Added
-- Config file validation with friendly error messages for unknown keys.
-
-### Changed
-- Simplified project scope to server-only operation.
 
 ## 0.5.0 - 2026-01-17
 
