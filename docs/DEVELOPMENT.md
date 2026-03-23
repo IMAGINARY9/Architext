@@ -190,6 +190,8 @@ Contract note: response schemas are preserved. In `analyze-structure`, constrain
 *   **Cloud Native:** First-class support for remote vector DBs (Pinecone/Qdrant) without adapters.
 *   **Real-Time Watchers:** Incremental indexing on file changes.
 
+Incremental indexing prototype artifacts are available in `scripts/incremental_index_prototype.py` and `docs/benchmarks/INCREMENTAL_INDEX_PROTOTYPE.md`. Current fallback rule: use full indexing when changed-file ratio exceeds the configured threshold (default 35%).
+
 ## 4. Testing
 
 Run the full test suite:

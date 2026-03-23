@@ -198,6 +198,7 @@ Output format:
 | 2026-03-23 | B | Added selective indexing limits/extension filters and source-aware cache invalidation behavior | PASS (315) | PASS | PASS | Continue | New config knobs: `INDEX_MAX_FILES`, `INDEX_INCLUDE_EXTENSIONS`; cache invalidation now correctly scopes by `source_path` |
 | 2026-03-23 | C | Added structure-analysis onboarding hints and documented operator start-here workflow | PASS (315) | PASS | PASS | Continue | `analyze-structure` now returns `start_here` recommendations for practical entry points |
 | 2026-03-23 | F | Prototyped constrained analysis mode with contract-compatible structure outputs | PASS (316) | PASS | PASS | Continue | Added `analysis_mode` and `constrained_max_files`; constrained runs preserve `format/summary/tree/start_here` |
+| 2026-03-23 | D | Added incremental-indexing prototype with manifest diffing, fallback heuristic, and benchmark artifacts | PASS (319) | PASS | PASS | Continue | Generated `docs/benchmarks/INCREMENTAL_INDEX_PROTOTYPE.md` and `incremental_index_prototype_metrics.json` |
 
 ## Suggested Batch Order
 
