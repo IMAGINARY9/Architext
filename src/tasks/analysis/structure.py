@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Literal
 
 from src.tasks.core.base import BaseTask, FileInfo
 from src.tasks.shared import _classify_import_clusters, _extract_imports
@@ -27,47 +27,57 @@ class StructureAnalysisTask(BaseTask):
         progress_callback: Optional[Callable] = None,
         depth: str = "shallow",
         output_format: str = "json",
+        analysis_mode: Literal["full", "constrained"] = "full",
+        constrained_max_files: int = 400,
     ):
         super().__init__(
             storage_path=storage_path,
             source_path=source_path,
             progress_callback=progress_callback,
             extensions=None,  # All files
-            load_content=True,  # Need content for import analysis
+            load_content=analysis_mode != "constrained",
         )
         self.depth = depth
         self.output_format = output_format
+        self.analysis_mode = analysis_mode
+        self.constrained_max_files = max(50, constrained_max_files)
         self._depth_map = {"shallow": 2, "detailed": 4, "exhaustive": 8}
 
     def analyze(self, files: List[FileInfo]) -> Dict[str, Any]:
         """Analyze repository structure."""
         self._report_progress("analyze", "Building structure tree")
 
-        paths = [f.path for f in files]
+        analyzed_files = files
+        if self.analysis_mode == "constrained" and len(files) > self.constrained_max_files:
+            analyzed_files = files[: self.constrained_max_files]
+
+        paths = [f.path for f in analyzed_files]
         tree = self._build_tree(paths)
         max_depth = self._depth_map.get(self.depth, 2)
         pruned = self._prune_tree(tree, max_depth)
 
         # Count extensions and languages
-        extensions = Counter(f.extension for f in files)
+        extensions = Counter(f.extension for f in analyzed_files)
         languages: Counter[str] = Counter()
-        for f in files:
+        for f in analyzed_files:
             languages[f.language] += 1
 
         # Import cluster analysis
         import_cluster_counts: Counter[str] = Counter()
-        for f in files:
+        for f in analyzed_files:
             if f.content:
                 imports = _extract_imports(f.path, f.content)
                 clusters = _classify_import_clusters(imports)
                 import_cluster_counts.update(clusters)
 
         summary = {
-            "total_files": len(files),
+            "total_files": len(analyzed_files),
             "total_extensions": len(extensions),
             "languages": dict(languages),
             "top_extensions": dict(extensions.most_common(10)),
             "import_clusters": dict(import_cluster_counts),
+            "analysis_mode": self.analysis_mode,
+            "files_skipped": max(0, len(files) - len(analyzed_files)),
         }
         start_here = self._build_start_here(files)
 
@@ -202,6 +212,8 @@ def analyze_structure_v2(
     source_path: Optional[str] = None,
     depth: str = "shallow",
     output_format: str = "json",
+    analysis_mode: Literal["full", "constrained"] = "full",
+    constrained_max_files: int = 400,
     progress_callback: Optional[Callable] = None,
 ) -> Dict[str, Any]:
     """Analyze repository structure using BaseTask pattern."""
@@ -211,6 +223,8 @@ def analyze_structure_v2(
         progress_callback=progress_callback,
         depth=depth,
         output_format=output_format,
+        analysis_mode=analysis_mode,
+        constrained_max_files=constrained_max_files,
     )
     return task.run()
 

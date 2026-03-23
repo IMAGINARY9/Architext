@@ -38,6 +38,37 @@ def test_analysis_task_service_runs_structure(temp_repo_path, tmp_path):
     executor.shutdown(wait=True)
 
 
+def test_analysis_task_service_runs_structure_constrained_mode(temp_repo_path, tmp_path):
+    settings = ArchitextSettings(storage_path=str(tmp_path / "storage"))
+    executor = ThreadPoolExecutor(max_workers=1)
+
+    service = AnalysisTaskService(
+        task_store={},
+        task_store_path=tmp_path / "task_store.json",
+        lock=threading.Lock(),
+        executor=executor,
+        storage_roots=[tmp_path],
+        source_roots=[Path(temp_repo_path).resolve()],
+        base_settings=settings,
+    )
+
+    payload = SimpleNamespace(
+        source=temp_repo_path,
+        output_format="json",
+        depth="shallow",
+        analysis_mode="constrained",
+        constrained_max_files=50,
+    )
+    result = service.run_analysis_task("analyze-structure", payload)
+
+    assert result["format"] == "json"
+    assert result["summary"]["analysis_mode"] == "constrained"
+    assert "files_skipped" in result["summary"]
+    assert "start_here" in result
+
+    executor.shutdown(wait=True)
+
+
 def test_create_index_from_paths_batches(mocker):
     class DummyIndex:
         def __init__(self):

@@ -197,6 +197,7 @@ Output format:
 | 2026-03-23 | A | Expanded AST-first security heuristics and taint-flow reliability checks with regression coverage | PASS (312) | PASS | PASS | Continue | Added detections for `subprocess(..., shell=True)` and unsafe `yaml.load(...)`; taint detection now includes keyword args and f-string sources |
 | 2026-03-23 | B | Added selective indexing limits/extension filters and source-aware cache invalidation behavior | PASS (315) | PASS | PASS | Continue | New config knobs: `INDEX_MAX_FILES`, `INDEX_INCLUDE_EXTENSIONS`; cache invalidation now correctly scopes by `source_path` |
 | 2026-03-23 | C | Added structure-analysis onboarding hints and documented operator start-here workflow | PASS (315) | PASS | PASS | Continue | `analyze-structure` now returns `start_here` recommendations for practical entry points |
+| 2026-03-23 | F | Prototyped constrained analysis mode with contract-compatible structure outputs | PASS (316) | PASS | PASS | Continue | Added `analysis_mode` and `constrained_max_files`; constrained runs preserve `format/summary/tree/start_here` |
 
 ## Suggested Batch Order
 

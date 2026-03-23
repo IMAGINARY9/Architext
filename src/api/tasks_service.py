@@ -126,6 +126,8 @@ class AnalysisTaskService:
             source_path=source_path,
             output_format=getattr(payload, "output_format", "json"),
             depth=getattr(payload, "depth", "shallow") or "shallow",
+            analysis_mode=getattr(payload, "analysis_mode", "full") or "full",
+            constrained_max_files=getattr(payload, "constrained_max_files", 400) or 400,
             module=getattr(payload, "module", None),
             output_dir=self.resolve_output_dir(getattr(payload, "output_dir", None)),
             progress_callback=progress_update,

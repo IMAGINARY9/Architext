@@ -166,6 +166,16 @@ class TaskRequest(BaseModel):
     depth: Optional[Literal["shallow", "detailed", "exhaustive"]] = Field(
         default="shallow", description="Analysis depth level."
     )
+    analysis_mode: Literal["full", "constrained"] = Field(
+        default="full",
+        description="Analysis profile. Use 'constrained' for lower-resource execution.",
+    )
+    constrained_max_files: int = Field(
+        default=400,
+        ge=50,
+        le=5000,
+        description="Maximum files to process when analysis_mode is 'constrained'.",
+    )
     module: Optional[str] = Field(
         None,
         description="Module name or path for module-specific tasks (e.g., impact analysis).",
@@ -192,6 +202,7 @@ class TaskRequest(BaseModel):
                     "task": "analyze-structure",
                     "source": "./src",
                     "output_format": "markdown",
+                    "analysis_mode": "constrained",
                     "background": False,
                 },
             ]

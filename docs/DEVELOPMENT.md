@@ -111,6 +111,19 @@ Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache
 }
 ```
 
+#### Constrained Analysis Mode
+For low-resource environments, analysis tasks can use constrained mode via `TaskRequest`:
+
+```json
+{
+  "source": "./src",
+  "analysis_mode": "constrained",
+  "constrained_max_files": 400
+}
+```
+
+Contract note: response schemas are preserved. In `analyze-structure`, constrained mode adds summary metadata (`analysis_mode`, `files_skipped`) while keeping standard keys (`format`, `summary`, `tree`, `start_here`).
+
 #### Query Response Schemas
 
 **RAG Mode** (`POST /query` with `mode=rag`):
