@@ -13,6 +13,8 @@ Canonical plan:
 - `accessibility-checklist.md`: Inclusive UX checks for docs and API interaction flow.
 - `findings-log-template.md`: Standardized evidence capture format for each session.
 - `prioritized-ux-backlog-template.md`: Backlog schema and scoring model.
+- `heuristic-review-2026-03-23.md`: Initial expert heuristic findings for current cycle.
+- `ux-backlog-2026-03-23.md`: Prioritized backlog seeded from initial findings.
 
 ## Usage
 

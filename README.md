@@ -66,6 +66,16 @@ Use this sequence for the highest first-run success rate:
 4. Poll `GET /tasks/{id}` until the index task completes.
 5. Run `POST /query` (or `POST /ask`) against the same storage path.
 
+Example status check:
+
+```bash
+curl http://localhost:8000/tasks/<task_id>
+```
+
+Decision hint:
+- Use `POST /query` for full response options and broader query controls.
+- Use `POST /ask` for compact, agent-optimized response payloads.
+
 For full request/response schemas and operator workflow details, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
 ### First-Run Troubleshooting

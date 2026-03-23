@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Added a UX research asset pack under `docs/research/` with baseline rubric, moderated session scripts, accessibility checklist, findings template, and prioritized backlog template for execution of the active UX plan.
+- Added initial Test 1 outputs: `docs/research/heuristic-review-2026-03-23.md` and `docs/research/ux-backlog-2026-03-23.md`.
 
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.
@@ -24,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Added explicit architecture guardrails and integration patterns to `/providers` response to strengthen API-first positioning and onboarding integration fit.
 - Added a first-value onboarding sequence and first-run troubleshooting matrix in `README.md` to improve setup and endpoint-flow clarity.
 - Added explicit UX execution-asset references in `docs/DEVELOPMENT.md` linking to the temporary plan and research artifacts.
+- Added explicit `GET /tasks/{id}` polling example and `/query` vs `/ask` decision hint in `README.md` to reduce first-run endpoint ambiguity.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.
