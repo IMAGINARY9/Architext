@@ -22,6 +22,8 @@ Canonical plan:
 - `simulation-runbook.md`: End-to-end simulation execution protocol and acceptance gate.
 - `simulation-runs-2026-03-23.md`: Multi-cycle simulation results, deltas, and stability decisions.
 - `phase-2-continuous-improvement.md`: Continuous release-based UX monitoring and escalation model.
+- `release-gate-log-template.md`: Template for per-release UX gate decisions.
+- `release-gate-log.md`: Canonical log of release UX gate outcomes.
 
 ## Usage
 

@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Added phase-2 continuous monitoring plan in `docs/research/phase-2-continuous-improvement.md` and linked it from `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`.
 - Added consolidated UX findings summary in `docs/research/findings-summary.md`.
 - Added `scripts/run_ux_release_gate.py` for one-command release UX gating with generated output written to `.local/ux/`.
+- Added release gate logging assets: `docs/research/release-gate-log-template.md` and `docs/research/release-gate-log.md`.
 
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.
@@ -43,6 +44,7 @@ All notable changes to this project will be documented in this file.
 - Enhanced `scripts/ux_simulation_kpi_summary.py` to parse an arbitrary number of cycles from aggregated-metrics sections instead of a fixed three-cycle layout.
 - Enhanced `scripts/ux_simulation_kpi_summary.py` with `--format` (`text`/`json`/`csv`) and `--check-thresholds` gate evaluation for phase-2 release monitoring.
 - Added `.gitignore` rules for UX-generated exports and documented non-commit policy for machine-generated reports.
+- Revised `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` with current status, completed points, and explicit phase-2 remaining-points tracker.
 
 ### Removed
 - Retired one-off filled UX research artifacts after consolidation into `docs/research/findings-summary.md`:

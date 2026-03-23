@@ -27,11 +27,13 @@ Alternative one-command workflow:
 3. If threshold check passes:
 - Mark release UX gate as GO.
 - Append results and deltas to simulation report.
+- Record decision in `docs/research/release-gate-log.md`.
 
 4. If threshold check fails:
 - Escalate to full cycle (32+ runs).
 - Open or update backlog items.
 - Apply fixes and rerun targeted scenarios.
+- Record NO-GO/CONDITIONAL GO decision and required actions in `docs/research/release-gate-log.md`.
 
 ## Trigger Rules
 
