@@ -30,6 +30,7 @@ test-storage/
 
 # Generated docs/reports (task outputs, not source docs)
 docs/*.json
+docs/benchmarks/*.json
 docs/anti-patterns.json
 docs/health.json
 docs/structure.md
