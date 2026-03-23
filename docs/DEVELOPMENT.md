@@ -305,5 +305,9 @@ For a temporary, repeatable execution workflow, see:
 
 - `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`
 
+UX research execution assets for the current cycle are available in:
+
+- `docs/research/README.md`
+
 ---
 *For high-level project status, see [PROJECT_STATUS.md](PROJECT_STATUS.md).*

@@ -56,6 +56,26 @@ python -m src.server --host 127.0.0.1 --port 8000
 uvicorn src.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
+### First Value Loop (10-15 Minutes)
+
+Use this sequence for the highest first-run success rate:
+
+1. Start the server and open `/docs`.
+2. Run `POST /index/preview` for your target path.
+3. Run `POST /index` only after preview confirms expected scope.
+4. Poll `GET /tasks/{id}` until the index task completes.
+5. Run `POST /query` (or `POST /ask`) against the same storage path.
+
+For full request/response schemas and operator workflow details, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
+
+### First-Run Troubleshooting
+
+| Symptom | Likely cause | Fastest fix |
+|---|---|---|
+| Validation errors in Swagger | Placeholder schema values (for example `"string"`) were submitted | Use the "Examples" dropdown payloads before sending requests |
+| Query returns weak or empty results | Query was sent before index finished, or against a different storage path | Confirm task completion via `GET /tasks/{id}` and reuse the exact storage value |
+| Index scope is unexpectedly large | Source path was too broad for first run | Start with `./src` and use `POST /index/preview` before full indexing |
+
 #### Core API Endpoints
 
 - **Get available providers** — Discover supported LLM, embedding, and vector store providers.

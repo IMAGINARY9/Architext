@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+- Added a UX research asset pack under `docs/research/` with baseline rubric, moderated session scripts, accessibility checklist, findings template, and prioritized backlog template for execution of the active UX plan.
+
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.
 - Improved security task typing in `src/tasks/security.py` by adding explicit visitor method annotations and removing ignore-based async handling.
@@ -19,6 +22,8 @@ All notable changes to this project will be documented in this file.
 - Added constrained analysis mode support (`analysis_mode`, `constrained_max_files`) with schema-compatible output behavior for low-resource runs.
 - Added incremental indexing prototype helpers and benchmark script/report to compare manifest-diff updates versus full scans, including fallback heuristics.
 - Added explicit architecture guardrails and integration patterns to `/providers` response to strengthen API-first positioning and onboarding integration fit.
+- Added a first-value onboarding sequence and first-run troubleshooting matrix in `README.md` to improve setup and endpoint-flow clarity.
+- Added explicit UX execution-asset references in `docs/DEVELOPMENT.md` linking to the temporary plan and research artifacts.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.
