@@ -28,23 +28,30 @@ test-task-store.json
 test_results.txt
 test-storage/
 
-# Generated docs/reports (task outputs, not source docs)
-docs/*.json
-docs/benchmarks/*.json
-docs/benchmarks/BENCHMARK_MATRIX.md
-docs/anti-patterns.json
-docs/health.json
-docs/structure.md
-docs/tech-stack.md
 # Local index snapshots
 .architext/
 .architext/cache/
 
+# ------------------------------------------------------------
+# Generated Artifacts (Do Not Commit)
+# ------------------------------------------------------------
 # Local evaluation outputs
 .local/
 
-# UX simulation generated exports (machine-generated artifacts)
+# Generic docs/reports outputs
+docs/*.json
+docs/anti-patterns.json
+docs/health.json
+docs/structure.md
+docs/tech-stack.md
+
+# Benchmark outputs
+docs/benchmarks/*.json
+docs/benchmarks/BENCHMARK_MATRIX.md
+
+# UX simulation exports
 docs/research/generated/
+docs/research/testing-cycle-findings-[0-9]*.json
 reports/ux/
 *.ux-summary.json
 *.ux-summary.csv

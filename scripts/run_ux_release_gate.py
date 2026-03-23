@@ -1,4 +1,13 @@
-"""Run the UX release gate and write generated outputs to ignored local paths."""
+"""Run the UX release gate and write generated outputs to ignored local paths.
+
+This gate combines KPI threshold checks with optional structured findings input.
+Decision rules:
+- NO-GO when KPI thresholds fail.
+- NO-GO when unresolved Critical findings exist.
+- NO-GO when unresolved High findings exist and strict mode is enabled.
+- CONDITIONAL GO when thresholds pass but unresolved Medium/Low remain.
+- GO only when thresholds pass and no unresolved Critical/High remain.
+"""
 
 from __future__ import annotations
 
@@ -41,12 +50,94 @@ def _extract_latest_cycle_actions(report_text: str, cycle_number: int) -> list[s
     return actions
 
 
+def _severity_counts(raw: dict[str, Any] | None) -> dict[str, int]:
+    raw = raw or {}
+    result: dict[str, int] = {}
+    for key in ("critical", "high", "medium", "low"):
+        value = raw.get(key, 0)
+        try:
+            result[key] = max(int(value), 0)
+        except (TypeError, ValueError):
+            result[key] = 0
+    return result
+
+
+def _load_findings(findings_file: str | None) -> dict[str, Any]:
+    default_payload = {
+        "source": "none",
+        "found": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+        "fixed": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+        "unresolved": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+        "highlights": [],
+        "recommendations": [],
+    }
+    if not findings_file:
+        return default_payload
+
+    findings_path = Path(findings_file)
+    if not findings_path.exists():
+        raise FileNotFoundError(f"Findings file not found: {findings_file}")
+
+    payload = json.loads(findings_path.read_text(encoding="utf-8"))
+    summary = payload.get("summary", {}) if isinstance(payload, dict) else {}
+    return {
+        "source": str(findings_path).replace("\\", "/"),
+        "found": _severity_counts(summary.get("found") if isinstance(summary, dict) else None),
+        "fixed": _severity_counts(summary.get("fixed") if isinstance(summary, dict) else None),
+        "unresolved": _severity_counts(
+            summary.get("unresolved") if isinstance(summary, dict) else None
+        ),
+        "highlights": [str(item) for item in payload.get("highlights", [])][:10],
+        "recommendations": [str(item) for item in payload.get("recommendations", [])][:10],
+    }
+
+
+def _decide_release(
+    *,
+    threshold_passed: bool,
+    findings: dict[str, Any],
+    fail_on_unresolved_high: bool,
+) -> tuple[str, str]:
+    unresolved = findings["unresolved"]
+    unresolved_critical = unresolved["critical"]
+    unresolved_high = unresolved["high"]
+    unresolved_medium = unresolved["medium"]
+    unresolved_low = unresolved["low"]
+
+    if not threshold_passed:
+        return "NO-GO", "KPI threshold checks failed."
+
+    if unresolved_critical > 0:
+        return "NO-GO", "Unresolved Critical findings remain."
+
+    if unresolved_high > 0 and fail_on_unresolved_high:
+        return "NO-GO", "Unresolved High findings remain (strict mode)."
+
+    if unresolved_high > 0 or unresolved_medium > 0 or unresolved_low > 0:
+        return (
+            "CONDITIONAL GO",
+            "Thresholds passed with unresolved non-blocking findings; remediation and owner tracking required.",
+        )
+
+    return "GO", "Thresholds passed and no unresolved Critical/High findings remain."
+
+
+def _requires_findings_file(release_tag: str, findings_file: str) -> bool:
+    """Return whether the gate must fail due to missing findings-file policy.
+
+    Policy: any explicit non-default release tag requires a findings file.
+    """
+    return release_tag != "release-candidate" and not findings_file.strip()
+
+
 def _append_release_gate_log(
     log_file: Path,
     release_tag: str,
     gate_command: str,
     decision: str,
     rationale: str,
+    gate_result: str,
+    findings: dict[str, Any],
     latest_metrics: dict[str, Any],
     actions: list[str],
 ) -> None:
@@ -57,6 +148,24 @@ def _append_release_gate_log(
     lines.append(f"\n## {timestamp} - {release_tag}\n")
     lines.append(f"- Release tag/version: {release_tag}")
     lines.append(f"- Gate command: `{gate_command}`")
+    lines.append(f"- Gate result: {gate_result}")
+    lines.append("- Findings result:")
+    lines.append(
+        "  - found: "
+        f"C={findings['found']['critical']}, H={findings['found']['high']}, "
+        f"M={findings['found']['medium']}, L={findings['found']['low']}"
+    )
+    lines.append(
+        "  - fixed: "
+        f"C={findings['fixed']['critical']}, H={findings['fixed']['high']}, "
+        f"M={findings['fixed']['medium']}, L={findings['fixed']['low']}"
+    )
+    lines.append(
+        "  - unresolved: "
+        f"C={findings['unresolved']['critical']}, H={findings['unresolved']['high']}, "
+        f"M={findings['unresolved']['medium']}, L={findings['unresolved']['low']}"
+    )
+    lines.append(f"  - source: {findings['source']}")
     lines.append(f"- Decision: {decision}")
     lines.append(f"- Rationale: {rationale}")
     lines.append("- KPI snapshot:")
@@ -71,14 +180,28 @@ def _append_release_gate_log(
         f"  - integration correctness: {latest_metrics['integration_correctness']:.2f}/4"
     )
 
-    if actions:
+    recommendations = findings.get("recommendations", [])
+    if recommendations:
+        lines.append("- Recommended improvements (from findings file):")
+        for recommendation in recommendations:
+            lines.append(f"  - {recommendation}")
+    elif actions:
         lines.append("- Candidate improvements (from latest cycle findings):")
         for action in actions:
             lines.append(f"  - {action}")
     else:
-        lines.append("- Candidate improvements: none extracted from latest cycle findings.")
+        lines.append("- Candidate improvements: none extracted from findings file or latest cycle.")
 
-    lines.append("- Follow-up: continue lightweight cycle per release; escalate on threshold failure.")
+    highlights = findings.get("highlights", [])
+    if highlights:
+        lines.append("- Findings highlights:")
+        for highlight in highlights:
+            lines.append(f"  - {highlight}")
+
+    if decision == "GO":
+        lines.append("- Follow-up: continue lightweight cycle per release; escalate on threshold failure.")
+    else:
+        lines.append("- Follow-up: run remediation, update findings report, and re-run release gate.")
 
     with log_file.open("a", encoding="utf-8") as handle:
         handle.write("\n".join(lines) + "\n")
@@ -113,11 +236,30 @@ def main() -> int:
         action="store_true",
         help="Skip appending a release gate log entry.",
     )
+    parser.add_argument(
+        "--findings-file",
+        default="",
+        help=(
+            "Optional path to structured findings JSON. "
+            "Used to determine unresolved findings and GO/CONDITIONAL GO/NO-GO decisions."
+        ),
+    )
+    parser.add_argument(
+        "--allow-unresolved-high",
+        action="store_true",
+        help="Allow unresolved High findings (will yield CONDITIONAL GO if thresholds pass).",
+    )
     parser.add_argument("--min-completion-rate", type=float, default=85.0)
     parser.add_argument("--max-time-to-query", type=float, default=15.0)
     parser.add_argument("--max-wrong-endpoint", type=float, default=1.0)
     parser.add_argument("--min-integration-correctness", type=float, default=3.0)
     args = parser.parse_args()
+
+    if _requires_findings_file(args.release_tag, args.findings_file):
+        parser.error(
+            "--findings-file is required when --release-tag is explicitly provided "
+            "(non-default release tags)."
+        )
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -158,40 +300,56 @@ def main() -> int:
     latest_actions = _extract_latest_cycle_actions(report_text, latest_cycle_number)
     summary_json = json.loads(json_out.read_text(encoding="utf-8"))
     latest_metrics = summary_json["cycles"][-1]
+    findings = _load_findings(args.findings_file)
     gate_command_text = (
         f"python scripts/run_ux_release_gate.py --release-tag {args.release_tag}"
     )
+    if args.findings_file:
+        gate_command_text += f" --findings-file {args.findings_file}"
+    if args.allow_unresolved_high:
+        gate_command_text += " --allow-unresolved-high"
 
     gate_result = _run(gate_cmd)
     if gate_result.stdout:
         print(gate_result.stdout, end="")
-    if gate_result.returncode != 0:
-        if not args.skip_log:
-            _append_release_gate_log(
-                log_file=Path(args.log_file),
-                release_tag=args.release_tag,
-                gate_command=gate_command_text,
-                decision="NO-GO",
-                rationale="One or more KPI threshold checks failed.",
-                latest_metrics=latest_metrics,
-                actions=latest_actions,
-            )
-        if gate_result.stderr:
-            sys.stderr.write(gate_result.stderr)
-        return gate_result.returncode
+
+    threshold_passed = gate_result.returncode == 0
+    fail_on_unresolved_high = not args.allow_unresolved_high
+    decision, rationale = _decide_release(
+        threshold_passed=threshold_passed,
+        findings=findings,
+        fail_on_unresolved_high=fail_on_unresolved_high,
+    )
+    gate_status = "PASS" if threshold_passed else "FAIL"
+
+    if gate_result.returncode != 0 and gate_result.stderr:
+        sys.stderr.write(gate_result.stderr)
 
     if not args.skip_log:
         _append_release_gate_log(
             log_file=Path(args.log_file),
             release_tag=args.release_tag,
             gate_command=gate_command_text,
-            decision="GO",
-            rationale="All KPI threshold checks passed.",
+            decision=decision,
+            rationale=rationale,
+            gate_result=gate_status,
+            findings=findings,
             latest_metrics=latest_metrics,
             actions=latest_actions,
         )
 
-    print("UX release gate passed.")
+    if decision == "NO-GO":
+        print("UX release gate decision: NO-GO")
+        print(f"Rationale: {rationale}")
+        print(f"Generated outputs: {text_out}, {json_out}, {csv_out}")
+        if args.skip_log:
+            print("Release gate log update skipped (--skip-log).")
+        else:
+            print(f"Release gate log updated: {args.log_file}")
+        return 1
+
+    print(f"UX release gate decision: {decision}")
+    print(f"Rationale: {rationale}")
     print(f"Generated outputs: {text_out}, {json_out}, {csv_out}")
     if args.skip_log:
         print("Release gate log update skipped (--skip-log).")

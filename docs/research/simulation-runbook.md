@@ -14,6 +14,7 @@ Principles:
 - Default skepticism: final verdict starts at NEEDS WORK and is promoted only with passing evidence.
 - Keep docs lean: maintain this runbook and `agent-simulation-prompts.md` as the only operational sources.
 - Commit discipline: commit code/test fixes; do not commit generated reports unless explicitly required.
+- Findings transparency: every full cycle must produce a structured findings artifact before release gating.
 
 ## Quality Sprint Plan (Current State Evaluation)
 
@@ -62,6 +63,9 @@ Commit checkpoint:
 2. Workflow Optimizer step:
 	- Identify test-process bottlenecks.
 	- Propose 1-3 automation upgrades for recurring checks.
+3. Produce structured findings file:
+	- Write `docs/research/testing-cycle-findings-YYYY-MM-DD.json` using the template.
+	- Include found/fixed/unresolved counts and top recommendations.
 
 Commit checkpoint:
 - `docs(research): update release gate findings and prioritized improvements`
@@ -72,11 +76,11 @@ Commit checkpoint:
 	- `.\\.venv\\Scripts\\python.exe -m ruff check .`
 	- `.\\.venv\\Scripts\\python.exe -m mypy src`
 	- `.\\.venv\\Scripts\\python.exe -m pytest -q`
-	- `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py --release-tag <tag>`
+	- `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py --release-tag <tag> --findings-file docs/research/testing-cycle-findings-YYYY-MM-DD.json`
 2. Apply final verdict:
-	- GO only if KPIs pass and no unresolved Critical findings remain.
-	- CONDITIONAL GO if only Medium/Low issues remain with owners and due dates.
-	- NO-GO for any unresolved Critical/High issue.
+	- GO only if KPIs pass and no unresolved Critical/High findings remain.
+	- CONDITIONAL GO if KPIs pass and only unresolved Medium/Low findings remain with owners and due dates.
+	- NO-GO for unresolved Critical findings, KPI threshold failure, or unresolved High findings in strict mode.
 
 Commit checkpoint:
 - `fix(quality): resolve critical findings from testing division gate`
@@ -122,7 +126,7 @@ Per PR:
 - Mandatory: ruff, mypy, pytest (already in CI).
 
 Per release candidate:
-- Run `scripts/run_ux_release_gate.py` and append gate decision.
+- Produce/update cycle findings file, then run `scripts/run_ux_release_gate.py --findings-file ...` and append decision.
 
 Weekly or before milestone cuts:
 - Run full Testing Division cycle (Phases 0-3).

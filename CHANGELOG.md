@@ -22,6 +22,12 @@ All notable changes to this project will be documented in this file.
 - Added release gate logging assets: `docs/research/release-gate-log-template.md` and `docs/research/release-gate-log.md`.
 - Added a Testing Division simulation protocol to `docs/research/simulation-runbook.md` with phase-based test sequencing, commit checkpoints, severity gates, and artifact hygiene rules.
 - Added Testing Division role prompts (Evidence Collector, API Tester, Performance Benchmarker, Accessibility Auditor, Test Results Analyzer, Workflow Optimizer, Reality Checker) to `docs/research/agent-simulation-prompts.md`.
+- Added structured findings artifacts for release gating: `docs/research/testing-cycle-findings-template.json` and `docs/research/testing-cycle-findings-2026-03-23.json`.
+- Added release-gate decision tests in `tests/test_release_gate_decision.py`.
+- Added docs/API contract drift tests in `tests/test_docs_api_contract.py`.
+- Added release-gate reporting tools tests in `tests/test_release_gate_reporting_tools.py`.
+- Added `scripts/validate_release_gate_log.py` to enforce findings-aware gate-log policy.
+- Added `scripts/release_gate_findings_dashboard.py` for compact unresolved-severity dashboards from gate log history.
 
 ### Changed
 - Consolidated continuous UX release-monitoring guidance into `README.md` and `docs/research/README.md`, replacing separate phase-labeled planning documents.
@@ -54,6 +60,11 @@ All notable changes to this project will be documented in this file.
 - Updated benchmark and release-gate path references in docs to workspace-relative command/path style (no machine-specific absolute paths).
 - Expanded `.gitignore` to exclude generated benchmark markdown output (`docs/benchmarks/BENCHMARK_MATRIX.md`) from routine commits.
 - Updated operator and research testing documentation to match live API contracts: `GET /status/{task_id}`, `GET /indices`, and `POST /query` with `name` (including compact mode), removing stale `/ask` guidance.
+- Updated release-monitoring docs to require findings-file input for gate decisions and to use explicit unresolved-severity reporting.
+- Updated README analysis-task command examples to current task routes (`/tasks/analyze-structure`, `/tasks/detect-anti-patterns`, `/tasks/run-category/quality`).
+- Updated CI workflow to validate release gate log policy (`python scripts/validate_release_gate_log.py`) during test job.
+- Migrated legacy release-gate-log entries to findings-aware structure for historical consistency.
+- Reorganized `.gitignore` with a dedicated generated-artifacts section and isolated dated findings exports (`docs/research/testing-cycle-findings-[0-9]*.json`).
 
 ### Removed
 - Removed deprecated migration guide `docs/MIGRATION_GUIDE.md` and retired references to it.
@@ -71,6 +82,9 @@ All notable changes to this project will be documented in this file.
 - Fixed `scripts/benchmark.py` direct script execution on Windows (`python scripts/benchmark.py`) by stabilizing project import resolution.
 - Fixed generated release-gate command logging to avoid writing absolute local interpreter paths.
 - Fixed benchmark summary generation to emit workspace-relative source paths instead of absolute local filesystem paths.
+- Fixed release-gate reporting to separate KPI threshold result from findings result and avoid misleading "all clear" summaries.
+- Fixed release decision policy to enforce NO-GO on unresolved Critical findings and strict handling of unresolved High findings.
+- Fixed release-gate CLI policy so explicit non-default `--release-tag` usage requires `--findings-file`.
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.
 - Fixed `security_heuristics` edge-case behavior for non-positive `max_findings` values to return an empty, schema-consistent result.
 - Added regression tests for `max_findings` cap behavior, deterministic ordering, and zero-limit handling.

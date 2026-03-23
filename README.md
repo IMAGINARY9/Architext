@@ -87,9 +87,11 @@ For full request/response schemas and operator workflow details, see **[docs/DEV
 
 UX evaluation is complete and now runs as release monitoring:
 
-1. Run `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py` for each release candidate.
-2. If any KPI threshold fails, run a full rerun using `docs/research/simulation-runbook.md`.
-3. Review decisions and KPI snapshots in `docs/research/release-gate-log.md`.
+1. Produce/update a structured findings report for the cycle (see `docs/research/testing-cycle-findings-template.json`).
+2. Run `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py --findings-file docs/research/testing-cycle-findings-YYYY-MM-DD.json` for each release candidate.
+3. If unresolved High findings are temporarily acceptable for release, run with `--allow-unresolved-high` and track explicit owners.
+4. If any KPI threshold fails, run a full rerun using `docs/research/simulation-runbook.md`.
+4. Review decisions, findings summary, and KPI snapshots in `docs/research/release-gate-log.md`.
 
 Current thresholds:
 - completion rate >= 85%
@@ -159,23 +161,23 @@ These commands run static/heuristic analysis and produce JSON/markdown outputs. 
 
 - Structure analysis (tree/mermaid/json):
 ```bash
-curl -X POST http://localhost:8000/tasks/structure \
+curl -X POST http://localhost:8000/tasks/analyze-structure \
   -H "Content-Type: application/json" \
   -d '{"source": "./src", "output_format": "mermaid"}'
 ```
 
 - Anti-pattern detection:
 ```bash
-curl -X POST http://localhost:8000/tasks/anti-patterns \
+curl -X POST http://localhost:8000/tasks/detect-anti-patterns \
   -H "Content-Type: application/json" \
   -d '{"source": "./src"}'
 ```
 
-- Full audit (exports multiple artefacts):
+- Parallel quality sweep (recommended audit-like pass):
 ```bash
-curl -X POST http://localhost:8000/tasks/audit \
+curl -X POST http://localhost:8000/tasks/run-category/quality \
   -H "Content-Type: application/json" \
-  -d '{"source": ".", "output": "./architext-audit"}'
+  -d '{"source": "./src", "max_workers": 4}'
 ```
 
 For a full list of tasks, detailed usage, and response schemas, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.

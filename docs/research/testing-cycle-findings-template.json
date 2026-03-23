@@ -1,0 +1,37 @@
+{
+  "cycle_id": "YYYY-MM-DD-full-cycle",
+  "scope": "Testing Division full cycle",
+  "summary": {
+    "found": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "fixed": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "unresolved": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "highlights": [
+    "List evidence-based highlights from this cycle."
+  ],
+  "recommendations": [
+    "List top remediation or hardening actions."
+  ],
+  "owners": [
+    {
+      "item": "Action item",
+      "owner": "team-or-person",
+      "due_date": "YYYY-MM-DD"
+    }
+  ]
+}
