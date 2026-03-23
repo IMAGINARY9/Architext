@@ -10,14 +10,15 @@
 
 - `synthetic-personas.md` — Canonical synthetic persona definitions (Operator, Agent Integrator).
 - `agent-simulation-prompts.md` — Prompt pack for LLM-based persona simulation runs.
-- `simulation-runbook.md` — How to execute simulation cycles and interpret results.
+- `simulation-runbook.md` — How to execute simulation cycles, run the Testing Division sequence, and apply final gate decisions.
 - `simulation-runs-2026-03-23.md` — Baseline multi-cycle simulation results (cycles 1-5) and stability evidence.
 
 ## Workflow
 
 1. **Per Release**: Run `scripts/run_ux_release_gate.py` to check KPIs and append decision to `release-gate-log.md`.
 2. **If Threshold Fails**: Execute full simulation using `simulation-runbook.md` and re-run gate.
-3. **On Completion**: Results are recorded in `release-gate-log.md`.
+3. **For Deep Quality Checks**: Execute the full Testing Division quality sprint from `simulation-runbook.md`.
+4. **On Completion**: Results are recorded in `release-gate-log.md`.
 
 ## Automation
 

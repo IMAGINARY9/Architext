@@ -20,6 +20,8 @@ All notable changes to this project will be documented in this file.
 - Added `scripts/run_ux_release_gate.py` for one-command release UX gating with generated output written to `.local/ux/`.
 - Enhanced `scripts/run_ux_release_gate.py` to auto-append release gate entries and collect candidate improvements from latest cycle findings.
 - Added release gate logging assets: `docs/research/release-gate-log-template.md` and `docs/research/release-gate-log.md`.
+- Added a Testing Division simulation protocol to `docs/research/simulation-runbook.md` with phase-based test sequencing, commit checkpoints, severity gates, and artifact hygiene rules.
+- Added Testing Division role prompts (Evidence Collector, API Tester, Performance Benchmarker, Accessibility Auditor, Test Results Analyzer, Workflow Optimizer, Reality Checker) to `docs/research/agent-simulation-prompts.md`.
 
 ### Changed
 - Consolidated continuous UX release-monitoring guidance into `README.md` and `docs/research/README.md`, replacing separate phase-labeled planning documents.
@@ -48,6 +50,7 @@ All notable changes to this project will be documented in this file.
 - Enhanced `scripts/ux_simulation_kpi_summary.py` with `--format` (`text`/`json`/`csv`) and `--check-thresholds` gate evaluation for phase-2 release monitoring.
 - Added `.gitignore` rules for UX-generated exports and documented non-commit policy for machine-generated reports.
 - Revised `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` with current status, completed points, and explicit phase-2 remaining-points tracker.
+- Updated `docs/research/README.md` workflow to include full Testing Division quality sprint execution in addition to release-gate checks.
 
 ### Removed
 - Removed deprecated migration guide `docs/MIGRATION_GUIDE.md` and retired references to it.
