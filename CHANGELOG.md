@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Added full cycle-2 simulation results and KPI deltas in `docs/research/simulation-runs-2026-03-23.md`.
 - Added cycle-3 simulation results with increased adversarial weighting and a three-cycle stability section in `docs/research/simulation-runs-2026-03-23.md`.
 - Added `scripts/ux_simulation_kpi_summary.py` to automatically summarize cycle metrics, deltas, and stability ranges from the simulation report.
+- Added cycle-4 and cycle-5 simulation results, trend table, and final five-cycle stability gate decision in `docs/research/simulation-runs-2026-03-23.md`.
 
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.
@@ -36,6 +37,7 @@ All notable changes to this project will be documented in this file.
 - Added explicit `task_id` reuse and terminal polling-state guidance (`completed`/`failed`) in `README.md` first-value loop.
 - Adapted `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` and `docs/research/README.md` to simulation-only UX execution (agent-driven prompt runs without live participants).
 - Added simulation-derived onboarding clarifications in `README.md` (payload anti-pattern warning, explicit index polling follow-up, and stronger `/query` vs `/ask` schema-intent contrast).
+- Enhanced `scripts/ux_simulation_kpi_summary.py` to parse an arbitrary number of cycles from aggregated-metrics sections instead of a fixed three-cycle layout.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.

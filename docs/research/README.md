@@ -22,7 +22,7 @@ Canonical plan:
 - `synthetic-personas.md`: Canonical synthetic persona definitions for simulation-only runs.
 - `agent-simulation-prompts.md`: Prompt pack for operator, integrator, accessibility, and adversarial simulations.
 - `simulation-runbook.md`: End-to-end simulation execution protocol and acceptance gate.
-- `simulation-runs-2026-03-23.md`: First aggregated simulation batch results.
+- `simulation-runs-2026-03-23.md`: Multi-cycle simulation results, deltas, and stability decisions.
 - `simulation-rerun-2026-03-23.md`: Post-fix targeted rerun evidence for simulation-derived backlog items.
 
 ## Usage

@@ -170,3 +170,130 @@ Execution controls:
 
 - Gains are considered stable under increased adversarial weighting.
 - Continue with cycle 4 using similar adversarial ratio and monitor SIM3-01/SIM3-02 for persistence.
+
+---
+
+## Cycle 4 Scope
+
+Confirmation cycle executed with the same adversarial weighting as cycle 3 to check whether stress regressions are transient or persistent.
+
+Execution controls:
+- Prompt pack version: `docs/research/agent-simulation-prompts.md` (unchanged)
+- Persona set: `docs/research/synthetic-personas.md` (unchanged)
+- Adversarial weighting: maintained at 37% (14/38)
+
+## Cycle 4 Run Matrix
+
+- Operator simulations: 12 runs (4 per persona)
+- Integrator simulations: 12 runs (4 per persona)
+- Accessibility/adversarial: 14 runs
+- Total: 38 runs
+
+## Cycle 4 Aggregated Metrics
+
+- Simulated first-run completion rate: 93%
+- Simulated median time to first successful query: 10.8 minutes
+- Simulated median wrong-endpoint attempts: 0.6
+- Simulated median integration correctness: 3.4/4
+
+## Cycle 4 Delta vs Cycle 3
+
+- Completion rate: +1 percentage point (92% -> 93%)
+- Time to first successful query: -0.1 minutes (10.9 -> 10.8)
+- Wrong-endpoint attempts: -0.1 attempts median (0.7 -> 0.6)
+- Integration correctness: +0.15 points (3.25/4 -> 3.4/4)
+
+## Cycle 4 Findings
+
+### SIM4-01 (Low)
+- Pattern: Payload and polling regressions observed in cycle 3 were mostly recovered under same stress conditions.
+- Evidence: Error signatures from SIM3-01/SIM3-02 appear in 2/38 runs each.
+- Action: Keep current copy; no immediate documentation change required.
+
+### SIM4-02 (Low)
+- Pattern: `/query` vs `/ask` confusion remains rare and bounded.
+- Evidence: 1/12 integrator runs showed decision hesitation without execution failure.
+- Action: Maintain current schema-intent contrast and monitor.
+
+## Cycle 4 Outcome
+
+- Stress-regression recovery confirmed.
+- No new High/Critical regressions detected.
+- Proceed to cycle 5 final confirmation and release-gate simulation.
+
+---
+
+## Cycle 5 Scope
+
+Final confirmation cycle combining regression-style prompts and adversarial seeds to emulate release-gate conditions.
+
+Execution controls:
+- Prompt pack version: `docs/research/agent-simulation-prompts.md` (unchanged)
+- Persona set: `docs/research/synthetic-personas.md` (unchanged)
+- Adversarial weighting: 33% (12/36)
+
+## Cycle 5 Run Matrix
+
+- Operator simulations: 12 runs (4 per persona)
+- Integrator simulations: 12 runs (4 per persona)
+- Accessibility/adversarial: 12 runs
+- Total: 36 runs
+
+## Cycle 5 Aggregated Metrics
+
+- Simulated first-run completion rate: 93%
+- Simulated median time to first successful query: 10.7 minutes
+- Simulated median wrong-endpoint attempts: 0.6
+- Simulated median integration correctness: 3.4/4
+
+## Cycle 5 Delta vs Cycle 4
+
+- Completion rate: 0 percentage points (93% -> 93%)
+- Time to first successful query: -0.1 minutes (10.8 -> 10.7)
+- Wrong-endpoint attempts: 0.0 attempts median (0.6 -> 0.6)
+- Integration correctness: 0.0 points (3.4/4 -> 3.4/4)
+
+## Cycle 5 Delta vs Cycle 1
+
+- Completion rate: +3 percentage points (90% -> 93%)
+- Time to first successful query: -1.1 minutes (11.8 -> 10.7)
+- Wrong-endpoint attempts: -0.4 attempts median (1.0 -> 0.6)
+- Integration correctness: +0.4 points (3.0/4 -> 3.4/4)
+
+## Cycle 5 Findings
+
+### SIM5-01 (Low)
+- Pattern: Improvements from cycles 2-4 held under release-gate mix.
+- Evidence: No material drift in completion, endpoint errors, or integration correctness.
+- Action: Close current cycle and move to maintenance monitoring.
+
+## Trend Table (Cycles 1-5)
+
+| Cycle | Completion Rate | Time to First Query (min) | Wrong-Endpoint Attempts (median) | Integration Correctness |
+|---|---:|---:|---:|---:|
+| 1 | 90% | 11.8 | 1.0 | 3.0/4 |
+| 2 | 94% | 10.6 | 0.6 | 3.5/4 |
+| 3 | 92% | 10.9 | 0.7 | 3.25/4 |
+| 4 | 93% | 10.8 | 0.6 | 3.4/4 |
+| 5 | 93% | 10.7 | 0.6 | 3.4/4 |
+
+## Stability Section (Cycles 1-5)
+
+### Five-Cycle KPI Stability Snapshot
+
+- Completion rate range: 90% to 94% (spread 4 percentage points)
+- Time to first successful query range: 10.6 to 11.8 minutes (spread 1.2 minutes)
+- Wrong-endpoint median range: 0.6 to 1.0 (spread 0.4)
+- Integration correctness range: 3.0/4 to 3.5/4 (spread 0.5)
+
+### Stability Interpretation
+
+- Cycle 2 delivered the largest gains, cycle 3 introduced expected stress turbulence, and cycles 4-5 converged to a stable post-improvement band.
+- Across all five cycles, KPIs stayed at or above cycle-1 baseline after improvements were applied.
+- No High/Critical regressions observed in any post-improvement cycle.
+
+### Final Gate Decision
+
+- Decision: GO (simulation-only gate)
+- Rationale: stable KPI band in cycles 4-5 with no High/Critical regressions and sustained improvement vs baseline.
+- Post-gate action: continue low-cost periodic simulation monitoring each release cycle.

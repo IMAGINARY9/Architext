@@ -11,6 +11,7 @@ from pathlib import Path
 @dataclass
 class CycleMetrics:
     name: str
+    cycle_number: int
     completion_rate: float
     time_to_query_min: float
     wrong_endpoint_attempts: float
@@ -24,22 +25,7 @@ def _extract_float(pattern: str, text: str) -> float:
     return float(match.group(1))
 
 
-def _extract_section(report: str, heading: str, next_headings: list[str]) -> str:
-    start_idx = report.find(heading)
-    if start_idx == -1:
-        raise ValueError(f"Heading not found: {heading}")
-
-    end_idx = len(report)
-    for next_heading in next_headings:
-        idx = report.find(next_heading, start_idx + len(heading))
-        if idx != -1:
-            end_idx = min(end_idx, idx)
-
-    return report[start_idx:end_idx]
-
-
-def _parse_cycle(report: str, heading: str, next_headings: list[str], name: str) -> CycleMetrics:
-    section = _extract_section(report, heading, next_headings)
+def _parse_cycle(section: str, cycle_number: int) -> CycleMetrics:
 
     completion_rate = _extract_float(r"completion rate:\s*([0-9]+(?:\.[0-9]+)?)%", section)
     time_to_query_min = _extract_float(
@@ -56,12 +42,32 @@ def _parse_cycle(report: str, heading: str, next_headings: list[str], name: str)
     )
 
     return CycleMetrics(
-        name=name,
+        name=f"cycle-{cycle_number}",
+        cycle_number=cycle_number,
         completion_rate=completion_rate,
         time_to_query_min=time_to_query_min,
         wrong_endpoint_attempts=wrong_endpoint_attempts,
         integration_correctness=integration_correctness,
     )
+
+
+def _extract_cycle_sections(report: str) -> list[tuple[int, str]]:
+    heading_regex = re.compile(r"^##\s+(Cycle\s+(\d+)\s+)?Aggregated Metrics\s*$", re.MULTILINE)
+    matches = list(heading_regex.finditer(report))
+    if not matches:
+        raise ValueError("No aggregated metrics sections found in report.")
+
+    cycle_sections: list[tuple[int, str]] = []
+    for index, match in enumerate(matches):
+        section_start = match.start()
+        section_end = matches[index + 1].start() if index + 1 < len(matches) else len(report)
+        section = report[section_start:section_end]
+
+        cycle_number = int(match.group(2)) if match.group(2) else 1
+        cycle_sections.append((cycle_number, section))
+
+    cycle_sections.sort(key=lambda item: item[0])
+    return cycle_sections
 
 
 def _fmt_signed(value: float, suffix: str = "") -> str:
@@ -71,27 +77,10 @@ def _fmt_signed(value: float, suffix: str = "") -> str:
 
 def summarize(report_path: Path) -> str:
     report = report_path.read_text(encoding="utf-8")
-
-    cycle1 = _parse_cycle(
-        report,
-        "## Aggregated Metrics",
-        ["## Cycle 2 Scope"],
-        "cycle-1",
-    )
-    cycle2 = _parse_cycle(
-        report,
-        "## Cycle 2 Aggregated Metrics",
-        ["## Cycle 2 Delta vs Cycle 1", "## Cycle 3 Scope"],
-        "cycle-2",
-    )
-    cycle3 = _parse_cycle(
-        report,
-        "## Cycle 3 Aggregated Metrics",
-        ["## Cycle 3 Delta vs Cycle 2", "## Stability Section (Cycles 1-3)"],
-        "cycle-3",
-    )
-
-    cycles = [cycle1, cycle2, cycle3]
+    cycle_sections = _extract_cycle_sections(report)
+    cycles = [_parse_cycle(section, cycle_number) for cycle_number, section in cycle_sections]
+    if len(cycles) < 2:
+        raise ValueError("At least two cycles are required for delta analysis.")
 
     lines: list[str] = []
     lines.append("UX Simulation KPI Summary")
@@ -118,9 +107,18 @@ def summarize(report_path: Path) -> str:
 
     lines.append("")
     lines.append("Deltas:")
-    lines.append("- cycle-2 vs cycle-1: " + ", ".join(delta(cycle1, cycle2)))
-    lines.append("- cycle-3 vs cycle-2: " + ", ".join(delta(cycle2, cycle3)))
-    lines.append("- cycle-3 vs cycle-1: " + ", ".join(delta(cycle1, cycle3)))
+    for prev_cycle, current_cycle in zip(cycles, cycles[1:]):
+        lines.append(
+            f"- {current_cycle.name} vs {prev_cycle.name}: "
+            + ", ".join(delta(prev_cycle, current_cycle))
+        )
+
+    baseline_cycle = cycles[0]
+    latest_cycle = cycles[-1]
+    lines.append(
+        f"- {latest_cycle.name} vs {baseline_cycle.name}: "
+        + ", ".join(delta(baseline_cycle, latest_cycle))
+    )
 
     completion_values = [c.completion_rate for c in cycles]
     time_values = [c.time_to_query_min for c in cycles]
@@ -128,7 +126,7 @@ def summarize(report_path: Path) -> str:
     integration_values = [c.integration_correctness for c in cycles]
 
     lines.append("")
-    lines.append("Stability ranges (cycles 1-3):")
+    lines.append(f"Stability ranges (cycles 1-{len(cycles)}):")
     lines.append(
         f"- completion spread: {max(completion_values) - min(completion_values):.2f} pp"
     )
