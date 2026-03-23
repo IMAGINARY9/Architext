@@ -4,7 +4,7 @@
 
 ### Highlights
 - Completed release hardening implementation loop with additional correctness checks in security analysis tasks.
-- Synchronized published quality metrics with latest validated baseline (`309/309` tests passing).
+- Synchronized published quality metrics with latest validated baseline (`319/319` tests passing).
 - Improved determinism and reliability of security findings output.
 
 ### Changed
@@ -17,9 +17,9 @@
 - Added regression tests covering findings cap behavior, deterministic ordering, and zero-limit handling.
 
 ### Verification Snapshot
-- `python -m pytest -q` -> `309 passed`
+- `python -m pytest -q` -> `319 passed`
 - `python -m ruff check .` -> all checks passed
-- `python -m mypy src` -> success (67 source files)
+- `python -m mypy src` -> success (68 source files)
 
 ## 1.0.0 - 2026-01-23
 
@@ -36,4 +36,4 @@
 - Removed console script entry point. Use `python -m src.server` to start the server.
 
 ### Upgrade Notes
-See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) and [CHANGELOG.md](../CHANGELOG.md) for full compatibility details.
+See [CHANGELOG.md](../CHANGELOG.md) for full compatibility details.

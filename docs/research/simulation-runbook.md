@@ -39,7 +39,7 @@ A fix is accepted when simulation reruns show:
 - Integration correctness is at least 3/4 median
 - No new High/Critical regressions
 
-## Phase 2 Release Cadence
+## Continuous Release Cadence
 
 For ongoing releases, use a lightweight-first approach:
 

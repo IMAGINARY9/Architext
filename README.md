@@ -23,8 +23,8 @@ Architext is a production-ready RAG (Retrieval-Augmented Generation) tool design
 
 *   **[PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**: Detailed report on what has been delivered and tested.
 *   **[DEVELOPMENT.md](docs/DEVELOPMENT.md)**: Developer guide, API reference, and architecture roadmap.
-*   **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)**: Compatibility notes for the task and server refactor.
 *   **[RELEASE_NOTES.md](docs/RELEASE_NOTES.md)**: Highlights for the latest release.
+*   **[docs/research/README.md](docs/research/README.md)**: UX simulation assets and release gate operations.
 
 ## Audit Findings Snapshot
 
@@ -82,6 +82,20 @@ Decision hint:
 - Use `POST /ask` for compact, agent-optimized response payloads.
 
 For full request/response schemas and operator workflow details, see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
+
+### Continuous UX Release Monitoring
+
+UX evaluation is complete and now runs as release monitoring:
+
+1. Run `.\\.venv\\Scripts\\python.exe scripts/run_ux_release_gate.py` for each release candidate.
+2. If any KPI threshold fails, run a full rerun using `docs/research/simulation-runbook.md`.
+3. Review decisions and KPI snapshots in `docs/research/release-gate-log.md`.
+
+Current thresholds:
+- completion rate >= 85%
+- time to first successful query <= 15 minutes
+- wrong-endpoint attempts <= 1 median
+- integration correctness >= 3/4
 
 ### First-Run Troubleshooting
 

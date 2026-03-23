@@ -1,13 +1,10 @@
-# UX Evaluation and Continuous Improvement Assets
+# UX Simulation and Release Gate Assets
 
-**Status**: Evaluation complete. Phase 2 (continuous monitoring) active.
+**Status**: Evaluation complete. Continuous release monitoring active.
 
-## Operational Files (Required for Release Gates)
+## Operational Files
 
-- `findings-summary.md` — Consolidated findings, KPI outcomes, and GO decision rationale. _Source of truth_.
-- `phase-2-continuous-improvement.md` — Release-based monitoring workflow, escalation triggers, and threshold rules.
 - `release-gate-log.md` — Canonical log of all release UX gate decisions (GO/CONDITIONAL GO/NO-GO).
-- `release-gate-log-template.md` — Template reference for gate entry structure.
 
 ## Reference Files (For Simulation Reruns or Historical Context)
 
@@ -20,7 +17,7 @@
 
 1. **Per Release**: Run `scripts/run_ux_release_gate.py` to check KPIs and append decision to `release-gate-log.md`.
 2. **If Threshold Fails**: Execute full simulation using `simulation-runbook.md` and re-run gate.
-3. **On Completion**: Results auto-recorded in `release-gate-log.md` and `findings-summary.md` (if new findings emerge).
+3. **On Completion**: Results are recorded in `release-gate-log.md`.
 
 ## Automation
 

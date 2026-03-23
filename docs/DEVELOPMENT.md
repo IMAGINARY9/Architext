@@ -299,13 +299,9 @@ Comparative analysis highlighted practical operating expectations.
 | Offline/heuristic fallback is a competitive advantage elsewhere | Investigate constrained-mode pathway without degrading primary semantic quality |
 | Clear differentiation matters (platform vs onboarding tool) | Keep API-first architecture and focus on agent-intelligence workflows |
 
-## 9. Temporary Execution Prompt Templates
+## 9. UX Simulation Assets
 
-For a temporary, repeatable execution workflow, see:
-
-- `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`
-
-UX research execution assets for the current cycle are available in:
+UX simulation and release-gate assets are available in:
 
 - `docs/research/README.md`
 

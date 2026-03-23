@@ -22,6 +22,8 @@ All notable changes to this project will be documented in this file.
 - Added release gate logging assets: `docs/research/release-gate-log-template.md` and `docs/research/release-gate-log.md`.
 
 ### Changed
+- Consolidated continuous UX release-monitoring guidance into `README.md` and `docs/research/README.md`, replacing separate phase-labeled planning documents.
+- Updated `docs/RELEASE_NOTES.md` verification snapshot to current validated baseline (`319 passed`, `mypy` on 68 source files).
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.
 - Improved security task typing in `src/tasks/security.py` by adding explicit visitor method annotations and removing ignore-based async handling.
 - Made `security_heuristics` findings deterministic by sorting output by file, line, and rule id.
@@ -48,6 +50,11 @@ All notable changes to this project will be documented in this file.
 - Revised `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md` with current status, completed points, and explicit phase-2 remaining-points tracker.
 
 ### Removed
+- Removed deprecated migration guide `docs/MIGRATION_GUIDE.md` and retired references to it.
+- Removed completed UX evaluation artifacts now superseded by release-gate operations:
+	- `docs/research/findings-summary.md`
+	- `docs/research/phase-2-continuous-improvement.md`
+	- `docs/research/release-gate-log-template.md`
 - Retired one-off filled UX research artifacts after consolidation into `docs/research/findings-summary.md`:
 	- `docs/research/heuristic-review-2026-03-23.md`
 	- `docs/research/internal-pilot-test2-test3-2026-03-23.md`
