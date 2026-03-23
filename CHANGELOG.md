@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Expanded comparative-analysis extraction with explicit strategic guardrails, metric targets, and execution batches/prompts in `docs/DEVELOPMENT.md` and `docs/TEMP_IMPROVEMENT_EXECUTION_PLAN.md`.
 - Expanded AST-first Python security heuristics to detect `subprocess(..., shell=True)` usage and unsafe `yaml.load(...)` calls without `SafeLoader`.
 - Added selective indexing controls via `INDEX_MAX_FILES` and `INDEX_INCLUDE_EXTENSIONS`, and wired them into `/index` and `/index/preview` file discovery.
+- Added `start_here` onboarding recommendations to `analyze-structure` output and documented an operator workflow for index->analyze execution in `docs/DEVELOPMENT.md`.
 
 ### Fixed
 - Enforced `max_findings` cap consistently across regex, AST, and taint scanning paths in `security_heuristics`.

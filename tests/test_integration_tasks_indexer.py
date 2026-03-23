@@ -31,6 +31,9 @@ def test_analysis_task_service_runs_structure(temp_repo_path, tmp_path):
     assert result["format"] == "json"
     assert "summary" in result
     assert "tree" in result
+    assert "start_here" in result
+    assert isinstance(result["start_here"], list)
+    assert len(result["start_here"]) >= 1
 
     executor.shutdown(wait=True)
 

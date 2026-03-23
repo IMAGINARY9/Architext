@@ -69,11 +69,13 @@ class StructureAnalysisTask(BaseTask):
             "top_extensions": dict(extensions.most_common(10)),
             "import_clusters": dict(import_cluster_counts),
         }
+        start_here = self._build_start_here(files)
 
         if self.output_format == "markdown":
             lines = [
                 "# Repository Structure", "",
                 "## Summary", json.dumps(summary, indent=2), "",
+                "## Start Here", json.dumps(start_here, indent=2), "",
                 "## Tree"
             ]
             lines.extend(self._tree_to_markdown(pruned))
@@ -81,9 +83,54 @@ class StructureAnalysisTask(BaseTask):
 
         if self.output_format == "mermaid":
             diagram = self._tree_to_mermaid(pruned)
-            return {"format": "mermaid", "content": diagram, "summary": summary}
+            return {
+                "format": "mermaid",
+                "content": diagram,
+                "summary": summary,
+                "start_here": start_here,
+            }
 
-        return {"format": "json", "summary": summary, "tree": pruned}
+        return {
+            "format": "json",
+            "summary": summary,
+            "tree": pruned,
+            "start_here": start_here,
+        }
+
+    @staticmethod
+    def _build_start_here(files: List[FileInfo]) -> List[Dict[str, str]]:
+        """Recommend a small set of onboarding entry points based on common project anchors."""
+        ranked_hints = [
+            ("README.md", "Project overview and quickstart"),
+            ("docs/DEVELOPMENT.md", "Developer architecture and workflows"),
+            ("src/server.py", "Primary FastAPI app entry point"),
+            ("src/task_registry.py", "Canonical task inventory and dependencies"),
+            ("tests/", "Behavioral examples and regression coverage"),
+        ]
+
+        normalized_files = [Path(f.path).as_posix() for f in files]
+        recommendations: List[Dict[str, str]] = []
+
+        for candidate, reason in ranked_hints:
+            if candidate.endswith("/"):
+                match = next((item for item in normalized_files if item.startswith(candidate)), None)
+            else:
+                match = next((item for item in normalized_files if item.endswith(candidate)), None)
+            if not match:
+                continue
+            recommendations.append({"path": match, "reason": reason})
+            if len(recommendations) >= 3:
+                break
+
+        if not recommendations and normalized_files:
+            recommendations.append(
+                {
+                    "path": normalized_files[0],
+                    "reason": "First discovered source file for initial orientation",
+                }
+            )
+
+        return recommendations
 
     @staticmethod
     def _build_tree(paths: List[str]) -> Dict[str, Any]:

@@ -53,6 +53,13 @@ The project exposes a FastAPI server with centralized task handling.
 *   `GET /tasks/{id}`: Check status of async tasks.
 *   `GET /mcp/tools`: Discover available tools (MCP-style).
 
+### Operator Workflow (Start Here)
+Use this flow for reliable day-to-day operation:
+1. Run `POST /index/preview` to verify file counts and warnings before indexing.
+2. Run `POST /index` and monitor progress through `GET /tasks/{id}`.
+3. Run `analyze-structure` and follow the `start_here` recommendations in the task output.
+4. Run deeper analysis tasks after structural orientation (`health-score`, `detect-vulnerabilities`, etc.).
+
 ### Stable JSON Schemas
 
 Architext provides stable JSON schemas for agent integration. All responses follow these Pydantic models:
@@ -86,6 +93,21 @@ Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache
   "file_types": {".py": 30, ".md": 5, ".txt": 7},
   "warnings": ["Remote repository will be cloned/cached locally"],
   "would_index": true
+}
+```
+
+#### Structure Analysis JSON Additions
+`analyze-structure` now returns a `start_here` list for onboarding guidance:
+
+```json
+{
+  "format": "json",
+  "summary": {"total_files": 42},
+  "tree": {"src": {"__files__": ["server.py"]}},
+  "start_here": [
+    {"path": "README.md", "reason": "Project overview and quickstart"},
+    {"path": "src/server.py", "reason": "Primary FastAPI app entry point"}
+  ]
 }
 ```
 

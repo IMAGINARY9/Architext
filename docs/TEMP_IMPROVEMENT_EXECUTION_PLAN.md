@@ -196,6 +196,7 @@ Output format:
 | 2026-03-23 | E | Added repeatable benchmark harness (`scripts/benchmark.py`) and generated matrix artifacts (`docs/benchmarks/*`) | PASS (309) | PASS | PASS | Continue | small index p50/p95: 4.5209/5.835s; medium index p50/p95: 35.1885/36.141s; query p50/p95: small 0.1333/0.1373s, medium 0.1307/0.1364s |
 | 2026-03-23 | A | Expanded AST-first security heuristics and taint-flow reliability checks with regression coverage | PASS (312) | PASS | PASS | Continue | Added detections for `subprocess(..., shell=True)` and unsafe `yaml.load(...)`; taint detection now includes keyword args and f-string sources |
 | 2026-03-23 | B | Added selective indexing limits/extension filters and source-aware cache invalidation behavior | PASS (315) | PASS | PASS | Continue | New config knobs: `INDEX_MAX_FILES`, `INDEX_INCLUDE_EXTENSIONS`; cache invalidation now correctly scopes by `source_path` |
+| 2026-03-23 | C | Added structure-analysis onboarding hints and documented operator start-here workflow | PASS (315) | PASS | PASS | Continue | `analyze-structure` now returns `start_here` recommendations for practical entry points |
 
 ## Suggested Batch Order
 
