@@ -56,7 +56,7 @@ def _scan_python_ast_security(path: str, content: str) -> List[Dict[str, Any]]:
         return findings
 
     class Visitor(ast.NodeVisitor):
-        def visit_Call(self, node: ast.Call):
+        def visit_Call(self, node: ast.Call) -> None:
             name = None
             if isinstance(node.func, ast.Name):
                 name = node.func.id
@@ -142,10 +142,10 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
         return None
 
     class Visitor(ast.NodeVisitor):
-        def __init__(self):
+        def __init__(self) -> None:
             self.tainted_stack: List[set[str]] = [set()]
 
-        def visit_FunctionDef(self, node: ast.FunctionDef):
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
             tainted = set()
             for arg in node.args.args:
                 if is_tainted_name(arg.arg):
@@ -154,10 +154,16 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
             self.generic_visit(node)
             self.tainted_stack.pop()
 
-        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-            self.visit_FunctionDef(node)  # type: ignore[arg-type]
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+            tainted = set()
+            for arg in node.args.args:
+                if is_tainted_name(arg.arg):
+                    tainted.add(arg.arg)
+            self.tainted_stack.append(tainted)
+            self.generic_visit(node)
+            self.tainted_stack.pop()
 
-        def visit_Assign(self, node: ast.Assign):
+        def visit_Assign(self, node: ast.Assign) -> None:
             current = self.tainted_stack[-1]
             value_name = extract_name(node.value)
             if value_name and is_tainted_name(value_name):
@@ -172,7 +178,7 @@ def _scan_python_taint_security(path: str, content: str) -> List[Dict[str, Any]]
                             current.add(target.id)
             self.generic_visit(node)
 
-        def visit_Call(self, node: ast.Call):
+        def visit_Call(self, node: ast.Call) -> None:
             call_name = extract_name(node.func) or ""
             current = self.tainted_stack[-1]
 
@@ -211,19 +217,52 @@ def security_heuristics(
     progress_callback: ProgressCallback = None,
 ) -> Dict[str, Any]:
     """Run a combined regex + AST + taint security scan on all source files."""
+    if max_findings <= 0:
+        return {
+            "findings": [],
+            "counts": {
+                "total": 0,
+                "by_severity": {},
+                "by_rule": {},
+            },
+        }
+
     _progress(progress_callback, {"stage": "scan", "message": "Collecting files"})
     files = collect_file_paths(storage_path, source_path)
     _progress(progress_callback, {"stage": "analyze", "message": "Scanning for heuristic matches"})
 
     findings = _scan_security_rules(files, max_findings=max_findings)
-    for path in files:
-        if Path(path).suffix.lower() != ".py":
-            continue
-        content = _read_file_text(path)
-        if not content:
-            continue
-        findings.extend(_scan_python_ast_security(path, content))
-        findings.extend(_scan_python_taint_security(path, content))
+    if len(findings) < max_findings:
+        for path in files:
+            if Path(path).suffix.lower() != ".py":
+                continue
+            content = _read_file_text(path)
+            if not content:
+                continue
+
+            for item in _scan_python_ast_security(path, content):
+                if len(findings) >= max_findings:
+                    break
+                findings.append(item)
+
+            if len(findings) >= max_findings:
+                break
+
+            for item in _scan_python_taint_security(path, content):
+                if len(findings) >= max_findings:
+                    break
+                findings.append(item)
+
+            if len(findings) >= max_findings:
+                break
+
+    findings.sort(
+        key=lambda item: (
+            str(item.get("file", "")),
+            int(item.get("line", 0) or 0),
+            str(item.get("rule_id", "")),
+        )
+    )
     severity_counts = Counter(item.get("severity", "unknown") for item in findings)
     rule_counts = Counter(item.get("rule_id", "unknown") for item in findings)
 

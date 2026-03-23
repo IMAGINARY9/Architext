@@ -65,3 +65,44 @@ def test_detect_duplicate_blocks_basic(tmp_path: Path) -> None:
 
     assert result["scanned_files"] >= 2
     assert result["count"] >= 1
+
+
+def test_security_heuristics_respects_max_findings(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write(
+        repo / "danger.py",
+        "def run(x):\n"
+        "    eval('1+1')\n"
+        "    eval('2+2')\n"
+        "    return open(x).read()\n",
+    )
+
+    result = security_heuristics(source_path=str(repo), max_findings=1)
+
+    assert result["counts"]["total"] == 1
+
+
+def test_security_heuristics_returns_deterministic_order(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write(repo / "b.py", "def run():\n    eval('1+1')\n")
+    _write(repo / "a.py", "def run():\n    eval('1+1')\n")
+
+    result = security_heuristics(source_path=str(repo))
+    files = [item.get("file") for item in result["findings"]]
+
+    assert files == sorted(files)
+
+
+def test_security_heuristics_zero_max_findings_returns_empty(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write(repo / "a.py", "def run():\n    eval('1+1')\n")
+
+    result = security_heuristics(source_path=str(repo), max_findings=0)
+
+    assert result["findings"] == []
+    assert result["counts"]["total"] == 0
+    assert result["counts"]["by_rule"] == {}
+    assert result["counts"]["by_severity"] == {}

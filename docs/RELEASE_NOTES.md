@@ -1,5 +1,26 @@
 # Release Notes
 
+## Unreleased
+
+### Highlights
+- Completed release hardening implementation loop with additional correctness checks in security analysis tasks.
+- Synchronized published quality metrics with latest validated baseline (`309/309` tests passing).
+- Improved determinism and reliability of security findings output.
+
+### Changed
+- `security_heuristics` now enforces `max_findings` consistently across regex, AST, and taint phases.
+- `security_heuristics` findings are now returned in deterministic order (file, line, rule id).
+- Typing coverage in `src/tasks/security.py` visitor paths was improved for stricter static analysis.
+
+### Fixed
+- Non-positive `max_findings` now returns an empty, schema-consistent response.
+- Added regression tests covering findings cap behavior, deterministic ordering, and zero-limit handling.
+
+### Verification Snapshot
+- `python -m pytest -q` -> `309 passed`
+- `python -m ruff check .` -> all checks passed
+- `python -m mypy src` -> success (67 source files)
+
 ## 1.0.0 - 2026-01-23
 
 ### Highlights

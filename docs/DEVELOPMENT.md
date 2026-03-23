@@ -144,7 +144,7 @@ Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache
 ## 3. roadmap & Implementation Status
 
 ### Completed Phases ✅
-*   **Phase 1:** Core RAG Engine, CLI, Configuration.
+*   **Phase 1:** Core RAG engine and configuration foundation.
 *   **Phase 2:** API Server, Structured Outputs, Hybrid Search, Reranking.
 *   **Phase 2.5:** Analysis Tasks (Structure, Anti-patterns, Health Score).
 *   **Phase 2.9:** Security & Stability Remediation.
@@ -159,11 +159,11 @@ Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache
 
 Run the full test suite:
 ```bash
-pytest tests/ -v
+python -m pytest -q
 ```
 
 **Scope:**
-*   Unit tests for CLI utils and Config.
+*   Unit tests for configuration and task modules.
 *   Integration tests for ingestion and indexing.
 *   Operational tests for the API server.
 
@@ -182,9 +182,17 @@ pre-commit run --all-files
 ```
 
 ## 6. Developing New Features
-1.  **Add a Task:** Create a function in `src/tasks/<module>.py`, export it via `src/tasks/__init__.py`, and register it in `src/task_registry.py`.
+1.  **Add a Task:** Create a class in `src/tasks/analysis/<module>.py` (extending `BaseTask`), export it via `src/tasks/__init__.py`, and register task entry points in `src/task_registry.py`.
 2.  **Add a Provider:** Update `src/config.py` Enum and `src/indexer_components/factories.py`.
 3.  **Update Deps:** `pip freeze > requirements.txt`.
+
+## 7. Task Inventory Source of Truth
+
+- Active task names, categories, and dependencies are canonical in `src/task_registry.py`.
+- Task implementation architecture is organized under:
+  - `src/tasks/core/`
+  - `src/tasks/analysis/`
+  - `src/tasks/orchestration/`
 
 ---
 *For high-level project status, see [PROJECT_STATUS.md](PROJECT_STATUS.md).*

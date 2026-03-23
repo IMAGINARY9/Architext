@@ -30,7 +30,7 @@ If the information already exists elsewhere, add a cross-reference link, not a c
 | Version history | `CHANGELOG.md` | Per-release changes (keep in sync with VERSION) |
 | Release highlights | `docs/RELEASE_NOTES.md` | Summary for latest release only |
 | Retrospective & lessons learned | `docs/PROJECT_RETROSPECTIVE.md` | Audit findings, risk analysis, future work |
-| Task inventory & refactoring log | `docs/TASK_REFACTORING_PLAN.md` | Full task list, deletion rationale, phase tracking |
+| Task inventory & architecture status | `src/task_registry.py` + `docs/DEVELOPMENT.md` | Canonical active tasks/dependencies and developer-facing task architecture guidance |
 | Configuration reference | `src/config.py` (`ArchitextSettings`) | All env vars, defaults, and config knobs |
 | Task registry | `src/task_registry.py` | Canonical list of active tasks and categories |
 
@@ -125,7 +125,7 @@ If the information already exists elsewhere, add a cross-reference link, not a c
 3. Export in `src/tasks/__init__.py`.
 4. Register in `src/task_registry.py` (registry, dependencies, category).
 5. Add tests in `tests/`.
-6. Update `docs/TASK_REFACTORING_PLAN.md` task table.
+6. Update `docs/DEVELOPMENT.md` task architecture notes if public behavior or task taxonomy changes.
 
 ### Commit Hygiene
 

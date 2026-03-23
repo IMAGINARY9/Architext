@@ -1,8 +1,8 @@
 # Architext: Project Status Report
 
-**Last Updated:** January 17, 2026
+**Last Updated:** March 23, 2026
 **Overall Status:** ✅ **Production-Ready & Feature Complete** (Phases 1, 2, 2.9, 3 delivered)
-**Test Coverage:** 92/92 Passing (`pytest`)
+**Test Coverage:** 309/309 Passing (`pytest`)
 
 ---
 
@@ -39,9 +39,9 @@ Recent refactors modularized tasks, centralized task dispatch, and extracted ind
 
 ### ✅ Phase 3: Semantic Intelligence
 *   **Deliverables:**
-    *   **Active Auditing:** `detect-vulnerabilities`, `logic-gap-analysis`, `silent-failure-detection`.
+    *   **Active Auditing:** `detect-vulnerabilities`, `security-heuristics`, `identify-silent-failures`.
     *   **Advanced Parsing:** Tree-sitter logical chunking (function/class level), AST-based import extraction.
-    *   **Agent Integration:** `ask` CLI command (agent-optimized), MCP-like tool endpoints (`/mcp/run`).
+    *   **Agent Integration:** `/ask` endpoint (agent-optimized), MCP-like tool endpoints (`/mcp/run`).
     *   **Infrastructure:** Vector store provider adapters (Chroma default).
 
 ---
@@ -50,7 +50,7 @@ Recent refactors modularized tasks, centralized task dispatch, and extracted ind
 
 | Metric | Result | Notes |
 |--------|--------|-------|
-| **Test Pass Rate** | 100% (92/92) | High reliability on core paths |
+| **Test Pass Rate** | 100% (309/309) | High reliability on core paths |
 | **Indexing Speed** | ~3s (small) to ~45s (medium remote) | Efficient local caching |
 | **Query Latency** | 2-5s | Dependent on LLM provider |
 | **Security** | Hardened | Path traversal & input validation active |
