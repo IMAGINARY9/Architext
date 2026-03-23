@@ -1,2 +1,0 @@
-date,participant_id,persona,test_id,task_id,completed,time_seconds,errors,wrong_endpoint_attempts,intervention,confidence_1_5,satisfaction_1_5,severity_notes
-2026-03-23,template,operator,test2,task1,,,,,,,,

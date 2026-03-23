@@ -1,43 +1,31 @@
-# UX Research Assets
+# UX Evaluation and Continuous Improvement Assets
 
-This folder contains execution artifacts for the active UX evaluation cycle.
+**Status**: Evaluation complete. Phase 2 (continuous monitoring) active.
 
-Canonical plan:
-- [../TEMP_IMPROVEMENT_EXECUTION_PLAN.md](../TEMP_IMPROVEMENT_EXECUTION_PLAN.md)
+## Operational Files (Required for Release Gates)
 
-## Files
+- `findings-summary.md` — Consolidated findings, KPI outcomes, and GO decision rationale. _Source of truth_.
+- `phase-2-continuous-improvement.md` — Release-based monitoring workflow, escalation triggers, and threshold rules.
+- `release-gate-log.md` — Canonical log of all release UX gate decisions (GO/CONDITIONAL GO/NO-GO).
+- `release-gate-log-template.md` — Template reference for gate entry structure.
 
-- `baseline-rubric.md`: Severity definitions, scoring, and pass/fail thresholds.
-- `operator-moderated-session-script.md`: 60-minute script for Operator persona sessions.
-- `agent-integrator-session-script.md`: 60-minute script for Agent Integrator persona sessions.
-- `accessibility-checklist.md`: Inclusive UX checks for docs and API interaction flow.
-- `findings-log-template.md`: Standardized evidence capture format for each session.
-- `prioritized-ux-backlog-template.md`: Backlog schema and scoring model.
-- `findings-summary.md`: Consolidated findings, KPI outcomes, and phase transition decisions.
-- `participant-screener.md`: Recruitment and selection criteria for moderated sessions.
-- `moderated-session-runbook.md`: Facilitator operations checklist for live sessions.
-- `session-tracker.csv`: Lightweight tabular tracker for per-task UX metrics.
-- `synthetic-personas.md`: Canonical synthetic persona definitions for simulation-only runs.
-- `agent-simulation-prompts.md`: Prompt pack for operator, integrator, accessibility, and adversarial simulations.
-- `simulation-runbook.md`: End-to-end simulation execution protocol and acceptance gate.
-- `simulation-runs-2026-03-23.md`: Multi-cycle simulation results, deltas, and stability decisions.
-- `phase-2-continuous-improvement.md`: Continuous release-based UX monitoring and escalation model.
-- `release-gate-log-template.md`: Template for per-release UX gate decisions.
-- `release-gate-log.md`: Canonical log of release UX gate outcomes.
+## Reference Files (For Simulation Reruns or Historical Context)
 
-## Usage
+- `synthetic-personas.md` — Canonical synthetic persona definitions (Operator, Agent Integrator).
+- `agent-simulation-prompts.md` — Prompt pack for LLM-based persona simulation runs.
+- `simulation-runbook.md` — How to execute simulation cycles and interpret results.
+- `simulation-runs-2026-03-23.md` — Baseline multi-cycle simulation results (cycles 1-5) and stability evidence.
 
-1. Start with `baseline-rubric.md` and freeze the environment.
-2. Run simulation batches using `synthetic-personas.md` and `agent-simulation-prompts.md`.
-3. Capture all findings in `findings-log-template.md` format.
-4. Convert findings into prioritized work using `prioritized-ux-backlog-template.md`.
-5. Re-run confirmation and regression simulations as defined in the plan.
+## Workflow
 
-Current execution mode:
-- Simulation-only (agent-driven), no live participant sessions.
+1. **Per Release**: Run `scripts/run_ux_release_gate.py` to check KPIs and append decision to `release-gate-log.md`.
+2. **If Threshold Fails**: Execute full simulation using `simulation-runbook.md` and re-run gate.
+3. **On Completion**: Results auto-recorded in `release-gate-log.md` and `findings-summary.md` (if new findings emerge).
 
-Automation helper:
-- KPI summary script: `scripts/ux_simulation_kpi_summary.py`
+## Automation
+
+- `scripts/ux_simulation_kpi_summary.py` — Aggregate KPI metrics across simulation runs.
+- `scripts/run_ux_release_gate.py` — Automated gate decision with threshold checks.
 - Example run (Windows): `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py`
 - JSON output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format json`
 - CSV output: `.\\.venv\\Scripts\\python.exe scripts/ux_simulation_kpi_summary.py --format csv`
