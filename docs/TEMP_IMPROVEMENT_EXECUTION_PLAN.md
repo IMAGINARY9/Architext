@@ -39,21 +39,23 @@ Qualitative targets:
 - Higher self-reported confidence in choosing tasks and reading outputs
 - Clearer understanding of how operator flow differs from agent integration flow
 
-## 4. Personas and Recruitment
+## 4. Personas and Simulation Matrix
 
-Primary persona A: Operator
+Primary persona group A: Operator (synthetic)
 - Profile: engineer or technical PM using API and docs to analyze a codebase
-- Sample: 6 participants (2 novice, 2 intermediate, 2 advanced)
+- Simulation set: OP-N1, OP-I1, OP-A1
+- Run target: 12 runs (4 per persona)
 
-Primary persona B: Agent Integrator
+Primary persona group B: Agent Integrator (synthetic)
 - Profile: developer wiring Architext outputs into another agent/tool
-- Sample: 6 participants (2 novice with APIs, 4 experienced)
+- Simulation set: AG-N1, AG-I1, AG-A1
+- Run target: 12 runs (4 per persona)
 
 Accessibility requirement:
-- Include at least 2 participants using assistive features (screen reader, zoom, or keyboard-heavy navigation)
+- Include dedicated accessibility-lens simulations (keyboard-only and reduced-context reading)
 
-Total sample for moderated sessions:
-- 12 participants
+Total run target per cycle:
+- 24 core persona runs + 8 accessibility/adversarial runs
 
 ## 5. Test Sequence (Execution Order)
 
@@ -92,10 +94,10 @@ Entry points:
 Output:
 - Prioritized heuristic issue list with evidence links and affected user group
 
-### Test 2: First-Run Usability Test (Moderated) (Day 3-4)
+### Test 2: First-Run Usability Test (Simulated Operator Runs) (Day 3-4)
 
-Participants:
-- 6 (Operator persona)
+Simulation runs:
+- 12 runs across OP-N1, OP-I1, OP-A1
 
 Scenario tasks:
 1. Install and run server locally
@@ -105,15 +107,15 @@ Scenario tasks:
 5. Run one analysis task and explain the result
 
 Metrics:
-- Task completion rate, time on task, error count, need for moderator intervention
+- Task completion rate, time on task, error count, wrong-endpoint attempts
 
 Pass threshold:
-- At least 5/6 users complete tasks 1-4 without intervention
+- At least 85% run completion for tasks 1-4
 
-### Test 3: Agent Integration Usability Test (Moderated) (Day 4-5)
+### Test 3: Agent Integration Usability Test (Simulated Integrator Runs) (Day 4-5)
 
-Participants:
-- 6 (Agent Integrator persona)
+Simulation runs:
+- 12 runs across AG-N1, AG-I1, AG-A1
 
 Scenario tasks:
 1. Discover available tools/endpoints for integration
@@ -143,14 +145,14 @@ Checks:
 Output:
 - Accessibility findings with direct remediation suggestions
 
-### Test 5: Unmoderated Confirmation Run (Week 2)
+### Test 5: Simulation Confirmation Run (Week 2)
 
-Participants:
-- 12 lightweight sessions (mix of both personas)
+Simulation runs:
+- 16 additional runs focused on previously failing scenarios
 
 Method:
-- Task-based script run without moderator
-- Collect completion, time, and short confidence survey
+- Prompt-based scenario reruns using fixed prompt versions
+- Collect completion, time, error, and confidence outputs
 
 Goal:
 - Confirm improvements from earlier fixes generalize beyond moderated conditions
@@ -324,6 +326,10 @@ Week 2:
 - Measure before/after impact
 - Finalize release UX gate decision
 
+Simulation-only operating note:
+- Execution uses synthetic personas and agent prompt runs rather than live participant interviews.
+- See `docs/research/simulation-runbook.md` and `docs/research/agent-simulation-prompts.md`.
+
 ## 10. Deliverables
 
 At the end of this cycle, produce:
@@ -341,5 +347,9 @@ This plan mirrors the source UX template by preserving:
 - 60-minute moderated protocol style
 - Mixed qualitative and quantitative evidence
 - Structured recommendation and success-metric outputs
+
+Adaptation for current cycle:
+- Participant criteria are represented as synthetic persona definitions and run matrices.
+- Moderated session logic is preserved as scenario scripts executed by agents.
 
 It is adapted to Architext by centering on API-first workflows, async task patterns, and operator/agent integration needs.

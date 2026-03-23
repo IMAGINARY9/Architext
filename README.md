@@ -75,6 +75,7 @@ curl http://localhost:8000/tasks/<task_id>
 Practical note:
 - `POST /index` returns a `task_id`; use that same value when polling `GET /tasks/{id}`.
 - Stop polling when status reaches a terminal state (`completed` or `failed`).
+- Anti-pattern to avoid: do not copy placeholder schema values (for example `"string"`) into live requests.
 
 Decision hint:
 - Use `POST /query` for full response options and broader query controls.
@@ -124,7 +125,13 @@ curl -X POST http://localhost:8000/index \
   -d '{"source": "git@github.com:user/private-repo.git", "ssh_key": "~/.ssh/id_rsa"}'
 ```
 
+If index response includes `task_id`, poll `GET /tasks/{id}` until `completed` or `failed` before querying.
+
 - **Query an index** — Ask a question against an existing index.
+
+Schema-intent contrast:
+- Prefer `POST /query` when you want richer controls and response modes.
+- Prefer `POST /ask` when you want compact payloads for agent orchestration.
 
 ```bash
 curl -X POST http://localhost:8000/query \

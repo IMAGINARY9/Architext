@@ -54,6 +54,6 @@
 
 ## Next Actions
 
-1. Run external moderated sessions with scripts in `docs/research/`.
-2. Compare external findings with internal pilot notes in `docs/research/internal-pilot-test2-test3-2026-03-23.md`.
-3. Re-score backlog items based on observed external frequency.
+1. Run simulation batches using `docs/research/synthetic-personas.md` and `docs/research/agent-simulation-prompts.md`.
+2. Compare simulation findings with pilot notes in `docs/research/internal-pilot-test2-test3-2026-03-23.md`.
+3. Re-score backlog items based on observed simulation frequency and rerun targeted scenarios.
