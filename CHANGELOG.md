@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Added external-session operations assets: `docs/research/participant-screener.md`, `docs/research/moderated-session-runbook.md`, and `docs/research/session-tracker.csv`.
 - Added simulation-only UX execution assets: `docs/research/synthetic-personas.md`, `docs/research/agent-simulation-prompts.md`, `docs/research/simulation-runbook.md`, and `docs/research/simulation-runs-2026-03-23.md`.
 - Added post-fix simulation rerun evidence in `docs/research/simulation-rerun-2026-03-23.md`.
+- Added full cycle-2 simulation results and KPI deltas in `docs/research/simulation-runs-2026-03-23.md`.
 
 ### Changed
 - Updated test pass metrics in `README.md` and `docs/PROJECT_STATUS.md` to reflect current baseline results.
