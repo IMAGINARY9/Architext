@@ -1,4 +1,4 @@
-"""Task recommendation engine based on execution history.
+﻿"""Task recommendation engine based on execution history.
 
 This module provides intelligent task recommendations based on:
 - Historical execution patterns
@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
+from src.config import AppPathDefaults
 from src.tasks.orchestration.history import get_task_history, TaskExecution
 
 # Lazy imports to avoid circular dependency:
@@ -42,7 +43,7 @@ def _get_task_dependencies():
 
 
 # Default weights file location
-WEIGHTS_DIR = Path.home() / ".architext" / "config"
+WEIGHTS_DIR = AppPathDefaults.config_dir()
 WEIGHTS_FILE = WEIGHTS_DIR / "scoring_weights.json"
 
 
@@ -634,3 +635,4 @@ def apply_weight_preset(preset_name: str) -> Optional[Dict[str, float]]:
     engine = get_recommendation_engine()
     result = engine.apply_preset(preset_name)
     return result.to_dict() if result else None
+

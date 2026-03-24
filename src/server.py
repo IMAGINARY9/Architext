@@ -1,4 +1,4 @@
-﻿"""FastAPI server exposing Architext indexing and query capabilities."""
+﻿"""FastAPI server exposing Tekturo indexing and query capabilities."""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Request
 from starlette.responses import JSONResponse
 
-from src.config import ArchitextSettings, load_settings
+from src.config import AppSettings, load_settings
 from src.indexer import (
     create_index_from_paths,
     gather_index_files,
@@ -77,8 +77,8 @@ from src.tasks import (  # noqa: F401
 # --- schemas to src/api/schemas.py, utilities to src/server_utils.py     ---
 
 
-def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
-    """Create a FastAPI app configured with Architext settings."""
+def create_app(settings: Optional[AppSettings] = None) -> FastAPI:
+    """Create a FastAPI app configured with Tekturo settings."""
 
     base_settings = settings or load_settings()
     initialize_settings(base_settings)
@@ -107,14 +107,14 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
         base_settings=base_settings,
     )
 
-    def _settings_with_overrides(req: IndexRequest) -> ArchitextSettings:
+    def _settings_with_overrides(req: IndexRequest) -> AppSettings:
         overrides: Dict[str, Any] = {}
         if req.llm_provider:
-            overrides["llm_provider"] = req.llm_provider
+            overrides.setdefault("llm", {})["llm_provider"] = req.llm_provider
         if req.embedding_provider:
-            overrides["embedding_provider"] = req.embedding_provider
+            overrides.setdefault("embedding", {})["embedding_provider"] = req.embedding_provider
         if overrides:
-            return base_settings.model_copy(update=overrides)
+            return base_settings.with_overrides(overrides)
         return base_settings
 
     def _run_index(task_id: str, req: IndexRequest, storage_path: str):
@@ -246,7 +246,7 @@ def create_app(settings: Optional[ArchitextSettings] = None) -> FastAPI:
                 persist_task_store(task_store_path, task_store)
 
     app = FastAPI(
-        title="Architext API",
+        title="Tekturo API",
         version="0.2.0",
         description=(
             "Index repositories and query them using vector/hybrid search. "
@@ -495,7 +495,7 @@ if __name__ == "__main__":
     import argparse
     import uvicorn
 
-    parser = argparse.ArgumentParser(description="Run Architext server")
+    parser = argparse.ArgumentParser(description="Run Tekturo server")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind")
     parser.add_argument("--port", default=8000, type=int, help="Port to bind")
     parser.add_argument("--reload", action="store_true", help="DEPRECATED: Use 'uvicorn src.server:app --reload' instead")
@@ -510,3 +510,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     uvicorn.run(app, host=args.host, port=args.port)
+
+
+

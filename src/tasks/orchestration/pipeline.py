@@ -1,4 +1,4 @@
-"""Custom task pipelines and composition.
+﻿"""Custom task pipelines and composition.
 
 This module enables users to define custom task pipelines that combine
 multiple tasks with transformations and conditional logic.
@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 import threading
+
+from src.config import AppPathDefaults
 
 
 @dataclass
@@ -363,7 +365,7 @@ class PipelineStore:
 
     def __init__(self, storage_path: Optional[Union[str, Path]] = None):
         if storage_path is None:
-            storage_path = Path.home() / ".architext" / "pipelines"
+            storage_path = AppPathDefaults.pipelines_dir()
 
         self.store_dir = Path(storage_path)
         self.store_dir.mkdir(parents=True, exist_ok=True)
@@ -541,3 +543,4 @@ def get_pipeline_store(storage_path: Optional[str] = None) -> PipelineStore:
                 _pipeline_store_instance = PipelineStore(storage_path)
 
     return _pipeline_store_instance
+

@@ -1,4 +1,4 @@
-"""Task result caching with disk persistence.
+﻿"""Task result caching with disk persistence.
 
 This module provides caching for task results to avoid redundant computation
 when the same analysis is requested multiple times.
@@ -18,6 +18,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from src.config import AppPathDefaults
 
 
 @dataclass
@@ -68,7 +70,7 @@ class TaskResultCache:
     - Manual invalidation
     
     Usage:
-        cache = TaskResultCache(cache_dir="~/.architext/cache")
+        cache = TaskResultCache(cache_dir="~/.tekturo/cache")
         
         # Check for cached result
         result = cache.get("analyze-structure", source_path="src")
@@ -90,12 +92,12 @@ class TaskResultCache:
         Initialize the cache.
         
         Args:
-            cache_dir: Directory to store cache files. Defaults to ~/.architext/cache
+            cache_dir: Directory to store cache files. Defaults to ~/.tekturo/cache
             default_ttl: Default time-to-live in seconds for cache entries
             enabled: Whether caching is enabled
         """
         if cache_dir is None:
-            cache_dir = str(Path.home() / ".architext" / "cache")
+            cache_dir = str(AppPathDefaults.cache_dir())
 
         self.cache_dir = Path(cache_dir)
         self.default_ttl = default_ttl
@@ -455,3 +457,4 @@ def cached_task(
         return wrapper
 
     return decorator
+

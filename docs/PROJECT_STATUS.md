@@ -1,14 +1,14 @@
-# Architext: Project Status Report
+# Tekturo: Project Status Report
 
 **Last Updated:** March 24, 2026
 **Overall Status:** ✅ **Production-Ready & Feature Complete** (Phases 1, 2, 2.9, 3 delivered)
-**Test Coverage:** 333/333 Passing (`pytest`)
+**Test Coverage:** 341/341 Passing (`pytest`)
 
 ---
 
 ## Executive Summary
 
-Architext has successfully evolved from a local RAG prototype into a professional "Codebase Architect" agent tool. It now features a robust FastAPI server, comprehensive analysis tasks (Phase 2), critical security remediation (Phase 2.9), and semantic intelligence features (Phase 3).
+Tekturo has successfully evolved from a local RAG prototype into a professional "Codebase Architect" agent tool. It now features a robust FastAPI server, comprehensive analysis tasks (Phase 2), critical security remediation (Phase 2.9), and semantic intelligence features (Phase 3).
 
 Recent refactors modularized tasks, centralized task dispatch, and extracted indexer factories to improve maintainability while keeping compatibility helpers in place.
 
@@ -50,7 +50,7 @@ Recent refactors modularized tasks, centralized task dispatch, and extracted ind
 
 | Metric | Result | Notes |
 |--------|--------|-------|
-| **Test Pass Rate** | 100% (333/333) | High reliability on core paths |
+| **Test Pass Rate** | 100% (341/341) | High reliability on core paths |
 | **Indexing Speed** | ~3s (small) to ~45s (medium remote) | Efficient local caching |
 | **Query Latency** | 2-5s | Dependent on LLM provider |
 | **Security** | Hardened | Path traversal & input validation active |

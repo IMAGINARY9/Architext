@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "architext"
+name = "tekturo"
 version = "1.0.0"
 description = "An Intelligent Codebase Architect Agent"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    {name = "Architext Team"}
+    {name = "Tekturo Team"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -52,8 +52,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/IMAGINARY9/Architext"
-Repository = "https://github.com/IMAGINARY9/Architext"
+Homepage = "https://github.com/IMAGINARY9/Tekturo"
+Repository = "https://github.com/IMAGINARY9/Tekturo"
 
 [tool.ruff]
 line-length = 100

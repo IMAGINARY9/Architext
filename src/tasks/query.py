@@ -1,4 +1,4 @@
-"""Query diagnostics tasks."""
+﻿"""Query diagnostics tasks."""
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -20,7 +20,7 @@ def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:
     from llama_index.core.schema import QueryBundle
     from llama_index.vector_stores.chroma import ChromaVectorStore
 
-    from src.config import load_settings
+    from src.config import AppPathDefaults, load_settings
     from src.indexer import _keyword_score, _tokenize
 
     settings = load_settings()
@@ -28,7 +28,7 @@ def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:
         raise ValueError("query_diagnostics requires chroma vector store")
 
     client = chromadb.PersistentClient(path=storage_path)
-    collection = client.get_or_create_collection("architext_db")
+    collection = client.get_or_create_collection(AppPathDefaults.DEFAULT_COLLECTION)
     vector_store = ChromaVectorStore(chroma_collection=collection)
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
@@ -55,3 +55,4 @@ def query_diagnostics(storage_path: str, query_text: str) -> Dict[str, Any]:
         )
 
     return {"query": query_text, "results": results}
+

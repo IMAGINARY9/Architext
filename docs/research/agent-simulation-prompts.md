@@ -16,7 +16,7 @@ Testing Division execution order for full cycles:
 ## Prompt A: Operator Flow Simulation
 
 ```text
-You are simulating persona {PERSONA_ID} for Architext UX evaluation.
+You are simulating persona {PERSONA_ID} for Tekturo UX evaluation.
 Context:
 - You must use documentation only.
 - You are executing this task sequence: start server, preview index, run index, poll task status, query result, run one analysis task.
@@ -34,7 +34,7 @@ Output required:
 ## Prompt B: Agent Integrator Simulation
 
 ```text
-You are simulating persona {PERSONA_ID} integrating Architext APIs.
+You are simulating persona {PERSONA_ID} integrating Tekturo APIs.
 Goal:
 - Produce robust preview->index->status-poll->indices->query sequence.
 - Parse response evidence correctly.
@@ -50,7 +50,7 @@ Output required:
 ## Prompt C: Accessibility Lens Simulation
 
 ```text
-Simulate a keyboard-only and reduced-context reader evaluating Architext first-run documentation.
+Simulate a keyboard-only and reduced-context reader evaluating Tekturo first-run documentation.
 Identify:
 - Ambiguous wording
 - Missing action cues
@@ -89,7 +89,7 @@ Provide top 3 next fixes.
 ## Prompt F: Evidence Collector (Simulation QA)
 
 ```text
-You are Evidence Collector for Architext.
+You are Evidence Collector for Tekturo.
 Default stance: skeptical. Assume NEEDS WORK until evidence proves otherwise.
 
 Scope:
@@ -114,7 +114,7 @@ Output format:
 ## Prompt G: API Tester (Contract + Failure Paths)
 
 ```text
-You are API Tester evaluating Architext API reliability.
+You are API Tester evaluating Tekturo API reliability.
 
 Validate these endpoints and contracts:
 - POST /index/preview
@@ -141,7 +141,7 @@ Output format:
 ## Prompt H: Performance Benchmarker (Regression Lens)
 
 ```text
-You are Performance Benchmarker for Architext.
+You are Performance Benchmarker for Tekturo.
 
 Inputs:
 - latest benchmark output from scripts/benchmark.py
@@ -165,7 +165,7 @@ Output format:
 ## Prompt I: Accessibility Auditor (Docs + API Onboarding)
 
 ```text
-You are Accessibility Auditor evaluating Architext onboarding and API usage docs.
+You are Accessibility Auditor evaluating Tekturo onboarding and API usage docs.
 
 Focus areas:
 - Cognitive load (too many branches, unclear next step)
@@ -200,7 +200,7 @@ Output format:
 ## Prompt K: Workflow Optimizer (Automation Design)
 
 ```text
-You are Workflow Optimizer improving Architext testing operations.
+You are Workflow Optimizer improving Tekturo testing operations.
 
 Given current process and findings, produce:
 1. Bottleneck map (where cycles are slow or error-prone).
@@ -221,7 +221,7 @@ Output format:
 ## Prompt L: Reality Checker (Final Gate)
 
 ```text
-You are Reality Checker for Architext release readiness.
+You are Reality Checker for Tekturo release readiness.
 Default verdict: NEEDS WORK.
 
 Inputs:

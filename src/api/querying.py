@@ -1,4 +1,4 @@
-"""Router for query and query-diagnostics endpoints.
+﻿"""Router for query and query-diagnostics endpoints.
 
 Provides POST /query and POST /query/diagnostics.  Also exposes thin
 MCP-callable wrappers via the ``run_query_for_mcp`` and
@@ -22,14 +22,14 @@ from src.api.schemas import (
     QuerySource,
 )
 from src.api_utils import extract_sources, to_agent_response, to_agent_response_compact
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.indexer import load_existing_index, query_index
 from src.server_utils import ensure_sources_instruction, resolve_index_storage
 
 
 def build_query_router(
     storage_roots: List[Path],
-    base_settings: ArchitextSettings,
+    base_settings: AppSettings,
 ) -> APIRouter:
     """Create the query router.
 
@@ -45,19 +45,19 @@ def build_query_router(
     # Helpers
     # ------------------------------------------------------------------
 
-    def _query_settings_from_request(req: QueryRequest) -> ArchitextSettings:
+    def _query_settings_from_request(req: QueryRequest) -> AppSettings:
         overrides: Dict[str, Any] = {}
         if req.enable_hybrid is not None:
-            overrides["enable_hybrid"] = req.enable_hybrid
+            overrides.setdefault("retrieval", {})["enable_hybrid"] = req.enable_hybrid
         if req.hybrid_alpha is not None:
-            overrides["hybrid_alpha"] = req.hybrid_alpha
+            overrides.setdefault("retrieval", {})["hybrid_alpha"] = req.hybrid_alpha
         if req.enable_rerank is not None:
-            overrides["enable_rerank"] = req.enable_rerank
+            overrides.setdefault("retrieval", {})["enable_rerank"] = req.enable_rerank
         if req.rerank_model:
-            overrides["rerank_model"] = req.rerank_model
+            overrides.setdefault("retrieval", {})["rerank_model"] = req.rerank_model
         if req.rerank_top_n is not None:
-            overrides["rerank_top_n"] = req.rerank_top_n
-        return base_settings.model_copy(update=overrides) if overrides else base_settings
+            overrides.setdefault("retrieval", {})["rerank_top_n"] = req.rerank_top_n
+        return base_settings.with_overrides(overrides) if overrides else base_settings
 
     # ------------------------------------------------------------------
     # Internal implementations (shared by HTTP + MCP entry-points)
@@ -256,3 +256,6 @@ def build_query_router(
     router.query_diagnostics_for_mcp = query_diagnostics_for_mcp  # type: ignore[attr-defined]
 
     return router
+
+
+

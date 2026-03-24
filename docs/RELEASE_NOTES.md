@@ -1,8 +1,20 @@
-# Release Notes
+﻿# Release Notes
 
 ## Unreleased
 
-_No unreleased entries yet._
+### Highlights
+- Rebranded the project from `Architext` to `Tekturo`.
+- Updated API-facing and internal naming to the new brand, including MCP tool names (`tekturo.query`, `tekturo.task`, `tekturo.list_indices`, `tekturo.get_index_metadata`).
+- Updated default local config/storage conventions to `~/.tekturo/*` and vector collection default to `tekturo_db`.
+- Refactored configuration architecture into focused sections (`llm`, `embedding`, `retrieval`, `storage`, `server`, `runtime`) with nested-only payloads.
+- Centralized path and default collection conventions in `AppPathDefaults` to remove hardcoded path literals.
+- Updated API request-level settings overrides to nested section payloads.
+- Enforced `AppSettings` as the single section-first settings model and removed legacy compatibility adapter behavior.
+
+### Verification Snapshot
+- `python -m pytest -q` -> `341 passed`
+- `python -m ruff check .` -> all checks passed
+- `python -m mypy src` -> success (68 source files)
 
 ## 1.0.0 - 2026-03-24
 
@@ -41,3 +53,4 @@ _No unreleased entries yet._
 
 ### Upgrade Notes
 See [CHANGELOG.md](../CHANGELOG.md) for full compatibility details.
+

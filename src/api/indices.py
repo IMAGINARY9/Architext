@@ -1,4 +1,4 @@
-"""Router for index listing and metadata endpoints.
+﻿"""Router for index listing and metadata endpoints.
 
 Provides GET /indices, GET /indices/{name}, and GET /indices/{name}/files.
 """
@@ -28,7 +28,7 @@ from src.server_utils import (
 
 def build_indices_router(
     storage_roots: List[Path],
-    base_settings,  # ArchitextSettings (not typed to avoid circular import)
+    base_settings,  # AppSettings (not typed to avoid circular import)
 ) -> APIRouter:
     """Create the indices router.
 
@@ -37,7 +37,7 @@ def build_indices_router(
     storage_roots:
         Resolved allowed storage root paths.
     base_settings:
-        Application settings instance (``ArchitextSettings``).
+        Application settings instance (``AppSettings``).
     """
     from src.indexer import load_existing_index
     from src.indexer_components.factories import resolve_collection_name
@@ -320,3 +320,6 @@ def _scan_root(root: Path, indices: list, base_settings, resolve_collection_name
 def _scan_subdir(item: Path, indices: list, base_settings, resolve_collection_name) -> None:
     """Scan a single subdirectory of a storage root."""
     _scan_index_dir(item, indices, base_settings, resolve_collection_name)
+
+
+

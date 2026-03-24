@@ -1,8 +1,8 @@
-"""Tests for the indexer module."""
+﻿"""Tests for the indexer module."""
 import os
 import pytest
 
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.indexer import gather_index_files, initialize_settings, load_documents
 
 def test_load_documents_security(temp_repo_path):
@@ -19,7 +19,7 @@ def test_load_documents_security(temp_repo_path):
 def test_initialize_settings_graceful_fallback(mocker):
     """Ensure we wire LLM and embedding via config without hitting real services."""
 
-    cfg = ArchitextSettings()
+    cfg = AppSettings()
     mock_llm = mocker.Mock()
     mock_embed = mocker.Mock()
 
@@ -36,17 +36,21 @@ def test_initialize_settings_graceful_fallback(mocker):
 
 
 def test_openai_embedding_requires_key(mocker):
-    cfg = ArchitextSettings(embedding_provider="openai", openai_api_key="")
+    cfg = AppSettings(embedding={"embedding_provider": "openai"}, llm={"openai_api_key": ""})
     with pytest.raises(ValueError):
         initialize_settings(cfg)
 
 
 def test_openai_embedding_builds(mocker):
-    cfg = ArchitextSettings(
-        embedding_provider="openai",
-        embedding_model_name="text-embedding-3-small",
-        openai_api_key="key",
-        openai_api_base="https://api.openai.com/v1",
+    cfg = AppSettings(
+        embedding={
+            "embedding_provider": "openai",
+            "embedding_model_name": "text-embedding-3-small",
+        },
+        llm={
+            "openai_api_key": "key",
+            "openai_api_base": "https://api.openai.com/v1",
+        },
     )
 
     mock_openai_embed = mocker.patch("src.indexer.OpenAIEmbedding")
@@ -87,3 +91,4 @@ def test_gather_index_files_filters_extensions(tmp_path):
 
     assert len(files) == 1
     assert files[0].endswith("a.py")
+

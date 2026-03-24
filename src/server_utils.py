@@ -177,7 +177,7 @@ def build_mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
     available = ", ".join(indices) if indices else "none found"
     return [
         {
-            "name": "architext.query",
+            "name": "tekturo.query",
             "description": "Query an index and return agent/human output.",
             "input_schema": {
                 "type": "object",
@@ -231,7 +231,7 @@ def build_mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
             },
         },
         {
-            "name": "architext.task",
+            "name": "tekturo.task",
             "description": "Run an analysis task synchronously.",
             "input_schema": {
                 "type": "object",
@@ -279,12 +279,12 @@ def build_mcp_tools_schema(storage_roots: List[Path]) -> List[Dict[str, Any]]:
             },
         },
         {
-            "name": "architext.list_indices",
+            "name": "tekturo.list_indices",
             "description": "List all available indices in storage.",
             "input_schema": {"type": "object", "properties": {}},
         },
         {
-            "name": "architext.get_index_metadata",
+            "name": "tekturo.get_index_metadata",
             "description": "Get detailed metadata for a specific index.",
             "input_schema": {
                 "type": "object",

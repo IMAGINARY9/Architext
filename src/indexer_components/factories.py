@@ -1,4 +1,4 @@
-"""Factory helpers for indexer components."""
+﻿"""Factory helpers for indexer components."""
 from __future__ import annotations
 
 import os
@@ -19,10 +19,10 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from src.config import ArchitextSettings
+from src.config import AppPathDefaults, AppSettings
 
 
-def build_llm(cfg: ArchitextSettings) -> OpenAILike:
+def build_llm(cfg: AppSettings) -> OpenAILike:
     """Create the configured LLM client.
 
     Currently supports local/OpenAI-compatible endpoints via OpenAILike.
@@ -39,12 +39,12 @@ def build_llm(cfg: ArchitextSettings) -> OpenAILike:
         }
         if cfg.llm_max_tokens is not None:
             llm_kwargs["max_tokens"] = cfg.llm_max_tokens
-        return OpenAILike(**llm_kwargs)  # type: ignore[arg-type]
+        return OpenAILike(**llm_kwargs)
 
     raise ValueError(f"Unsupported LLM provider: {cfg.llm_provider}")
 
 
-def build_embedding(cfg: ArchitextSettings):
+def build_embedding(cfg: AppSettings):
     """Create the configured embedding model."""
 
     provider = cfg.embedding_provider.lower()
@@ -70,12 +70,12 @@ def build_embedding(cfg: ArchitextSettings):
     raise ValueError(f"Unsupported embedding provider: {cfg.embedding_provider}")
 
 
-def resolve_collection_name(cfg: ArchitextSettings) -> str:
-    """Return the configured collection name, falling back to 'architext_db'."""
-    return cfg.vector_store_collection or "architext_db"
+def resolve_collection_name(cfg: AppSettings) -> str:
+    """Return the configured collection name, falling back to default path settings."""
+    return cfg.vector_store_collection or AppPathDefaults.DEFAULT_COLLECTION
 
 
-def build_vector_store(cfg: ArchitextSettings, storage_path: str):
+def build_vector_store(cfg: AppSettings, storage_path: str):
     provider = cfg.vector_store_provider
     collection = resolve_collection_name(cfg)
 
@@ -130,3 +130,7 @@ def build_vector_store(cfg: ArchitextSettings, storage_path: str):
         return WeaviateVectorStore(weaviate_client=client, index_name=collection)
 
     raise ValueError(f"Unsupported vector store provider: {cfg.vector_store_provider}")
+
+
+
+

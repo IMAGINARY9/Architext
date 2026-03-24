@@ -1,4 +1,4 @@
-# Architext: Developer Documentation
+﻿# Tekturo: Developer Documentation
 
 ## 1. Project Structure
 
@@ -23,10 +23,23 @@ storage/         # Default location for local vector indices
 ### Configuration (`src/config.py`)
 Centralized settings management.
 ```python
-from src.config import ArchitextSettings
-settings = ArchitextSettings()
-# Access: settings.llm_provider, settings.storage_path
+from src.config import AppSettings
+settings = AppSettings()
+# Section-first access: settings.llm.llm_provider, settings.storage.storage_path
 ```
+
+Settings are split by concern:
+- `llm`
+- `embedding`
+- `retrieval`
+- `storage`
+- `server`
+- `runtime`
+
+Configuration contract:
+- `AppSettings` is the single settings model and accepts nested sections only.
+- `AppPathDefaults` is the centralized default-path helper.
+- Use nested payloads for config/overrides (for example `{"llm": {"llm_provider": "openai"}}`).
 
 ### Ingestion (`src/ingestor.py`)
 Handles local paths and remote Git URLs.
@@ -76,27 +89,31 @@ Integration patterns:
 
 ### Stable JSON Schemas
 
-Architext provides stable JSON schemas for agent integration. All responses follow these Pydantic models:
+Tekturo provides stable JSON schemas for agent integration. All responses follow these Pydantic models:
 
 ## Advanced / Static Defaults via Config
 
-Advanced or static defaults can be put into `architext.config.json` in the project root (or `~/.architext/config.json`). Architext will automatically load this file if present and merge its values on top of `.env`/environment variables.
+Advanced or static defaults can be put into `tekturo.config.json` in the project root (or `~/.tekturo/config.json`). Tekturo will automatically load this file if present and merge its values on top of `.env`/environment variables.
 
 Example file (see `docs/advanced-config.json.example`):
 
 ```json
 {
-  "cache_enabled": false,
-  "ssh_key": "~/.ssh/id_rsa",
-  "enable_rerank": true,
-  "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
-  "rerank_top_n": 20,
-  "enable_hybrid": true,
-  "hybrid_alpha": 0.6
+  "runtime": {
+    "cache_enabled": false,
+    "ssh_key": "~/.ssh/id_rsa"
+  },
+  "retrieval": {
+    "enable_rerank": true,
+    "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "rerank_top_n": 20,
+    "enable_hybrid": true,
+    "hybrid_alpha": 0.6
+  }
 }
 ```
 
-Add fields supported by `ArchitextSettings` (see `src/config.py`) such as `cache_enabled`, `ssh_key`, rerank/hybrid defaults, and other operational knobs.
+Legacy flat config keys are still accepted for backward compatibility.
 
 #### Index Preview Schema
 ```json
@@ -251,7 +268,7 @@ This backlog consolidates useful findings from internal retrospective work and c
 
 ### Strategic Positioning and Guardrails
 
-1. Keep Architext server-first and API-first; do not drift into CLI-first product behavior.
+1. Keep Tekturo server-first and API-first; do not drift into CLI-first product behavior.
 2. Prioritize agent-native outputs and orchestration use cases (enterprise automation, governance, AI toolchains).
 3. Preserve complementarity with lightweight onboarding tools by improving integration surfaces, not by duplicating their UX model.
 4. Treat portability and fallback behavior as reliability concerns, not only feature requests.
@@ -293,7 +310,7 @@ Comparative analysis highlighted practical operating expectations.
 
 ### Comparative Analysis Action Mapping
 
-| Comparative Finding | Architext Action |
+| Comparative Finding | Tekturo Action |
 |---|---|
 | RAG depth is a strength, but setup/resource cost is high | Improve performance profile and operational defaults; publish benchmark matrix |
 | Lightweight competitors win on onboarding ergonomics | Improve "start-here" recommendations and operator docs |
@@ -308,3 +325,4 @@ UX simulation and release-gate assets are available in:
 
 ---
 *For high-level project status, see [PROJECT_STATUS.md](PROJECT_STATUS.md).*
+

@@ -1,17 +1,20 @@
-"""Prevent documentation endpoint drift against live OpenAPI schema."""
+﻿"""Prevent documentation endpoint drift against live OpenAPI schema."""
 
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.server import create_app
 
 
 def test_core_documented_endpoints_exist_in_openapi(mocker) -> None:
     mocker.patch("src.server.initialize_settings")
     app = create_app(
-        settings=ArchitextSettings(storage_path="./test-storage", task_store_path="./test-task-store.json")
+        settings=AppSettings(
+            storage={"storage_path": "./test-storage"},
+            server={"task_store_path": "./test-task-store.json"},
+        )
     )
     client = TestClient(app)
 
@@ -55,3 +58,4 @@ def test_docs_include_current_polling_and_index_selection_guidance() -> None:
 
     assert "GET /status/{task_id}" in development
     assert "GET /indices" in development
+

@@ -1,8 +1,8 @@
-# Architext
+﻿# Tekturo
 
 **An Intelligent "Codebase Architect" Agent**
 
-Architext is a production-ready RAG (Retrieval-Augmented Generation) tool designed to index repositories, understand their architecture, and answer high-level questions. It serves as a "Cortex" for software architecture, useful for both human developers and AI Orchestrators.
+Tekturo is a production-ready RAG (Retrieval-Augmented Generation) tool designed to index repositories, understand their architecture, and answer high-level questions. It serves as a "Cortex" for software architecture, useful for both human developers and AI Orchestrators.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
 ![Tests](https://img.shields.io/badge/Tests-333%2F333%20Passing-success)
@@ -31,7 +31,7 @@ Architext is a production-ready RAG (Retrieval-Augmented Generation) tool design
 Key findings from internal retrospective and comparative review:
 
 *   **Resolved critical risks:** Path traversal hardening, streaming ingestion (OOM mitigation), and improved task error visibility.
-*   **Current strengths:** Strong task-based architecture, agent-native API outputs, and high reliability (`333/333` tests passing).
+*   **Current strengths:** Strong task-based architecture, agent-native API outputs, and high reliability (`341/341` tests passing).
 *   **Known limitations:** Large monorepo indexing cost, static index refresh model (no live incremental updates), and partial regex limitations outside deeper AST-driven coverage.
 *   **Priority improvements:** Expand provider abstraction coverage, continue AST-first migration for heuristic checks, and improve fast onboarding workflows with clearer "start-here" outputs.
 
@@ -199,25 +199,39 @@ OPENAI_API_KEY=sk-...
 # OPENAI_API_BASE=http://localhost:5000/v1
 ```
 
-**Optional JSON Config:** Create `architext.config.json` in your project root or `~/.architext/config.json` for advanced settings. Architext auto-detects and loads this file without CLI flags. Example:
+**Optional JSON Config:** Create `tekturo.config.json` in your project root or `~/.tekturo/config.json` for advanced settings. Tekturo auto-detects and loads this file without CLI flags.
+
+Preferred (sectioned) format:
 
 ```json
 {
-  "llm_provider": "openai",
-  "embedding_provider": "openai",
-  "enable_rerank": true
+  "llm": {
+    "llm_provider": "openai"
+  },
+  "embedding": {
+    "embedding_provider": "openai"
+  },
+  "retrieval": {
+    "enable_rerank": true
+  }
 }
 ```
 
+Configuration model roles:
+- `AppSettings`: strict section-first core settings model for new code.
+- `AppPathDefaults`: centralized runtime path and collection defaults.
+
+Flat keys like `llm_provider` are rejected in JSON config/override payloads; use nested JSON sections such as `{"llm": {"llm_provider": "openai"}}`.
+
 ## API Schemas (for Agents)
 
-Architext provides **stable JSON schemas** for reliable agent integration. All API responses follow consistent Pydantic models.
+Tekturo provides **stable JSON schemas** for reliable agent integration. All API responses follow consistent Pydantic models.
 
 For full schema documentation (index preview, query responses, index discovery, request-level overrides), see **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
 ## Testing
 
-Architext maintains a high standard of code quality with the full test suite green.
+Tekturo maintains a high standard of code quality with the full test suite green.
 
 ```bash
 python -m pytest -q

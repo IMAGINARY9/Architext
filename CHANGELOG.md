@@ -1,10 +1,26 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-_No unreleased entries yet._
+### Changed
+- Renamed the project brand from `Architext` to `Tekturo` across source, tests, and documentation.
+- Renamed the primary settings model from `ArchitextSettings` to `AppSettings`.
+- Updated default local storage/config conventions from `~/.architext/*` to `~/.tekturo/*`.
+- Updated default vector collection naming from `architext_db` to `tekturo_db`.
+- Updated MCP tool names from `architext.*` to `tekturo.*`.
+- Refactored configuration into focused sections (`llm`, `embedding`, `retrieval`, `storage`, `server`, `runtime`) to reduce single-class responsibility.
+- Centralized runtime path defaults in `AppPathDefaults` and removed hardcoded path literals from core modules.
+- Added `with_overrides` for safe nested request-level settings overrides.
+- Updated request-level runtime overrides to nested section payload format.
+- Added configuration regression tests for nested-only override behavior.
+- Enforced `AppSettings` as the single strict section-first settings model.
+
+### Verification
+- `python -m pytest -q` -> `341 passed`
+- `python -m ruff check .` -> all checks passed
+- `python -m mypy src` -> success (68 source files)
 
 ## 1.0.0 - 2026-03-24
 
@@ -122,3 +138,4 @@ _No unreleased entries yet._
 
 ### Fixed
 - Consistent task store persistence and restart handling.
+

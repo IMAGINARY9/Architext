@@ -1,4 +1,4 @@
-"""Shared helpers for analysis tasks."""
+﻿"""Shared helpers for analysis tasks."""
 from __future__ import annotations
 
 import ast
@@ -369,14 +369,14 @@ def _gather_files_cached(source_path: str) -> tuple[str, ...]:
 
 def _load_files_from_storage(storage_path: str) -> List[str]:
     try:
-        from src.config import load_settings as _load_settings_func
+        from src.config import AppPathDefaults, load_settings as _load_settings_func
         settings = _load_settings_func()
         if settings.vector_store_provider != "chroma":
             raise ValueError("storage-based tasks require chroma vector store; use --source instead")
     except Exception:
-        pass
+        from src.config import AppPathDefaults
     client = chromadb.PersistentClient(path=storage_path)
-    collection = client.get_or_create_collection("architext_db")
+    collection = client.get_or_create_collection(AppPathDefaults.DEFAULT_COLLECTION)
     data = collection.get(include=["metadatas"])
     metadatas = data.get("metadatas") or []
     file_paths = []
@@ -570,3 +570,4 @@ def _resolve_python_relative_import(current_module: Optional[str], encoded: str)
         base_parts.extend(module.split("."))
 
     return ".".join(base_parts) if base_parts else None
+

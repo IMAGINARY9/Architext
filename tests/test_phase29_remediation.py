@@ -1,4 +1,4 @@
-"""Tests for phase 29 remediation (API response validation)."""
+﻿"""Tests for phase 29 remediation (API response validation)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.server import create_app
 
 
@@ -16,24 +16,28 @@ def base_settings(tmp_path, mocker):
     storage_root = tmp_path / "storage"
     storage_root.mkdir()
 
-    return ArchitextSettings(
-        storage_path=str(storage_root),
-        task_store_path=str(tmp_path / "task_store.json"),
-        allowed_storage_roots=str(tmp_path),
-        allowed_source_roots=str(tmp_path),
-        rate_limit_per_minute=120,
+    return AppSettings(
+        storage={"storage_path": str(storage_root)},
+        server={
+            "task_store_path": str(tmp_path / "task_store.json"),
+            "allowed_storage_roots": str(tmp_path),
+            "allowed_source_roots": str(tmp_path),
+            "rate_limit_per_minute": 120,
+        },
     )
 
 
 def test_rate_limiting_blocks_after_burst(tmp_path, mocker):
     mocker.patch("src.server.initialize_settings")
 
-    settings = ArchitextSettings(
-        storage_path=str(tmp_path / "storage"),
-        task_store_path=str(tmp_path / "task_store.json"),
-        allowed_storage_roots=str(tmp_path),
-        allowed_source_roots=str(tmp_path),
-        rate_limit_per_minute=1,
+    settings = AppSettings(
+        storage={"storage_path": str(tmp_path / "storage")},
+        server={
+            "task_store_path": str(tmp_path / "task_store.json"),
+            "allowed_storage_roots": str(tmp_path),
+            "allowed_source_roots": str(tmp_path),
+            "rate_limit_per_minute": 1,
+        },
     )
 
     app = create_app(settings=settings)
@@ -64,12 +68,14 @@ def test_task_store_persists_completed_tasks(tmp_path, mocker):
     storage_root = tmp_path / "storage"
     storage_root.mkdir()
 
-    settings = ArchitextSettings(
-        storage_path=str(storage_root),
-        task_store_path=str(tmp_path / "task_store.json"),
-        allowed_storage_roots=str(tmp_path),
-        allowed_source_roots=str(tmp_path),
-        rate_limit_per_minute=0,
+    settings = AppSettings(
+        storage={"storage_path": str(storage_root)},
+        server={
+            "task_store_path": str(tmp_path / "task_store.json"),
+            "allowed_storage_roots": str(tmp_path),
+            "allowed_source_roots": str(tmp_path),
+            "rate_limit_per_minute": 0,
+        },
     )
 
     mocker.patch("src.server.resolve_source", return_value=tmp_path)
@@ -112,3 +118,4 @@ def test_rerank_fails_loudly(mocker):
 
     with pytest.raises(RuntimeError):
         _apply_cross_encoder_rerank("query", [wrapper], top_n=1, model_name="model")
+

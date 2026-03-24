@@ -79,7 +79,7 @@ async def reindex_with_logical_chunking():
     import json
     
     client = chromadb.PersistentClient(path=new_storage)
-    collection = client.get_collection("architext_db")
+    collection = client.get_collection("tekturo_db")
     sample = collection.get(limit=1, include=["metadatas"])
     
     if sample["metadatas"]:

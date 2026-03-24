@@ -1,4 +1,4 @@
-"""Task execution webhooks and notifications.
+﻿"""Task execution webhooks and notifications.
 
 This module provides webhook support for task execution events,
 allowing external systems to be notified of task completions,
@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+
+from src.config import AppPathDefaults
 
 class WebhookEvent(str, Enum):
     """Types of webhook events."""
@@ -134,7 +136,7 @@ class WebhookManager:
     task execution events.
     """
 
-    DEFAULT_STORAGE_PATH = Path.home() / ".architext" / "webhooks"
+    DEFAULT_STORAGE_PATH = AppPathDefaults.webhooks_dir()
 
     def __init__(
         self,
@@ -148,7 +150,7 @@ class WebhookManager:
             storage_path: Path to store webhook configurations
             async_delivery: Whether to deliver webhooks asynchronously
         """
-        self.storage_path = storage_path or self.DEFAULT_STORAGE_PATH
+        self.storage_path = storage_path or AppPathDefaults.webhooks_dir()
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.async_delivery = async_delivery
 
@@ -406,7 +408,7 @@ class WebhookManager:
 
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": "Architext-Webhook/1.0",
+            "User-Agent": "Tekturo-Webhook/1.0",
             "X-Webhook-Event": payload.event.value,
             **webhook.headers,
         }
@@ -649,3 +651,4 @@ __all__ = [
     "emit_pipeline_started",
     "emit_pipeline_completed",
 ]
+

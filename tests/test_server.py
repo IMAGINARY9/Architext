@@ -3,14 +3,17 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
 
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.server import create_app
 
 
 @pytest.fixture
 def patched_settings(mocker):
     mocker.patch("src.server.initialize_settings")
-    settings = ArchitextSettings(storage_path="./test-storage", task_store_path="./test-task-store.json")
+    settings = AppSettings(
+        storage={"storage_path": "./test-storage"},
+        server={"task_store_path": "./test-task-store.json"},
+    )
     return settings
 
 
@@ -18,8 +21,8 @@ def test_index_endpoint_inline(mocker, tmp_path, patched_settings):
     mocker.patch("src.server.resolve_source", return_value=tmp_path)
     mocker.patch("src.server.gather_index_files", return_value=[str(tmp_path / "a.py")])
     mocker.patch("src.server.create_index_from_paths")
-    patched_settings.allowed_source_roots = str(tmp_path)
-    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -38,8 +41,8 @@ def test_index_endpoint_inline(mocker, tmp_path, patched_settings):
 def test_index_endpoint_validation_failure(mocker, tmp_path, patched_settings):
     mocker.patch("src.server.resolve_source", return_value=tmp_path)
     mocker.patch("src.server.gather_index_files", return_value=[])  # Empty - no files to index
-    patched_settings.allowed_source_roots = str(tmp_path)
-    patched_settings.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
 
     app = create_app(settings=patched_settings)
     client = TestClient(app)
@@ -116,8 +119,8 @@ def test_query_cancels_on_disconnect(mocker, tmp_path, patched_settings):
     mocker.patch("starlette.requests.Request.is_disconnected", always_disconnected)
 
     # Create a single index so the server will pick it automatically
-    patched_settings.allowed_storage_roots = str(tmp_path)
-    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
     idx = tmp_path / "idx"
     idx.mkdir()
     (idx / "chroma.sqlite3").write_text("")
@@ -140,8 +143,8 @@ def test_query_cancels_on_disconnect(mocker, tmp_path, patched_settings):
 
 def test_query_appends_sources_instruction_when_missing(mocker, tmp_path, patched_settings):
     # Ensure that when user doesn't ask for sources, server appends instruction
-    patched_settings.allowed_storage_roots = str(tmp_path)
-    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
     idx = tmp_path / "idx"
     idx.mkdir()
     (idx / "chroma.sqlite3").write_text("")
@@ -166,8 +169,8 @@ def test_query_appends_sources_instruction_when_missing(mocker, tmp_path, patche
 
 
 def test_query_does_not_duplicate_instruction(mocker, tmp_path, patched_settings):
-    patched_settings.allowed_storage_roots = str(tmp_path)
-    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
     idx = tmp_path / "idx"
     idx.mkdir()
     (idx / "chroma.sqlite3").write_text("")
@@ -231,8 +234,8 @@ def test_mcp_tools_lists_tools(patched_settings):
     assert response.status_code == 200
     data = response.json()
     names = {tool["name"] for tool in data["tools"]}
-    assert "architext.query" in names
-    assert "architext.task" in names
+    assert "tekturo.query" in names
+    assert "tekturo.task" in names
 
 
 def test_mcp_run_query_dispatch(mocker, patched_settings):
@@ -249,7 +252,7 @@ def test_mcp_run_query_dispatch(mocker, patched_settings):
     response = client.post(
         "/mcp/run",
         json={
-            "tool": "architext.query",
+            "tool": "tekturo.query",
             "arguments": {"text": "hello", "mode": "agent"},
         },
     )
@@ -261,8 +264,8 @@ def test_mcp_run_query_dispatch(mocker, patched_settings):
 
 def test_query_requires_name_when_multiple_indices(tmp_path, patched_settings):
     # Configure storage roots to a temp dir and create two index directories
-    patched_settings.allowed_storage_roots = str(tmp_path)
-    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
 
     idx1 = tmp_path / "idx1"
     idx2 = tmp_path / "idx2"
@@ -282,8 +285,8 @@ def test_query_requires_name_when_multiple_indices(tmp_path, patched_settings):
 
 
 def test_query_with_name_works_when_multiple_indices(mocker, tmp_path, patched_settings):
-    patched_settings.allowed_storage_roots = str(tmp_path)
-    patched_settings.allowed_source_roots = str(tmp_path)
+    patched_settings.server.allowed_storage_roots = str(tmp_path)
+    patched_settings.server.allowed_source_roots = str(tmp_path)
 
     idx1 = tmp_path / "idx1"
     idx2 = tmp_path / "idx2"
@@ -320,7 +323,7 @@ def test_mcp_run_task_dispatch(mocker, patched_settings):
     response = client.post(
         "/mcp/run",
         json={
-            "tool": "architext.task",
+            "tool": "tekturo.task",
             "arguments": {
                 "task": "analyze-structure",
                 "storage": "./test-storage",
@@ -595,4 +598,5 @@ def test_run_category_invalid_category(patched_settings):
 
     assert response.status_code == 400
     assert "Unknown category" in response.json()["detail"]
+
 

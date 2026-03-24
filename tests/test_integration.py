@@ -1,4 +1,4 @@
-"""End-to-end integration tests for the full indexing + querying workflow.
+﻿"""End-to-end integration tests for the full indexing + querying workflow.
 
 These tests validate:
 - Indexing local repositories
@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch
 
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.indexer import initialize_settings, load_documents, create_index, load_existing_index
 from src.ingestor import resolve_source
 
@@ -81,9 +81,11 @@ def initialized_settings(monkeypatch):
     repo_root = Path(__file__).resolve().parents[1]
     cache_dir = repo_root / "models_cache"
 
-    cfg = ArchitextSettings(
-        embedding_provider="huggingface",
-        embedding_cache_dir=str(cache_dir),
+    cfg = AppSettings(
+        embedding={
+            "embedding_provider": "huggingface",
+            "embedding_cache_dir": str(cache_dir),
+        }
     )
     initialize_settings(cfg)
     return cfg
@@ -179,16 +181,18 @@ def test_full_workflow(multi_lang_repo, tmp_path, initialized_settings):
 @patch("src.indexer.Settings")
 def test_embedding_model_loading(mock_settings, multi_lang_repo):
     """Test that embedding models load correctly."""
-    from src.config import ArchitextSettings
+    from src.config import AppSettings
     from src.indexer import _build_embedding
     
     # Test HuggingFace embedding
     repo_root = Path(__file__).resolve().parents[1]
     cache_dir = repo_root / "models_cache"
 
-    cfg = ArchitextSettings(
-        embedding_provider="huggingface",
-        embedding_cache_dir=str(cache_dir),
+    cfg = AppSettings(
+        embedding={
+            "embedding_provider": "huggingface",
+            "embedding_cache_dir": str(cache_dir),
+        }
     )
     
     embed_model = _build_embedding(cfg)
@@ -236,3 +240,4 @@ def test_ignore_hidden_and_cache_files(tmp_path):
     assert not any(".hidden.py" in p for p in file_paths)
     assert not any(".git" in p for p in file_paths)
     assert not any("__pycache__" in p for p in file_paths)
+

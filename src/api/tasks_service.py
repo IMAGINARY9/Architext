@@ -1,4 +1,4 @@
-"""Task service helpers for background analysis tasks."""
+﻿"""Task service helpers for background analysis tasks."""
 from __future__ import annotations
 
 import json
@@ -8,13 +8,14 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 
+from src.config import AppPathDefaults
 from src.task_registry import run_task
 from src.ingestor import resolve_source
 from src.server_utils import is_within_any as _is_within_any
 
 
 def resolve_task_store_path(raw_path: Optional[str]) -> Path:
-    candidate = Path(raw_path or "~/.architext/task_store.json").expanduser().resolve()
+    candidate = Path(raw_path or AppPathDefaults.task_store_path()).expanduser().resolve()
     candidate.parent.mkdir(parents=True, exist_ok=True)
     return candidate
 
@@ -154,3 +155,4 @@ class AnalysisTaskService:
         future.add_done_callback(lambda fut: fut.result() if not fut.cancelled() else None)
         self.update_task(task_id, {"future": future})
         return task_id
+

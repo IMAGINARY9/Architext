@@ -1,4 +1,4 @@
-"""Integration tests for task execution with indexer context."""
+﻿"""Integration tests for task execution with indexer context."""
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -7,12 +7,12 @@ from types import SimpleNamespace
 import threading
 
 from src.api.tasks_service import AnalysisTaskService
-from src.config import ArchitextSettings
+from src.config import AppSettings
 from src.indexer import create_index_from_paths
 
 
 def test_analysis_task_service_runs_structure(temp_repo_path, tmp_path):
-    settings = ArchitextSettings(storage_path=str(tmp_path / "storage"))
+    settings = AppSettings(storage={"storage_path": str(tmp_path / "storage")})
     executor = ThreadPoolExecutor(max_workers=1)
 
     service = AnalysisTaskService(
@@ -39,7 +39,7 @@ def test_analysis_task_service_runs_structure(temp_repo_path, tmp_path):
 
 
 def test_analysis_task_service_runs_structure_constrained_mode(temp_repo_path, tmp_path):
-    settings = ArchitextSettings(storage_path=str(tmp_path / "storage"))
+    settings = AppSettings(storage={"storage_path": str(tmp_path / "storage")})
     executor = ThreadPoolExecutor(max_workers=1)
 
     service = AnalysisTaskService(
@@ -86,8 +86,9 @@ def test_create_index_from_paths_batches(mocker):
     batches = [[mocker.Mock()], [mocker.Mock(), mocker.Mock()]]
     mocker.patch("src.indexer.iter_document_batches", return_value=iter(batches))
 
-    settings = ArchitextSettings()
+    settings = AppSettings()
     index = create_index_from_paths(["dummy.py"], storage_path="./storage", settings=settings)
 
     assert index is dummy_index
     assert dummy_index.inserted == [batches[1]]
+

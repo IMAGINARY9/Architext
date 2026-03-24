@@ -1,4 +1,4 @@
-"""Universal repository ingestion for local and remote sources.
+﻿"""Universal repository ingestion for local and remote sources.
 
 This module handles:
 - Local directory indexing
@@ -13,6 +13,8 @@ import shutil
 from pathlib import Path
 from typing import Optional, Dict
 
+from src.config import AppPathDefaults
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -23,7 +25,7 @@ except ImportError:
     HAS_GIT = False
 
 
-CACHE_DIR = Path.home() / ".architext" / "cache"
+CACHE_DIR = AppPathDefaults.cache_dir()
 
 
 def _is_github_like_url(source: str) -> bool:
@@ -51,7 +53,7 @@ def resolve_source(source: str, use_cache: bool = True, ssh_key: Optional[str] =
     
     Args:
         source: Local file path or remote git URL.
-        use_cache: If True, clone remotes to ~/.architext/cache. If False, raise error.
+        use_cache: If True, clone remotes to ~/.tekturo/cache. If False, raise error.
     
     Returns:
         Path to the local directory to index.
@@ -173,3 +175,4 @@ def cleanup_cache(max_age_days: int = 30) -> int:
                 logger.warning("Could not remove %s: %s", repo_dir.name, e)
 
     return removed
+

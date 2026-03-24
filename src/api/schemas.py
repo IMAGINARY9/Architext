@@ -1,4 +1,4 @@
-"""Pydantic request/response schemas for the Architext API.
+"""Pydantic request/response schemas for the Tekturo API.
 
 All API models are defined here as the single source of truth.
 Server routes and routers import schemas from this module.
@@ -360,14 +360,14 @@ class IndexListResponse(BaseModel):
                     "path": "/path/to/storage/my-project",
                     "documents": 42,
                     "provider": "chroma",
-                    "collection": "architext_db",
+                    "collection": "tekturo_db",
                 },
                 {
                     "name": "another-index",
                     "path": "/path/to/storage/another-index",
                     "documents": 128,
                     "provider": "chroma",
-                    "collection": "architext_db",
+                    "collection": "tekturo_db",
                 },
             ]
         ],
@@ -419,7 +419,7 @@ class IndexMetadataResponse(BaseModel):
                     "path": "/path/to/storage/my-project",
                     "documents": 42,
                     "provider": "chroma",
-                    "collection": "architext_db",
+                    "collection": "tekturo_db",
                     "status": "available",
                 },
                 {

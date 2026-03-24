@@ -29,8 +29,8 @@ test_results.txt
 test-storage/
 
 # Local index snapshots
-.architext/
-.architext/cache/
+.tekturo/
+.tekturo/cache/
 
 # ------------------------------------------------------------
 # Generated Artifacts (Do Not Commit)

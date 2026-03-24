@@ -1,4 +1,4 @@
-"""Task execution history and analytics.
+﻿"""Task execution history and analytics.
 
 This module tracks task executions over time, providing:
 - Execution history with timing and status
@@ -15,6 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Literal
 from collections import defaultdict
+
+from src.config import AppPathDefaults
 
 
 @dataclass
@@ -150,12 +152,12 @@ class TaskExecutionHistory:
         Initialize history tracker.
         
         Args:
-            history_dir: Directory to store history files. Defaults to ~/.architext/history
+            history_dir: Directory to store history files. Defaults to ~/.tekturo/history
             max_entries: Maximum history entries to keep per task
             enabled: Whether history tracking is enabled
         """
         if history_dir is None:
-            history_dir = str(Path.home() / ".architext" / "history")
+            history_dir = str(AppPathDefaults.history_dir())
 
         self.history_dir = Path(history_dir)
         self.max_entries = max_entries
@@ -554,3 +556,4 @@ def get_task_history(
                 enabled=enabled,
             )
         return _global_history
+

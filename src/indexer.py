@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import threading
 from pathlib import Path
@@ -11,7 +11,7 @@ from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 
-from src.config import ArchitextSettings, load_settings
+from src.config import AppSettings, load_settings
 from src.file_filters import should_skip_path
 from src.indexer_components.factories import build_llm, build_vector_store
 
@@ -37,11 +37,11 @@ def _keyword_score(query: str, document: str) -> float:
     return len(query_terms & doc_terms) / len(query_terms)
 
 
-def _build_llm(cfg: ArchitextSettings):
+def _build_llm(cfg: AppSettings):
     return build_llm(cfg)
 
 
-def _build_embedding(cfg: ArchitextSettings):
+def _build_embedding(cfg: AppSettings):
     """Create the configured embedding model."""
 
     provider = cfg.embedding_provider.lower()
@@ -67,7 +67,7 @@ def _build_embedding(cfg: ArchitextSettings):
     raise ValueError(f"Unsupported embedding provider: {cfg.embedding_provider}")
 
 
-def initialize_settings(settings: Optional[ArchitextSettings] = None) -> ArchitextSettings:
+def initialize_settings(settings: Optional[AppSettings] = None) -> AppSettings:
     """Configure global LlamaIndex settings for LLM and embeddings using config."""
 
     cfg = settings or load_settings()
@@ -78,7 +78,7 @@ def initialize_settings(settings: Optional[ArchitextSettings] = None) -> Archite
     return cfg
 
 
-def _build_vector_store(cfg: ArchitextSettings, storage_path: str):
+def _build_vector_store(cfg: AppSettings, storage_path: str):
     return build_vector_store(cfg, storage_path)
 
 INDEXABLE_EXTENSIONS = {
@@ -220,7 +220,7 @@ def _node_chunks_for_language(content: str, language_name: str) -> List[Tuple[in
     return chunks
 
 
-def _documents_from_paths_logical(file_paths: List[str], cfg: ArchitextSettings) -> List[Document]:
+def _documents_from_paths_logical(file_paths: List[str], cfg: AppSettings) -> List[Document]:
     documents: List[Document] = []
     max_chars = max(2000, cfg.chunk_size * 6)
 
@@ -291,7 +291,7 @@ def iter_document_batches(
     file_paths: List[str],
     batch_size: int = 500,
     progress_callback=None,
-    settings: Optional[ArchitextSettings] = None,
+    settings: Optional[AppSettings] = None,
 ) -> Iterator[List]:
     """Yield documents in batches to avoid loading everything into memory."""
     total_files = len(file_paths)
@@ -358,7 +358,7 @@ def create_index_from_paths(
     storage_path: str = "./storage",
     batch_size: int = 500,
     progress_callback=None,
-    settings: Optional[ArchitextSettings] = None,
+    settings: Optional[AppSettings] = None,
 ):
     """Create an index from file paths using batched document loading."""
     if not file_paths:
@@ -419,7 +419,7 @@ def load_existing_index(storage_path="./storage"):
     )
     return index
 
-def query_index(index, query_text: str, settings: Optional[ArchitextSettings] = None):
+def query_index(index, query_text: str, settings: Optional[AppSettings] = None):
     """Query the index and return the response."""
     print(f"Querying: {query_text}")
     active_settings = settings or load_settings()
@@ -428,7 +428,7 @@ def query_index(index, query_text: str, settings: Optional[ArchitextSettings] = 
     return response
 
 
-def _build_query_engine(index: VectorStoreIndex, settings: ArchitextSettings):
+def _build_query_engine(index: VectorStoreIndex, settings: AppSettings):
     if settings.enable_hybrid or settings.enable_rerank:
         base_retriever = index.as_retriever(similarity_top_k=settings.top_k)
         hybrid_retriever = HybridRerankRetriever(base_retriever, settings)
@@ -440,7 +440,7 @@ def _build_query_engine(index: VectorStoreIndex, settings: ArchitextSettings):
 class HybridRerankRetriever(BaseRetriever):
     """Retriever that optionally applies hybrid scoring and cross-encoder reranking."""
 
-    def __init__(self, base_retriever: BaseRetriever, settings: ArchitextSettings):
+    def __init__(self, base_retriever: BaseRetriever, settings: AppSettings):
         super().__init__()
         self._base_retriever = base_retriever
         self._settings = settings
@@ -518,3 +518,6 @@ def _get_cross_encoder(model_name: str):
 
             _CROSS_ENCODER_CACHE[model_name] = CrossEncoder(model_name)
         return _CROSS_ENCODER_CACHE[model_name]
+
+
+

@@ -7,7 +7,7 @@ Execute UX tests without real participants using synthetic personas and prompt-d
 ## Testing Division Operating Model (Simulation-Only)
 
 Adapted from the Testing Division sequence (Evidence Collector, API Tester, Performance Benchmarker,
-Test Results Analyzer, Workflow Optimizer, Reality Checker, Accessibility Auditor), mapped to Architext.
+Test Results Analyzer, Workflow Optimizer, Reality Checker, Accessibility Auditor), mapped to Tekturo.
 
 Principles:
 - Evidence over claims: every critical finding must cite command output, API response, or reproducible simulation trace.

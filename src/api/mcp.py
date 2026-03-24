@@ -1,4 +1,4 @@
-"""MCP endpoints for Architext."""
+"""MCP endpoints for Tekturo."""
 from __future__ import annotations
 
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
@@ -31,14 +31,14 @@ def build_mcp_router(
 
     @router.post("/mcp/run")
     async def mcp_run(request: Dict[str, Any] = Body(..., examples=[
-        {"summary": "Run architext.query", "value": {"tool": "architext.query", "arguments": {"text": "How does auth work?", "mode": "agent", "storage": "./my-index"}}},
-        {"summary": "Run architext.task inline", "value": {"tool": "architext.task", "arguments": {"task": "analyze-structure", "source": "./src", "output_format": "json", "background": False}}}
+        {"summary": "Run tekturo.query", "value": {"tool": "tekturo.query", "arguments": {"text": "How does auth work?", "mode": "agent", "storage": "./my-index"}}},
+        {"summary": "Run tekturo.task inline", "value": {"tool": "tekturo.task", "arguments": {"task": "analyze-structure", "source": "./src", "output_format": "json", "background": False}}}
     ])) -> Dict[str, Any]:
         payload = mcp_run_request_type.model_validate(request)
         tool = payload.tool
         args = payload.arguments or {}
 
-        if tool == "architext.query":
+        if tool == "tekturo.query":
             query_payload = query_request_type(**args)
             result = await query_handler(query_payload)
             # Convert Pydantic model results into plain dicts for MCP transport
@@ -49,7 +49,7 @@ def build_mcp_router(
                 return dict(result)
             return result
 
-        if tool == "architext.task":
+        if tool == "tekturo.task":
             task_name = args.get("task")
             task_payload = task_request_type(
                 storage=args.get("storage"),
@@ -67,7 +67,7 @@ def build_mcp_router(
 
             return {"task": task_name, "result": result}
 
-        if tool == "architext.list_indices":
+        if tool == "tekturo.list_indices":
             # List all available indices
             indices = []
             try:
@@ -87,7 +87,7 @@ def build_mcp_router(
                 pass  # If we can't list indices, return empty list
             return {"indices": indices}
 
-        if tool == "architext.get_index_metadata":
+        if tool == "tekturo.get_index_metadata":
             index_name = args.get("index_name")
             if not index_name:
                 raise HTTPException(status_code=400, detail="index_name is required")

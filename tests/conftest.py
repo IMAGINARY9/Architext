@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for Architext tests."""
+"""Shared pytest fixtures for Tekturo tests."""
 import pytest
 import importlib
 

@@ -1,4 +1,4 @@
-"""Task scheduling and automation.
+﻿"""Task scheduling and automation.
 
 This module provides scheduling capabilities for automated task execution,
 supporting cron-like schedules and interval-based triggers.
@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from src.config import AppPathDefaults
 
 
 class ScheduleType(str, Enum):
@@ -128,7 +130,7 @@ class TaskScheduler:
     Supports interval-based and cron-like scheduling.
     """
 
-    DEFAULT_STORAGE_PATH = Path.home() / ".architext" / "schedules"
+    DEFAULT_STORAGE_PATH = AppPathDefaults.schedules_dir()
 
     def __init__(
         self,
@@ -597,3 +599,4 @@ __all__ = [
     "create_cron_schedule",
     "create_one_time_schedule",
 ]
+

@@ -1,6 +1,6 @@
-# Copilot Instructions — Architext
+﻿# Copilot Instructions — Tekturo
 
-> **Architext** is a production-ready RAG-based "Codebase Architect" agent.
+> **Tekturo** is a production-ready RAG-based "Codebase Architect" agent.
 > Python 3.11 · FastAPI · LlamaIndex · ChromaDB · Tree-sitter · Pydantic v2.
 >
 > **NOTE:** Every change must be validated locally by running the full test
@@ -31,7 +31,7 @@ If the information already exists elsewhere, add a cross-reference link, not a c
 | Audit findings & risks | `README.md` + `docs/PROJECT_STATUS.md` | Current audit snapshot, risk posture, and validated status |
 | Task inventory & architecture status | `src/task_registry.py` + `docs/DEVELOPMENT.md` | Canonical active tasks/dependencies and developer-facing task architecture guidance |
 | UX simulation operations | `docs/research/README.md` + `docs/research/release-gate-log.md` | Continuous release monitoring workflow and decision history |
-| Configuration reference | `src/config.py` (`ArchitextSettings`) | All env vars, defaults, and config knobs |
+| Configuration reference | `src/config.py` (`AppSettings`) | All env vars, defaults, and config knobs |
 | Task registry | `src/task_registry.py` | Canonical list of active tasks and categories |
 
 ### Documentation Update Rules
@@ -80,7 +80,7 @@ If the information already exists elsewhere, add a cross-reference link, not a c
 #### Loose Coupling
 
 - Modules communicate through the **task registry** and **API service layer** (`src/api/tasks_service.py`), not direct cross-imports between task modules.
-- Configuration is centralized in `ArchitextSettings` (Pydantic). Never read env vars directly — use the settings object.
+- Configuration is centralized in `AppSettings` (Pydantic). Never read env vars directly — use the settings object.
 - Indexer internals (LLM, embeddings, vector store) are behind factory functions in `src/indexer_components/factories.py`. Swap providers by changing config, not code.
 
 #### Testability
@@ -159,3 +159,4 @@ If the information already exists elsewhere, add a cross-reference link, not a c
 | Testing | pytest + pytest-mock |
 | Linting | ruff, black, isort, mypy |
 | CI | GitHub Actions (`ci.yml`) |
+
