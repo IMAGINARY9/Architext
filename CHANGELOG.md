@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+_No unreleased entries yet._
+
+## 1.0.1 - 2026-03-24
+
 ### Changed
 - Renamed the project brand from `Architext` to `Tekturo` across source, tests, and documentation.
 - Renamed the primary settings model from `ArchitextSettings` to `AppSettings`.

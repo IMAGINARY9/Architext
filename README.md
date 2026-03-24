@@ -5,9 +5,9 @@
 Tekturo is a production-ready RAG (Retrieval-Augmented Generation) tool designed to index repositories, understand their architecture, and answer high-level questions. It serves as a "Cortex" for software architecture, useful for both human developers and AI Orchestrators.
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
-![Tests](https://img.shields.io/badge/Tests-333%2F333%20Passing-success)
+![Tests](https://img.shields.io/badge/Tests-341%2F341%20Passing-success)
 ![Phase](https://img.shields.io/badge/Phase-3%20Complete-blue)
-![Version](https://img.shields.io/badge/Version-1.0.0-informational)
+![Version](https://img.shields.io/badge/Version-1.0.1-informational)
 
 **[→ Read the Full Project Status Report](docs/PROJECT_STATUS.md)**
 

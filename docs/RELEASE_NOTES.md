@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+_No unreleased entries yet._
+
+## 1.0.1 - 2026-03-24
+
 ### Highlights
 - Rebranded the project from `Architext` to `Tekturo`.
 - Updated API-facing and internal naming to the new brand, including MCP tool names (`tekturo.query`, `tekturo.task`, `tekturo.list_indices`, `tekturo.get_index_metadata`).
